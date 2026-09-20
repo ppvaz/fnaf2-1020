@@ -206,6 +206,11 @@ Fusion build 296, August 2025.
 - [`research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`](research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md)
   — source-level comparison with every substantive scope in this repository,
   including its simulator, trainer, Android sensing/actuation, and evidence gaps.
+- [`research/FOUR-GAME-NIGHTS.md`](research/FOUR-GAME-NIGHTS.md)
+  — all four games' nights read out of the dumps with one reader: the four
+  clocks and why they are not one mechanism, the four difficulty tables, a draw
+  census whose "timer-driven" column means two different things, and a FNaF 1
+  seed census that clears every night and 4/20 at 3000/3000.
 - [`research/FNAF-SENSOR-ABLATION-RUNS.md`](research/FNAF-SENSOR-ABLATION-RUNS.md)
   — public challenge runs read as ablation experiments: which observation
   channels and controls are actually load-bearing in FNaF 1 and 3, checked

@@ -168,12 +168,14 @@ const SIBLING_EXCLUDED = new Map([
   ['label-misses.py', 'labelling aid for building the reference set'],
   ['reference-report.py', 'inventory of the reference samples, which live outside the repository'],
   ['aimap.py', 'AI-table extractor from the event-sheet dump, gated by test-aimap.py'],
+  ['nightmap.py', 'per-game night reader over any of the four event-sheet dumps -- clock, difficulty table, rolls, movement edges and draw census, gated by test-nightmap.py; it reads source, not a run'],
   ['readdump.py', 'event-sheet dump reader library, gated by test-instances.py'],
   ['coverage.py', 'group-coverage report over the dump; answers what is unread, not what a run did'],
   ['extract-samples.sh', 'asset extraction helper for the audio path'],
   ['capture-bt-audio.sh', 'records the phone A2DP mix via BlueALSA for offline cue proofing; a recorder that writes game audio outside the repo, grades no run'],
   ['bt-audio-link.sh', 'brings the phone A2DP link up before a capture (night-run.sh --bt-audio); a link action on the phone and BlueALSA, grades no run'],
   ['regen-dump.sh', 'regenerates the event-sheet dump from the APK'],
+  ['census.mjs', 'seed census over a game simulator -- a model result, not a run grading; gated by test-fnaf1-census.mjs'],
 ]);
 
 const sh = readFileSync(join(HERE, 'grade-run.sh'), 'utf8');

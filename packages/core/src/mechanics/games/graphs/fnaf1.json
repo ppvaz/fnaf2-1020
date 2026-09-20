@@ -1,0 +1,1101 @@
+{
+  "sheet": "/home/pedro/fnaf-apks/fnaf1/events/05-06-Main_Room.txt",
+  "groups": 951,
+  "unclassifiedLines": 0,
+  "movers": {
+    "charBonnie.Active": 14,
+    "charChica.Active": 13,
+    "charFreddyBear.Active": 7,
+    "charFoxy.Active": 3
+  },
+  "graphs": {
+    "charBonnie.Active": [
+      {
+        "group": 331,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam1A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam5.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 332,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam1A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 333,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam5.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 334,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam5.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam2A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 335,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam1B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam5.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 336,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam1B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam2A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 337,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam2A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam3.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 338,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam2A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam2B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 339,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam2B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam3.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 340,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam2B.Active",
+            "negated": false
+          }
+        ],
+        "to": "ready to attack left",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 341,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam3.Active",
+            "negated": false
+          }
+        ],
+        "to": "ready to attack left",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 342,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "cam3.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam2A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 343,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "ready to attack left",
+            "negated": false
+          }
+        ],
+        "to": "got you left",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "left door",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 344,
+        "object": "charBonnie.Active",
+        "from": [
+          {
+            "target": "ready to attack left",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "charBonnie.Active",
+            "slot": 0,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "left door",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "charChica.Active": [
+      {
+        "group": 364,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam1A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 365,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam1B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam7.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 366,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam1B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam6.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 367,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam6.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam7.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 368,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam6.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 369,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam7.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam6.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 370,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam7.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 371,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam4A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 372,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam4A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 373,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam4B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 374,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "cam4B.Active",
+            "negated": false
+          }
+        ],
+        "to": "ready to attack right",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 375,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "ready to attack right",
+            "negated": false
+          }
+        ],
+        "to": "got you right",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "right door",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 376,
+        "object": "charChica.Active",
+        "from": [
+          {
+            "target": "ready to attack right",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "move who?",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "alterable",
+            "object": "charChica.Active",
+            "slot": 0,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "right door",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "charFreddyBear.Active": [
+      {
+        "group": 551,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam1A.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam1B.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "overlap",
+            "object": "charChica.Active",
+            "target": "cam1A.Active",
+            "negated": true
+          },
+          {
+            "kind": "overlap",
+            "object": "charBonnie.Active",
+            "target": "cam1A.Active",
+            "negated": true
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 552,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam1B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam7.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 553,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam7.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam6.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 554,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam6.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 555,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam4A.Active",
+            "negated": false
+          },
+          {
+            "target": "cam4B.Active",
+            "negated": true
+          }
+        ],
+        "to": "cam4B.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "light on right",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 556,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam4B.Active",
+            "negated": false
+          }
+        ],
+        "to": "freddy got in",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "<>",
+            "value": 42
+          },
+          {
+            "kind": "alterable",
+            "object": "right door",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 557,
+        "object": "charFreddyBear.Active",
+        "from": [
+          {
+            "target": "cam4B.Active",
+            "negated": false
+          }
+        ],
+        "to": "cam4A.Active",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "charFreddyBear.Active",
+            "slot": 12,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "<>",
+            "value": 42
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "<>",
+            "value": 4
+          },
+          {
+            "kind": "alterable",
+            "object": "right door",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "Active2",
+            "slot": 6,
+            "op": "<",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "charFoxy.Active": [
+      {
+        "group": 774,
+        "object": "charFoxy.Active",
+        "from": [],
+        "to": "cam1C.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "fox progress",
+            "op": "<",
+            "value": 3
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 775,
+        "object": "charFoxy.Active",
+        "from": [],
+        "to": "cam2A.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "fox progress",
+            "op": "=",
+            "value": 3
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 776,
+        "object": "charFoxy.Active",
+        "from": [],
+        "to": "cam2B.Active",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "fox progress",
+            "op": ">",
+            "value": 3
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      }
+    ]
+  }
+}

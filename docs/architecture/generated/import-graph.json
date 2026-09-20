@@ -739,6 +739,37 @@
       ]
     },
     {
+      "file": "packages/core/src/mechanics/games/fnaf2.js",
+      "imports": [
+        "../config.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/games/index.js",
+      "imports": [
+        "./fnaf1.js",
+        "./fnaf2.js",
+        "./fnaf3.js",
+        "./fnaf4.js",
+        "./night-model.js",
+        "@fnaf2-1020/core/mechanics/games"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/games/policy-fnaf1.js",
+      "imports": [
+        "./sim-fnaf1.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/games/sim-fnaf1.js",
+      "imports": [
+        "../rng.js",
+        "./fnaf1.js",
+        "./night-model.js"
+      ]
+    },
+    {
       "file": "packages/core/src/mechanics/index.js",
       "imports": [
         "./config.js",
@@ -1269,6 +1300,13 @@
         "node:fs",
         "node:os",
         "node:path"
+      ]
+    },
+    {
+      "file": "tools/census.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/policy-fnaf1.js",
+        "../packages/core/src/mechanics/games/sim-fnaf1.js"
       ]
     },
     {
@@ -2781,6 +2819,21 @@
       "imports": [
         "./evidence-campaign.mjs",
         "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/test-fnaf1-census.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/fnaf1.js",
+        "../packages/core/src/mechanics/games/policy-fnaf1.js",
+        "../packages/core/src/mechanics/games/sim-fnaf1.js"
+      ]
+    },
+    {
+      "file": "tools/test-night-models.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/config.js",
+        "../packages/core/src/mechanics/games/index.js"
       ]
     },
     {

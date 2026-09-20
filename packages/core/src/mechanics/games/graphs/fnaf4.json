@@ -1,0 +1,1631 @@
+{
+  "sheet": "/home/pedro/fnaf-apks/fnaf4/events/03-04-level.txt",
+  "groups": 937,
+  "unclassifiedLines": 0,
+  "movers": {
+    "Fredbear": 22,
+    "foxy": 16,
+    "Chica": 13,
+    "Bonnie": 11
+  },
+  "graphs": {
+    "Fredbear": [
+      {
+        "group": 490,
+        "object": "Fredbear",
+        "from": [],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 491,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 492,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 493,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "left hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing left hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 494,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 495,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 496,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "right hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing right hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 502,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "counter",
+            "name": "left door shut",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 503,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "counter",
+            "name": "right door shut",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 508,
+        "object": "Fredbear",
+        "from": [],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 509,
+        "object": "Fredbear",
+        "from": [],
+        "to": "on bed",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 510,
+        "object": "Fredbear",
+        "from": [],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 511,
+        "object": "Fredbear",
+        "from": [],
+        "to": "on bed",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 522,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "alterable",
+            "object": "Fredbear",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 33.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 523,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "alterable",
+            "object": "Fredbear",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 33.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 526,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "on bed",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 527,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "on bed",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 639,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": true
+          },
+          {
+            "target": "on bed",
+            "negated": true
+          }
+        ],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "shadow",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "every",
+            "ms": 30000
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 640,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": true
+          },
+          {
+            "target": "on bed",
+            "negated": true
+          }
+        ],
+        "to": "on bed",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "shadow",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "every",
+            "ms": 30000
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 641,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": true
+          },
+          {
+            "target": "on bed",
+            "negated": true
+          }
+        ],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "shadow",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "every",
+            "ms": 20000
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 642,
+        "object": "Fredbear",
+        "from": [
+          {
+            "target": "in closet",
+            "negated": true
+          },
+          {
+            "target": "on bed",
+            "negated": true
+          }
+        ],
+        "to": "on bed",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "shadow",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "every",
+            "ms": 20000
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 686,
+        "object": "Fredbear",
+        "from": [],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": ">",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 780,
+        "object": "featJumpscare_fredbear.KYSO",
+        "from": [],
+        "to": "fredbear scare",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "shadow",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "foxy": [
+      {
+        "group": 67,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 10.0,
+            "negated": false
+          },
+          {
+            "kind": "overlap",
+            "object": "Bonnie",
+            "target": "left hall far",
+            "negated": true
+          },
+          {
+            "kind": "KeyPressed",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 83,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "Multiple Touch",
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 10.0,
+            "negated": false
+          },
+          {
+            "kind": "overlap",
+            "object": "Bonnie",
+            "target": "left hall far",
+            "negated": true
+          }
+        ]
+      },
+      {
+        "group": 123,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 17.0,
+            "negated": false
+          },
+          {
+            "kind": "overlap",
+            "object": "Chica",
+            "target": "right hall far",
+            "negated": true
+          },
+          {
+            "kind": "KeyDown",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 134,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "Multiple Touch",
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 17.0,
+            "negated": false
+          },
+          {
+            "kind": "overlap",
+            "object": "Chica",
+            "target": "right hall far",
+            "negated": true
+          }
+        ]
+      },
+      {
+        "group": 230,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 231,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 232,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 233,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "right hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing right hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 234,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "left hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing left hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 235,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 261,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "what side",
+            "op": "=",
+            "value": 5
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 262,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "what side",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 317,
+        "object": "foxy",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 40.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 476,
+        "object": "foxy",
+        "from": [],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "Foxy AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 595,
+        "object": "foxy",
+        "from": [],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Fredbear",
+            "slot": 14,
+            "op": ">=",
+            "value": 15.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 671,
+        "object": "foxy",
+        "from": [],
+        "to": "in closet",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "alterable",
+            "object": "btnChallenge03_InstaFoxy_Checkmark.Active",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "Fredbear AI",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 767,
+        "object": "featJumpscare_foxy.KYSO",
+        "from": [],
+        "to": "jumpscare",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "Chica": [
+      {
+        "group": 124,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 17.0,
+            "negated": false
+          },
+          {
+            "kind": "KeyDown",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 135,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "Multiple Touch",
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 17.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 296,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 297,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "kitchen",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 298,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "kitchen",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 299,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "living room right",
+            "negated": false
+          }
+        ],
+        "to": "right hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing right hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 300,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall far",
+            "negated": false
+          }
+        ],
+        "to": "right hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 301,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall near",
+            "negated": false
+          }
+        ],
+        "to": "right hall far",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 10000
+          },
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "<>",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 343,
+        "object": "Chica",
+        "from": [],
+        "to": "right hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 5,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "right door shut",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "in closet",
+            "slot": 5,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 344,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall near",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "alterable",
+            "object": "Chica",
+            "slot": 5,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "right door shut",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "in closet",
+            "slot": 5,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 346,
+        "object": "Chica",
+        "from": [
+          {
+            "target": "right hall near",
+            "negated": false
+          }
+        ],
+        "to": "living room right",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "viewing right hall",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "gameover",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 474,
+        "object": "Chica",
+        "from": [],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "Chica AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 630,
+        "object": "Chica",
+        "from": [],
+        "to": "right hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "force Chica",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "hour",
+            "op": "<>",
+            "value": 12
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 769,
+        "object": "featJumpscare_chica.KYSO",
+        "from": [],
+        "to": "jumpscare",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "Bonnie": [
+      {
+        "group": 68,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 10.0,
+            "negated": false
+          },
+          {
+            "kind": "KeyPressed",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 84,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "Multiple Touch",
+            "negated": false
+          },
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 10.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 291,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "living room center",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Bonnie",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 292,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 293,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "living room left",
+            "negated": false
+          }
+        ],
+        "to": "left hall far",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing left hall",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 294,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "left hall far",
+            "negated": false
+          }
+        ],
+        "to": "left hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Bonnie",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 295,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "left hall near",
+            "negated": false
+          }
+        ],
+        "to": "left hall far",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 10000
+          },
+          {
+            "kind": "alterable",
+            "object": "Bonnie",
+            "slot": 1,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "listening mode",
+            "op": "<>",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 341,
+        "object": "Bonnie",
+        "from": [],
+        "to": "left hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "Bonnie",
+            "slot": 5,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "left door shut",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "in closet",
+            "slot": 5,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 342,
+        "object": "Bonnie",
+        "from": [
+          {
+            "target": "left hall near",
+            "negated": false
+          }
+        ],
+        "to": "living room left",
+        "branchTerms": [
+          {
+            "kind": "every",
+            "ms": 3000
+          },
+          {
+            "kind": "alterable",
+            "object": "Bonnie",
+            "slot": 5,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "left door shut",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "alterable",
+            "object": "in closet",
+            "slot": 5,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 472,
+        "object": "Bonnie",
+        "from": [],
+        "to": "living room center",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "Bonnie AI",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 629,
+        "object": "Bonnie",
+        "from": [],
+        "to": "left hall near",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "follow",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "force Bonnie",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "hour",
+            "op": "<>",
+            "value": 12
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 771,
+        "object": "featJumpscare_bonnie.KYSO",
+        "from": [],
+        "to": "jumpscare",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 783,
+        "object": "featJumpscare_bonnieRoom.KYSO",
+        "from": [],
+        "to": "bonnie bedroom attack",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "Once",
+            "negated": false
+          }
+        ]
+      }
+    ]
+  }
+}

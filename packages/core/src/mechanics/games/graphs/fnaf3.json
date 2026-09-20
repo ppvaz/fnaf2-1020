@@ -1,0 +1,2707 @@
+{
+  "sheet": "/home/pedro/fnaf-apks/fnaf3/events/03-04-Office.txt",
+  "groups": 1230,
+  "unclassifiedLines": 0,
+  "movers": {
+    "dhfgh": 73,
+    "viewing 2": 30,
+    "scroll": 12,
+    "cursor": 5
+  },
+  "graphs": {
+    "dhfgh": [
+      {
+        "group": 215,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 216,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 217,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 0,
+            "op": "=",
+            "value": 3.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 218,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 0,
+            "op": "=",
+            "value": 4.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 219,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 0,
+            "op": "=",
+            "value": 5.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 227,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 10",
+            "negated": false
+          }
+        ],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "<",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "group": 228,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 10",
+            "negated": false
+          }
+        ],
+        "to": "cam 14",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "group": 229,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 09",
+            "negated": false
+          }
+        ],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 230,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 09",
+            "negated": false
+          }
+        ],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 231,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 09",
+            "negated": false
+          }
+        ],
+        "to": "cam 11",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "group": 232,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 08",
+            "negated": false
+          }
+        ],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 233,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 08",
+            "negated": false
+          }
+        ],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 234,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 08",
+            "negated": false
+          }
+        ],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "group": 235,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 07",
+            "negated": false
+          }
+        ],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 236,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 07",
+            "negated": false
+          }
+        ],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 237,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 07",
+            "negated": false
+          }
+        ],
+        "to": "cam 12",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "group": 238,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 06",
+            "negated": false
+          }
+        ],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 239,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 06",
+            "negated": false
+          }
+        ],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 240,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 05",
+            "negated": false
+          }
+        ],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 241,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 05",
+            "negated": false
+          }
+        ],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 242,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 05",
+            "negated": false
+          }
+        ],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          },
+          {
+            "kind": "counter",
+            "name": "pic random",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 243,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 05",
+            "negated": false
+          }
+        ],
+        "to": "cam 13",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          },
+          {
+            "kind": "counter",
+            "name": "pic random",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 244,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 02",
+            "negated": false
+          }
+        ],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 245,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 02",
+            "negated": false
+          }
+        ],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 246,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 02",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 1",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          },
+          {
+            "kind": "counter",
+            "name": "pic random",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 247,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 02",
+            "negated": false
+          }
+        ],
+        "to": "cam 15",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 4
+          },
+          {
+            "kind": "counter",
+            "name": "pic random",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 248,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 04",
+            "negated": false
+          }
+        ],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 249,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 04",
+            "negated": false
+          }
+        ],
+        "to": "cam 03",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 250,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 03",
+            "negated": false
+          }
+        ],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 251,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 03",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 1",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 253,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 2",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 3",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 254,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 3",
+            "negated": false
+          }
+        ],
+        "to": "cam 01",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 255,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 3",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 4",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 256,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 3",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 4",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 257,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 01",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 3",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 258,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 01",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 4",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 259,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 01",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 4",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 260,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 4",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "viewing little cam",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 261,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 4",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU 2",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "viewing little cam",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": ">=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 262,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 4",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 275,
+        "object": "dhfgh",
+        "from": [],
+        "to": "attack stage 2",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "dhfgh",
+            "slot": 17,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 294,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 4",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 343,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 01",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 344,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 345,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 03",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 346,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 347,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 348,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 349,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 350,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 351,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 352,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "FlagOn",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 483,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 4",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing a screen",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 486,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 1",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 2",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 487,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "attack stage 2",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 3",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 604,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 11",
+            "negated": false
+          }
+        ],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "=",
+            "value": 11
+          }
+        ]
+      },
+      {
+        "group": 605,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 11",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 3",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "<>",
+            "value": 11
+          }
+        ]
+      },
+      {
+        "group": 606,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 12",
+            "negated": false
+          }
+        ],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "=",
+            "value": 12
+          }
+        ]
+      },
+      {
+        "group": 607,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 12",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 3",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "<>",
+            "value": 12
+          }
+        ]
+      },
+      {
+        "group": 608,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 13",
+            "negated": false
+          }
+        ],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "=",
+            "value": 13
+          }
+        ]
+      },
+      {
+        "group": 609,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 13",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 1",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "<>",
+            "value": 13
+          }
+        ]
+      },
+      {
+        "group": 610,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 14",
+            "negated": false
+          }
+        ],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "=",
+            "value": 14
+          }
+        ]
+      },
+      {
+        "group": 611,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 14",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU 2",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "<>",
+            "value": 14
+          }
+        ]
+      },
+      {
+        "group": 612,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 15",
+            "negated": false
+          }
+        ],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "=",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "group": 613,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 15",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU 2",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "action selected",
+            "op": ">",
+            "value": 1
+          },
+          {
+            "kind": "counter",
+            "name": "what vent is closed",
+            "op": "<>",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "group": 659,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "GOT YOU 2",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "viewing little cam",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 661,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "GOT YOU 2",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "blackout",
+            "slot": 1,
+            "op": ">",
+            "value": 250.0,
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "viewing little cam",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 901,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 05",
+            "negated": false
+          }
+        ],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "force move",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 902,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "cam 02",
+            "negated": false
+          }
+        ],
+        "to": "attack stage 1",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "force move",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 911,
+        "object": "dhfgh",
+        "from": [
+          {
+            "target": "GOT YOU",
+            "negated": false
+          }
+        ],
+        "to": "GOT YOU 2",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": ">=",
+            "value": 2
+          },
+          {
+            "kind": "every",
+            "ms": 1000
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 918,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "force move",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "force to",
+            "op": "=",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "group": 919,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "force move",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "force to",
+            "op": "=",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "group": 920,
+        "object": "dhfgh",
+        "from": [],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "force move",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "counter",
+            "name": "force to",
+            "op": "=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "group": 969,
+        "object": "dhfgh_sprite.Active",
+        "from": [],
+        "to": "dhfgh",
+        "branchTerms": [
+          {
+            "kind": "ObjectVisible",
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "viewing 2": [
+      {
+        "group": 109,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 01",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 110,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 111,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 03",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 112,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 113,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 114,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 115,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 116,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 117,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 118,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 119,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 11",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "going to seal",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 120,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 12",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "going to seal",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 121,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 13",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "going to seal",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 122,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 14",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "going to seal",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 123,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 15",
+        "branchTerms": [
+          {
+            "kind": "ObjectClicked",
+            "negated": false
+          },
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "going to seal",
+            "op": "=",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "group": 550,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 01",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 1
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 551,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 02",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 2
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 552,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 03",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 3
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 553,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 04",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 4
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 554,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 05",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 5
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 555,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 06",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 6
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 556,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 07",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 7
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 557,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 08",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 8
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 558,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 09",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 9
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 559,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 10",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 10
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 560,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 11",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 11
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 561,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 12",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 12
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 562,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 13",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 13
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 563,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 14",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 14
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 564,
+        "object": "viewing 2",
+        "from": [],
+        "to": "cam 15",
+        "branchTerms": [
+          {
+            "kind": "counter",
+            "name": "load cam",
+            "op": "=",
+            "value": 15
+          },
+          {
+            "kind": "NotAlways",
+            "negated": false
+          }
+        ]
+      }
+    ],
+    "scroll": [
+      {
+        "group": 11,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 12,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 13,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 14,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 15,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 16,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 17,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 18,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 19,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 20,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 21,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "UNKNOWN"
+          }
+        ]
+      },
+      {
+        "group": 22,
+        "object": "scroll",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "counter",
+            "name": "viewing",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "screen two flipper",
+            "slot": 0,
+            "op": "=",
+            "value": 0.0,
+            "negated": false
+          },
+          {
+            "kind": "Compare",
+            "negated": false
+          },
+          {
+            "kind": "counter",
+            "name": "got you",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "counter",
+            "name": "frozen",
+            "op": "=",
+            "value": 0
+          },
+          {
+            "kind": "alterable",
+            "object": "phantom head",
+            "slot": 1,
+            "op": ">",
+            "value": 0.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 905,
+        "object": "scroll 2",
+        "from": [],
+        "to": "scroll",
+        "branchTerms": [
+          {
+            "kind": "UNKNOWN"
+          },
+          {
+            "kind": "every",
+            "ms": 30
+          }
+        ]
+      }
+    ],
+    "cursor": [
+      {
+        "group": 355,
+        "object": "cursor",
+        "from": [],
+        "to": "audio text",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "cursor",
+            "slot": 0,
+            "op": "=",
+            "value": 1.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 356,
+        "object": "cursor",
+        "from": [],
+        "to": "camera text",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "cursor",
+            "slot": 0,
+            "op": "=",
+            "value": 2.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 357,
+        "object": "cursor",
+        "from": [],
+        "to": "ventilation text",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "cursor",
+            "slot": 0,
+            "op": "=",
+            "value": 3.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 358,
+        "object": "cursor",
+        "from": [],
+        "to": "reboot all text",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "cursor",
+            "slot": 0,
+            "op": "=",
+            "value": 4.0,
+            "negated": false
+          }
+        ]
+      },
+      {
+        "group": 359,
+        "object": "cursor",
+        "from": [],
+        "to": "exit text",
+        "branchTerms": [
+          {
+            "kind": "alterable",
+            "object": "cursor",
+            "slot": 0,
+            "op": "=",
+            "value": 5.0,
+            "negated": false
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -65,20 +65,67 @@ simply leave the animatronic there. The author reports a 3-minute camp
 (~36 consecutive failed rolls), which is consistent with the 4970/4980 ms roll
 cadence already extracted.
 
-### Claimed, not yet verified
+### Claimed, then traced — all four now located (2026-09-20)
 
-- `[C]` Foxy freezes while his camera is being viewed, and after the camera
-  closes has a random cooldown of **0.83–16.67 s** (which would be 50–1000
-  frames at 60 fps — a suspiciously clean `Random(950)+50` shape).
-  `UNKNOWN(not-located)`: no such constant was found in the office frame.
-- `[C]` At stage 4 Foxy attacks either on a West Hall camera check or after
-  25 s; a door-blocked attack costs 1, then 6, then 11 power.
-- `[C]` Bonnie can jump from the Supply Closet **directly** to the door,
-  skipping the corner; a blocked Bonnie always returns to the dining area,
-  while a blocked Chica may return to the hallway instead.
+Every item in this section was `[C]` or `UNKNOWN(not-located)` when this note
+was written. `tools/dump/nightmap.py` found them all in one pass over the same
+sheet, and three of the four needed a correction.
 
-These four would materially shape a FNaF 1 route and should be traced before
-any of them is encoded.
+- `SOURCE` **The Foxy cooldown is located.** **Group 460** sets `charChica`
+  AV12 to `50 + Random(1000)` **every 100 ms while any camera is up**
+  (`viewing > 0`); **group 445** drains it 1 per frame under a `Max(0, …)`
+  floor; and **group 321** requires it at 0 before Foxy may advance. So the
+  range is 50–1049 frames = **0.83–17.48 s**, against the video's 0.83–16.67 s
+  and this note's guessed `Random(950)+50`. The bound is **1000, not 950**.
+
+  Two things follow that the video does not state. The refresh is a **set, not
+  a maximum**, so each 100 ms tick *replaces* the hold with a fresh draw —
+  dwelling on a camera does not accumulate protection, it re-rolls it. And
+  because the refresh is keyed on `viewing > 0` rather than on Pirate Cove,
+  **any** camera buys the hold. Watching Pirate Cove specifically is a
+  *separate* gate: group 321 also requires `viewing <> 99`.
+
+- `SOURCE` **The attack timings are at different stages than described, and
+  the power costs are the same numbers in different units.** At **stage 3**,
+  `charChica` AV6 accumulates per frame and **group 451** sends him to stage 5
+  at `> 1500` frames = **25 s** — so the 25 s is a stage-3 timeout, not a
+  stage-4 one. The West Hall check is also at stage 3: **group 60** advances
+  `fox progress` 3 → 4 when `viewing = 3`, and **group 448** then runs him
+  from stage 4 after only `> 100` frames = **1.67 s**.
+
+  A blocked run costs `10 + (bangs × 50)` raw units — **10, 60, 110**
+  [group 455] — against the video's 1, 6, 11. These agree: group 313 renders
+  `power left 2 = power left / 10`, so the video is quoting the **displayed**
+  meter and the dump the raw counter. He also resets to `Random(2)`, i.e.
+  stage **0 or 1**, not to a fixed stage.
+
+- `SOURCE` **Bonnie's Supply Closet jump and both blocked returns are
+  confirmed, and the returns are deterministic.** Bonnie's 14 edges give
+  `cam3 → ready to attack left` on branch 1 [group 341], so the Supply Closet
+  really does reach the door without the corner. A blocked Bonnie returns to
+  `cam1B`, the Dining Area, on **every** branch [group 344]; a blocked Chica
+  returns to `cam4A`, the East Hall, likewise [group 376]. The video's "may
+  return to the hallway instead" is a certainty, not a tendency.
+
+### The power table above is a Night 1 table
+
+`SOURCE` **Groups 477–480 subtract a further unit on a per-night timer**, on
+top of the `usage meter` drain: one unit every **6000 ms** on Night 2, **5000**
+on Night 3, **4000** on Night 4 and **3000** on Night 5 and after. Night 1 has
+no such group and therefore no extra drain.
+
+So the arithmetic above — 18/27/36 units per hour — is exactly right for
+Night 1 and low for every later night, by roughly 15, 18, 22 and 30 units an
+hour respectively. Over a 535 s night that is up to **178 units of the 999**,
+which is why a policy tuned on Night 1 blacks out on Night 5.
+
+This was not found by looking for it. A hand search for `power left` reads
+group 314 (`= 999`) and group 315 (`− usage`), finds a complete-looking model
+and stops; the per-night groups are three hundred groups away and mention
+power only in their action. The table reader found them because it enumerates
+every group gated on the night counter rather than every group that mentions
+power — which is [WHY-FACTS-HIDE](../operations/WHY-FACTS-HIDE.md) pattern 8,
+the query encoding a guess about naming, caught by not writing the query.
 
 ## FNaF 3 — both the cameras and the whole repair panel are droppable
 
