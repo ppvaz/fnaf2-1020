@@ -2866,6 +2866,15 @@
       ]
     },
     {
+      "file": "tools/test-fnaf4-census.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/fnaf4.js",
+        "../packages/core/src/mechanics/games/night-model.js",
+        "../packages/core/src/mechanics/games/policy-fnaf4.js",
+        "../packages/core/src/mechanics/games/sim-fnaf4.js"
+      ]
+    },
+    {
       "file": "tools/test-night-models.mjs",
       "imports": [
         "../packages/core/src/mechanics/config.js",

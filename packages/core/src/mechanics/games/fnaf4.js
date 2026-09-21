@@ -75,6 +75,14 @@ export const ROWS = [
   // Nightmare night, and it *sets* `Night` to 7 itself. Recorded as night 7
   // so the table can be asked about it, with the real trigger named.
   { group: 600, night: { op: '=', value: 7 }, set: { bonnie: 15, fredbear: 0, chica: 15, foxy: 15, freddy: 6 }, trigger: 'shadow = 1' },
+  { group: 601, night: { op: '=', value: 7 }, hour: 4, set: { bonnie: 0, chica: 0, foxy: 0, freddy: 0, fredbear: 20 }, trigger: 'shadow = 1' },
+
+  // g602 is `shadow = 2`: the 20/20/20/20 night, which also sets `Night` to
+  // 8. Both shadow nights end the way Night 6 does -- at 4 AM the four go to
+  // 0 and **Fredbear alone remains, at 20** (g601/g603), so the last two
+  // hours of every night from 6 up are the same antagonist.
+  { group: 602, night: { op: '=', value: 8 }, set: { bonnie: 20, fredbear: 0, chica: 20, foxy: 20, freddy: 6 }, trigger: 'shadow = 2' },
+  { group: 603, night: { op: '=', value: 8 }, hour: 4, set: { bonnie: 0, chica: 0, foxy: 0, freddy: 0, fredbear: 20 }, trigger: 'shadow = 2' },
 ];
 
 export const CAP = null;  // no cap group; see fnaf1.js CAP for the detector check
@@ -133,6 +141,7 @@ export const FREDDY = {
   floor: { group: 399, value: 0 },
   killAt: 60,
   killGroups: 'g427 (viewing bed, instant), g428 (at bed, every 3000 ms)',
+  blackFlashCap: 80,  // g464; see BLACK_FLASH below
   dangerBands: [10, 20, 30, 50, 60, 80],
   source: 'g397,g398,g399,g401,g427,g428,g593',
 };
@@ -170,14 +179,154 @@ export const FORCED_DOOR = {
   source: 'g341,g342,g343,g344,g352,g631,g632',
 };
 
-// Per-night forced-appearance draws [SOURCED: g626, g627, g628 -- Nights 2, 3
-// and 4 each draw `force Bonnie = 2 + Random(4)` and
-// `force Chica = 3 + Random(3)` at night start].
+// The black flash: the frame's one kill that needs no player state at all.
+// [SOURCED: g464 arms it when `Freddy counter >= 80` -- `50 + Random(100)`
+// frames; g467 decrements it every frame to a floor of 1; g468/g469 set
+// `gameover = 1` at AV3 = 1 from anywhere, the only difference between them
+// being which scare object spawns. g465 defuses it, but only when the counter
+// is back under 80 **and Fredbear AI = 0** -- on a Fredbear night the fuse
+// cannot be cut.]
+//
+// This group is what was missing from the first step function: it is the
+// answer to "what kills a player who faces centre and never acts". The meter
+// fills out of reach of every player-triggered group, and at 80 the countdown
+// starts wherever the player happens to be standing.
+export const BLACK_FLASH = {
+  armAt: 80,
+  armGroup: 464,
+  framesMin: 50, framesRandom: 100,
+  decrementGroup: 467, killGroups: 'g468 (Fredbear AI = 0), g469 (Fredbear AI > 0)',
+  defuse: { group: 465, requires: 'Freddy counter < 80 AND Fredbear AI = 0' },
+};
+
+// Bonnie and Chica's bedroom entry [SOURCED: g484/g479 add 1 to AV6 every
+// 1000 ms at `left hall near` / `right hall near`; g486/g480 set AV7 -- the
+// bedroom flag g375/g376 kill on -- while the bed is viewed, when AV6 passes
+// `20 - Night` (Bonnie strictly greater, Chica at least). g375/g376 fire when
+// the bed-view turn animation finishes with AV7 set; g374 is the same turn
+// with neither flag set and is the clean exit, which also arms `fredcheck`
+// (g558's Fredbear kill). g590/g591 raise `force turn` every 4000 ms at the
+// bed with a flag set -- the player is not free to stand at a contaminated
+// bed.]
+//
+// No group decays AV6 while the character stands at hall-near, but three
+// reset it outright: leaving the halls clears Bonnie's AV6 and AV7 (g447,
+// unconditional) and Chica's AV6 below 20 (g478 -- an asymmetry in the
+// source), and **viewing that hall clears the dwell** (g485 Bonnie, AV6 and
+// AV7; g481 Chica, AV6 only -- her AV7 has no view reset). The view resets
+// are the community line's own "check the hall to reset them" rule, in the
+// source; the flash that carries the view is what g345/g346 punish when the
+// character is already at hall-near, which is exactly what the audio rule
+// exists to prevent.
+export const BEDROOM = {
+  av6EveryMs: 1000,
+  threshold: '20 - Night',
+  bonnieOp: '>', chicaOp: '>=',
+  setGroups: 'g486/g480', dwellGroups: 'g484/g479',
+  resets: 'g447 (Bonnie leaves halls), g478 (Chica leaves halls, AV6 < 20 only), g485/g481 (hall viewed)',
+  killGroups: 'g375/g376', cleanExitGroup: 374,
+  forcedTurn: { groups: 'g590/g591', everyMs: 4000 },
+};
+
+// Foxy's closet, in full [SOURCED: g236 pulses every 5000 ms on
+// `Random(10) + 1 <= Foxy AI`; g230-g235 walk him living-centre ->
+// living-left/right -> hall-far, and g233/g234 are blocked while that hall is
+// viewed; g261/g262 take him hall-far -> in closet; g264 turns a pulse into
+// +1 AV2 while he is in the closet and it is not being viewed; g273 removes
+// 1 AV2 per second while the player is in the closet's close animation
+// (follow = 33); g282/g283 set and clear `foxy got you` at AV2 >= 10 and
+// < 10; g279 sets the attack pose (AV3 = 3) at AV2 >= 6, and g430/g433 spawn
+// the non-lethal `foxy bite` if the closet is flashed in that pose; g595 puts
+// him in the closet outright after 15 s of bed-watching.]
+//
+// `foxy got you` is lethal only through player positions: arriving anywhere
+// with it (g101-g103), turning from the bed with it (g438), or standing at
+// the bed (g439 -> g589 -> g438).
+//
+// UNKNOWN(walk-cadence): g230-g235 are gated on a walk flag no group in this
+// frame manages, so the cadence of the zone legs is not stated by the sheet.
+// Modelled as one leg per passed roll; the InstaFoxy challenge (g671) is the
+// sheet's own proof that skipping the walk straight to the closet is a thing
+// the frame supports.
+export const FOXY_CLOSET = {
+  roll: ROLLS.foxy,
+  av2GotYou: 10, av2AttackPose: 6,
+  decayPerSecAtCloset: 1,
+  zones: ['away', 'centre', 'livingL', 'hallL', 'closet'],
+  killGroups: 'g101-g103, g438, g439',
+};
+
+// The `Fredbear` object's dwell counters, which are what actually run nights
+// 5 and up. [SOURCED: g490 spawns him at living-centre when Fredbear AI > 0;
+// g286/g287 pulse a walk every 3000 ms (shadow 0) or 2000 ms (shadow >= 1) on
+// `Random(20) + 1 <= AI`, drawn whenever the timer fires while he is not
+// already at the closet, bed or a hall-far; g491-g496 walk him
+// living-centre -> left/right -> hall-far, and g493/g496 are **blocked while
+// that hall is viewed**; g502/g503 push him off a hall-far every 3000 ms
+// while that door is shut; g508-g511 drop him on the bed or in the closet
+// when the player listens while he is in a living zone; g639-g642 teleport
+// him into the closet every 30000 ms (shadow 0) or 20000 ms (shadow >= 1) on
+// a `Random(2) = 1` coin; g522/g523 walk him back out while the player stands
+// in the closet with him.]
+//
+// The counters, each of which ends the night through the black flash unless
+// its group citation says otherwise:
+//
+//   AV6   seconds on the bed or in the closet (g556/g557, reset by g554/g555
+//         on leaving). >= 20 (shadow 0) / >= 11 (shadow >= 1) arms the flash
+//         (g561-g563); >= 10 at a bed-turn's `fredcheck` kills outright
+//         (g558).
+//   AV8/9 frames spent **viewing** him in the left/right hall (g514/g515,
+//         per frame, reset on losing the overlap g512/g513). > 30 / 25 / 20 on
+//         Night 5 / 6 / 7+ arms the flash (g516-g521). This is the
+//         "don't stare" rule, in frames.
+//   AV19  seconds at a hall-far (g644/g645, reset at neither g643). >= 15 /
+//         10 / 8 by shadow arms the flash (g646-g648).
+//   AV12  seconds idle on a Fredbear night (g566), >= 25 arms the flash
+//         (g564). See IDLE.
+//
+// UNKNOWN(listen-pair): g508/g509 (and g510/g511) carry identical conditions
+// to different destinations -- closet and bed -- so the sheet as rendered
+// does not say which listening drop is which; modelled as a coin.
+export const FREDBEAR = {
+  spawn: { group: 490, at: 'living room centre' },
+  walkRoll: ROLLS.fredbear,
+  doorRepel: { groups: 'g502/g503', everyMs: 3000 },
+  teleport: { groups: 'g639-g642', everyMs: 30000, shadowEveryMs: 20000, coin: 'Random(2) = 1' },
+  av6: { everyMs: 1000, flashAt: { shadow0: 20, shadow1: 20, shadow2: 11 }, fredcheckAt: 10 },
+  av8av9: { perFrame: true, flashAbove: { night5: 30, night6: 25, night7: 20 } },
+  av19: { everyMs: 1000, flashAt: { shadow0: 15, shadow1: 10, shadow2: 8 } },
+  av12Idle: { everyMs: 1000, flashAt: 25 },
+};
+
+// The idle counters [SOURCED: g592 adds 1 to AV13 every 1000 ms
+// unconditionally; g566 adds 1 to AV12 every 1000 ms while Fredbear AI > 0;
+// g594 adds 1 to AV14 every 1000 ms while the bed is viewed; g567 zeroes
+// AV12, AV13 and AV14 whenever a `carpet run` exists -- **walking**, and only
+// walking, resets them**.]
+//
+// AV13 is the do-nothing killer on nights 2-4: g593 adds 1 to the Freddy
+// counter every 200 ms while AV13 >= 30, the bed is unwatched and Night > 1,
+// which is +5/s on top of the Freddle fill and drives the meter to the
+// black-flash cap without the player touching anything. AV14 is the
+// bed-watcher's: at >= 15 it fires g595, which puts Foxy in the closet with
+// `foxy got you` already set and force-turns the player off the bed into it.
+export const IDLE = {
+  av13EveryMs: 1000, av13Accelerant: { group: 593, everyMs: 200, requiresIdle: 30, nightAbove: 1 },
+  av14EveryMs: 1000, av14BedWatchAt: 15, av14Group: 595,
+  reset: 'carpet run exists (g567)',
+};
+
+// The forced appearances, resolved [SOURCED: g626-g628 draw the hour at night
+// start on Nights 2-4 -- `force Bonnie = 2 + Random(4)`, `force Chica =
+// 3 + Random(3)` -- and g629/g630 teleport the character **straight to
+// hall-near**, once, in the hour that passes, while the player is at the hub
+// and nobody has `got you`.]
 export const FORCED_APPEARANCES = {
   nights: [2, 3, 4],
-  bonnie: { min: 2, max: 5 },
-  chica: { min: 3, max: 5 },
-  source: 'g626,g627,g628',
+  bonnie: { min: 2, max: 5 }, chica: { min: 3, max: 5 },
+  teleport: 'g629/g630: straight to hall-near, once, while the player is at the hub',
+  source: 'g626,g627,g628,g629,g630',
 };
 
 export const MODEL = {

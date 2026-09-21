@@ -175,6 +175,15 @@ eq('fnaf4 night 5 arms only Fredbear',
 eq('fnaf4 night 6 Bonnie is 12 at midnight', scheduleFor('fnaf4', 6).hours[0].levels.bonnie, 12);
 eq('fnaf4 night 6 Bonnie is 0 at 4 AM', scheduleFor('fnaf4', 6).hours[4].levels.bonnie, 0);
 eq('fnaf4 night 6 Fredbear is 15 at 4 AM', scheduleFor('fnaf4', 6).hours[4].levels.fredbear, 15);
+// The shadow nights [g600-g603]: Night 7 is 15s with Freddy 6, Night 8 is
+// 20s, and both end as Fredbear 20 alone from 4 AM.
+eq('fnaf4 night 7 Bonnie is 15 at midnight', scheduleFor('fnaf4', 7).hours[0].levels.bonnie, 15);
+eq('fnaf4 night 7 Freddy is 6 at midnight', scheduleFor('fnaf4', 7).hours[0].levels.freddy, 6);
+eq('fnaf4 night 7 is Fredbear 20 alone at 4 AM', scheduleFor('fnaf4', 7).hours[4].levels,
+  { freddy: 0, bonnie: 0, chica: 0, foxy: 0, fredbear: 20 });
+eq('fnaf4 night 8 opens at 20/20/20/20', [scheduleFor('fnaf4', 8).hours[0].levels.bonnie,
+  scheduleFor('fnaf4', 8).hours[0].levels.chica, scheduleFor('fnaf4', 8).hours[0].levels.foxy], [20, 20, 20]);
+eq('fnaf4 night 8 is Fredbear 20 alone at 4 AM', scheduleFor('fnaf4', 8).hours[4].levels.fredbear, 20);
 // Nights 1-4 escalate by adding, so a mid-night level exceeds its opening one.
 eq('fnaf4 night 2 Foxy opens at 1', scheduleFor('fnaf4', 2).hours[0].levels.foxy, 1);
 eq('fnaf4 night 2 Foxy is 4 from 3 AM', scheduleFor('fnaf4', 2).hours[3].levels.foxy, 4);

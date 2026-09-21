@@ -9,6 +9,7 @@
 //
 //   node tools/census.mjs --game fnaf1 --policy community-loop
 //   node tools/census.mjs --game fnaf1 --night 4 --seeds 65536
+//   node tools/census.mjs --game fnaf4 --night 5 --seeds 3000 --start 3000
 //   node tools/census.mjs --game fnaf1 --all
 //
 // A census is a **model** result. It says what the simulator does under the
@@ -29,11 +30,11 @@ const SIMS = {
            // a 540 ms pan round trip for the first half of every night.
            modelOnlyPolicies: ['roll-grid'] },
   fnaf3: { Sim: Fnaf3Sim, policies: FNAF3_POLICIES, nights: [1, 2, 3, 4, 5, 6] },
-  // fnaf4 is reachable by name but carries `incomplete`, which the reporter
-  // prints beside every row: its simulator's own controls do not fail where
-  // they should, so its rates are not results. See sim-fnaf4.js.
-  fnaf4: { Sim: Fnaf4Sim, policies: FNAF4_POLICIES, nights: [1, 2, 3, 4, 5, 6, 7],
-           incomplete: 'controls do not fail; see sim-fnaf4.js' },
+  // Nights 7 and 8 are the shadow nights: `shadow = 1` sets Night 7 (the
+  // Nightmare night, 15s and Freddy 6) and `shadow = 2` sets Night 8
+  // (20/20/20/20) [g600/g602], and both switch to Fredbear 20 alone at
+  // 4 AM [g601/g603].
+  fnaf4: { Sim: Fnaf4Sim, policies: FNAF4_POLICIES, nights: [1, 2, 3, 4, 5, 6, 7, 8] },
 };
 
 // FNaF 2 does not get a new simulator here -- it already has `plant-model.js`,
@@ -41,7 +42,8 @@ const SIMS = {
 // both. Its census runs through that machinery rather than beside it, so the
 // figures this prints are the same engine every other FNaF 2 number in the
 // repository comes from.
-async function censusFnaf2({ night, policy, seeds }) {
+async function censusFnaf2({ night, policy, seeds, start }) {
+  if (start !== 0) throw new Error('fnaf2 census does not support --start');
   const [{ sweep }, { POLICIES }] = await Promise.all([
     import('./policy.mjs'), import('./policybaselines.mjs')]);
   const make = POLICIES[policy];
@@ -60,12 +62,13 @@ async function censusFnaf2({ night, policy, seeds }) {
 
 function parseArgs(argv) {
   const args = { game: 'fnaf1', policy: null, seeds: 3000, night: null,
-                 all: false, json: false, options: {}, custom: null };
+                 start: 0, all: false, json: false, options: {}, custom: null };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     if (flag === '--game') args.game = argv[++i];
     else if (flag === '--policy') args.policy = argv[++i];
     else if (flag === '--seeds') args.seeds = Number(argv[++i]);
+    else if (flag === '--start') args.start = Number(argv[++i]);
     else if (flag === '--night') args.night = Number(argv[++i]);
     else if (flag === '--all') args.all = true;
     else if (flag === '--json') args.json = true;
@@ -83,8 +86,9 @@ function parseArgs(argv) {
   return args;
 }
 
-export function census({ game, night, policy, seeds, options = {}, custom = null }) {
-  if (game === 'fnaf2') return censusFnaf2({ night, policy, seeds });
+export function census({ game, night, policy, seeds, start = 0, options = {}, custom = null }) {
+  if (!Number.isInteger(start) || start < 0) throw new Error('--start must be a non-negative integer');
+  if (game === 'fnaf2') return censusFnaf2({ night, policy, seeds, start });
   const entry = SIMS[game];
   if (!entry) throw new Error(`no simulator for ${game}`);
   const makePolicy = entry.policies[policy];
@@ -94,7 +98,7 @@ export function census({ game, night, policy, seeds, options = {}, custom = null
   const causes = new Map();
   let wins = 0;
   let survivedMs = 0;
-  for (let seed = 0; seed < seeds; seed += 1) {
+  for (let seed = start; seed < start + seeds; seed += 1) {
     const sim = new entry.Sim({ night, seed, custom });
     const result = sim.run(makePolicy(options));
     if (result.outcome === '6AM') wins += 1;
@@ -102,7 +106,7 @@ export function census({ game, night, policy, seeds, options = {}, custom = null
     survivedMs += result.frames * (1000 / 60);
   }
   return {
-    game, night, policy, seeds, wins, custom,
+    game, night, policy, seeds, start, wins, custom,
     rate: wins / seeds,
     meanSurvivedS: survivedMs / seeds / 1000,
     causes: Object.fromEntries([...causes.entries()].sort((a, b) => b[1] - a[1])),
@@ -115,7 +119,8 @@ function report(row) {
   const mean = Number.isFinite(row.meanSurvivedS)
     ? `  mean ${row.meanSurvivedS.toFixed(0).padStart(3)}s` : '';
   const line = `${row.game} night ${row.night}${dials} ${row.policy.padEnd(16)} ` +
-    `${String(row.wins).padStart(6)}/${row.seeds}  ${pct}%${mean}`;
+    `${String(row.wins).padStart(6)}/${row.seeds}  ${pct}%${mean}` +
+    (row.start ? `  seeds ${row.start}-${row.start + row.seeds - 1}` : '');
   const worst = Object.entries(row.causes).filter(([cause]) => cause !== '6AM');
   const entry = SIMS[row.game];
   const warn = entry?.incomplete ? `  [INCOMPLETE: ${entry.incomplete}]`
@@ -130,7 +135,7 @@ async function main() {
   const entry = SIMS[args.game];
   // Each game's published line is its own default, so `--game fnaf3` needs no
   // `--policy` to mean "the community strategy for that game".
-  if (!args.policy) args.policy = { fnaf3: 'community-line', fnaf4: 'no-audio',
+  if (!args.policy) args.policy = { fnaf3: 'community-line', fnaf4: 'community-loop',
                                     fnaf2: 'minus7' }[args.game] ?? 'community-loop';
   const nights = args.night ? [args.night]
     : (fnaf2 ? [1, 2, 3, 4, 5, 6, 7] : entry.nights);
@@ -139,7 +144,7 @@ async function main() {
   for (const policy of policies) {
     for (const night of nights) {
       rows.push(await census({ game: args.game, night, policy, seeds: args.seeds,
-                               options: args.options, custom: args.custom }));
+                               start: args.start, options: args.options, custom: args.custom }));
     }
   }
   if (args.json) { console.log(JSON.stringify(rows, null, 2)); return; }

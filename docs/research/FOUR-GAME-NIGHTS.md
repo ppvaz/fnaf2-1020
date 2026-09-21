@@ -1,6 +1,6 @@
 # The four games' nights, modelled from the dumps
 
-*2026-09-20. Every number here was read out of this project's own event-sheet
+*2026-09-21. Every number here was read out of this project's own event-sheet
 dumps with `tools/dump/nightmap.py`, which parsed all four sheets — 4,450
 groups — with **zero unclassified lines**. Nothing was taken from a wiki.
 Census results are **model** results: they say what a simulator built from
@@ -12,14 +12,15 @@ these rules does, and are not device measurements.*
 |---|---|---|
 | Reader | `tools/dump/nightmap.py` | all four sheets: clock, difficulty table, rolls, movement graphs, draw census |
 | Night models | `packages/core/src/mechanics/games/` | all four: clock, per-night table, roll schedule |
-| Simulator | `packages/core/src/mechanics/games/sim-fnaf1.js` | **FNaF 1 only** |
-| Policies | `packages/core/src/mechanics/games/policy-fnaf1.js` | **FNaF 1 only** |
-| Census | `tools/census.mjs` | **FNaF 1 only** |
+| Simulator | `packages/core/src/mechanics/games/sim-fnaf1.js`, `sim-fnaf3.js`, `sim-fnaf4.js` | FNaF 1, 3 and 4; FNaF 4 remains **MODEL_ONLY** |
+| Policies | `policy-fnaf1.js`, `policy-fnaf3.js`, `policy-fnaf4.js` | FNaF 1, 3 and 4 published lines and controls |
+| Census | `tools/census.mjs` | FNaF 1, 3 and 4; held-out seed blocks via `--start` |
 
 FNaF 2's night already has a simulator (`plant-model.js`) and a route; its
-entry here contributes the clock groups its constants lacked. **FNaF 3 and
-FNaF 4 have night models and extracted movement graphs but no simulator yet**,
-so they have no census. See *What is not done* below.
+entry here contributes the clock groups its constants lacked. FNaF 3 and FNaF 4
+now have model-only simulators and policy censuses. FNaF 4's walk cadence,
+listen destination and device timing remain explicitly unknown, so none of its
+rates is device evidence.
 
 ## The four clocks, and they are not one mechanism
 
@@ -377,6 +378,41 @@ kill outright** while 11 enters it two steps from the end, so on danger order
 would be settled by censusing the two seal choices against each other under
 `hyper`, which needs no device time.
 
+### FNaF 4 — two 3000-seed blocks, model-only
+
+The FNaF 4 simulator now includes the Freddy meter and black flash, idle
+accelerants, bedroom and closet chains, Fredbear's room and shadow-night rows,
+and the forced-turn paths. Its published default is `community-loop`: listen
+at each door, resolve a breathing hall, flash an empty hall, then service the
+closet and bed.
+
+The result is a **model** result bounded by `UNKNOWN(walk-cadence)` and
+`UNKNOWN(listen-pair)`. The first block is seeds 0–2999; the second is the
+held-out block 3000–5999. The two blocks agree on the conclusion:
+
+| Night | seeds 0–2999 | seeds 3000–5999 | dominant losses |
+|---|---:|---:|---|
+| 1 | **3000/3000** | **3000/3000** | — |
+| 2 | **3000/3000** | **3000/3000** | — |
+| 3 | **3000/3000** | **3000/3000** | — |
+| 4 | **3000/3000** | **3000/3000** | — |
+| 5 | 53/3000 | 56/3000 | black flash: 2947 / 2944 |
+| 6 | 1309/3000 | 1361/3000 | black flash: 1484 / 1483; Freddy: 207 / 156 |
+| 7 | 0/3000 | 0/3000 | Freddy: 2995 / 2992; black flash: 5 / 8 |
+| 8 | 0/3000 | 0/3000 | Freddy: 3000 / 3000 |
+
+The controls fail as required by this model. `do-nothing` scores 0/3000 on
+every night in both blocks, with all 3000 deaths attributed to the black
+flash. The no-audio rotation scores 2868 and 2846 on Night 1, 872 and 763 on
+Night 2, one seed on each Night 5 block, and zero on the other nights. It is a
+useful model control, not a winning line.
+
+The Night 5 and 6 losses are dominated by the meter reaching the 80-point
+black-flash threshold, with direct Freddy deaths making up the remainder.
+Nights 7 and 8 switch to the shadow schedules' Fredbear phase at 4 AM; the
+published loop has no 3000-seed winner there. These are ceilings of the current
+model, not a device result or a promotion candidate.
+
 ### FNaF 1 — 3000/3000 on all six nights and 4/20, community loop
 
 See the table below. What made it reachable was measuring where the 999 units
@@ -427,39 +463,27 @@ remaining gap named rather than guessed at.
 
 ## What is not done
 
-**FNaF 4's simulator is incomplete and its census is not reported.** The night
-model, roll schedule, Freddy's meter, the `follow` map and its walk durations
-are all traced and stand on their own. The step function built on them does
-not, and its own controls say so: `do-nothing` clears every night, because
-every `gameover = 1` group in the frame is player-triggered and a player who
-never leaves the middle of the room is never in a state that can kill. That is
-wrong about the real game, so a mechanic forcing the player out of the hub is
-missing — `force turn` (g589–g591, g595) is modelled at the bed only. Foxy's
-closet chain is a guess rather than a trace.
+**FNaF 4 has a simulator and a census, but no device census or promotion.** The
+black-flash and idle controls close the earlier fatal gap: a player who faces
+the centre and never acts now dies in the model on every night. The current
+published line still has no 3000-seed winner on Nights 5–8, so the next work is
+route and model resolution, followed by device timing and a dry-run campaign.
 
-**Half of that blocker is now closed.** `follow`'s X is the player's *look
-direction*, written explicitly rather than moved: g107 sets 512, g108 sets
-788, g105/g109/g110 set 750, and g25 takes it from the alterable the drag
-writes. The auto-walk out of the hub is selected by it — **g30 walks to the
-left door at X = 512, g34 to the right at X = 788, and 750 matches neither**,
-so facing centre is a genuine resting state.
+The remaining model assumptions are explicit:
 
-Which sharpens the puzzle rather than dissolving it: it means a player who
-faces centre and never acts may really survive under this frame's logic, since
-every `gameover = 1` group in it is player-triggered. That contradicts the game
-strongly enough not to be claimed either way, and it is now a narrow question —
-*what kills a player who faces centre and never acts* — rather than "the state
-machine is unmapped".
+- `UNKNOWN(walk-cadence)`: the rendered walk-flag groups do not expose how
+  many zones a passed roll traverses. The simulator uses one leg per roll.
+- `UNKNOWN(listen-pair)`: the rendered Fredbear listening groups have the same
+  conditions but different destinations, bed and closet, so the simulator uses
+  a seeded coin.
+- `UNKNOWN(bed-turn-anim)`: the forced-turn length is approximated with the
+  measured bed-return animation.
+- `UNKNOWN(not-measured)`: animation lengths are lower bounds until the handset
+  supplies control-readiness timings; the door approach still depends on an X
+  test that the dump does not fully expose.
 
-`UNKNOWN(not-traced)`: what sets `Bonnie`/`Chica` AV7, the bedroom flag
-g375/g376 test — g480/g486 set it while the bed is watched and their AV6
-accumulator is high, but AV6's own accumulation is not traced; and Foxy's real
-closet progression.
-
-It is labelled `INCOMPLETE` in `sim-fnaf4.js` and in `census.mjs`'s reporter,
-which prints the warning beside every FNaF 4 row. Reporting a rate from a model
-whose controls pass when they should fail is the shape of mistake register #12,
-so it is not reported.
+The model results are therefore reported as a bounded research result. They do
+not move Plan 12 above FIXTURE and do not authorize a device route.
 
 ### The walk durations, caught from the animation bank (2026-09-20)
 
@@ -525,8 +549,13 @@ tools/dump/nightmap.py --game fnaf3 --table --clock --rolls
 tools/dump/nightmap.py --game fnaf1 --graph charBonnie
 node tools/census.mjs --game fnaf1 --seeds 3000 --policy roll-grid
 node tools/census.mjs --game fnaf1 --policy roll-grid --custom 20 --seeds 3000
+node tools/census.mjs --game fnaf4 --night 5 --policy community-loop --seeds 3000
+node tools/census.mjs --game fnaf4 --night 5 --policy community-loop --seeds 3000 --start 3000
+node tools/test-fnaf4-census.mjs
 ```
 
 Gated by `tools/dump/test-nightmap.py`, `tools/test-night-models.mjs` and
-`tools/test-fnaf1-census.mjs`, all in `npm run test:unit`. The first two need
-no game content.
+`tools/test-fnaf1-census.mjs`, `tools/test-fnaf3-census.mjs` and
+`tools/test-fnaf4-census.mjs`, all in `npm run test:unit`. The model censuses
+need no game content; `--start` selects a disjoint seed block for the three
+simulator-backed games.

@@ -1,6 +1,6 @@
 # Plan progress
 
-**Updated:** 2026-09-18.
+**Updated:** 2026-09-21.
 
 **How to read this file.** It is a log, not a summary, and it grew in two
 directions. The block immediately below is a **2026-09-08 snapshot**, retained
@@ -6126,3 +6126,20 @@ time.
 Gates: `typecheck`, `test:unit`, `test:contracts` and `test:affected` green; catalog and docs
 regenerate (386 tool scripts carry an entry). No rung moved and no device was touched -- `adb
 devices` is empty.
+
+**2026-09-21: FNaF 4 model and held-out census.** Resumed the interrupted OpenCode modeling
+session and completed the FNaF 4 host model: the 80-point black flash, idle accelerants, bedroom
+and closet chains, Fredbear room/forced-turn paths, and shadow Nights 7–8 are now represented in
+`sim-fnaf4.js`, with `community-loop`, `no-audio`, and failing controls in `policy-fnaf4.js`.
+The deterministic FNaF 4 check is registered in `npm run test:unit`.
+
+The published `community-loop` is **MODEL_ONLY**: it clears Nights 1–4 in both 3000-seed blocks,
+scores 53/3000 and 56/3000 on Night 5, 1309/3000 and 1361/3000 on Night 6, and 0/3000 on Nights
+7–8. The held-out block is seeds 3000–5999, selected with the new `census.mjs --start` option.
+`do-nothing` now fails every night to the black flash, so the former dead-control gap is closed.
+
+Result record: [`FOUR-GAME-NIGHTS.md`](../docs/research/FOUR-GAME-NIGHTS.md) and
+[`FNAF4-AUDIO-INDEPENDENCE.md`](../docs/research/FNAF4-AUDIO-INDEPENDENCE.md). Evidence ID:
+**none** — this was a host model run and no device was touched. Open: resolve the model's
+`UNKNOWN(walk-cadence)`, `UNKNOWN(listen-pair)` and timing assumptions, find a held-out route for
+Nights 5–8, then complete the dry-run/device path before any Plan 12 promotion.

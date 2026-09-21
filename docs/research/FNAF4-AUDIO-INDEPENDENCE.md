@@ -1,6 +1,6 @@
 # Can FNaF 4 be played without audio?
 
-*Research note: 2026-09-19. A public claim, checked against our own source
+*Research note: 2026-09-21. A public claim, checked against our own source
 dump. Nothing here was run on this project's handset.*
 
 ## Why this question matters here
@@ -80,7 +80,8 @@ an A2DP-fed cue detector is a real alternative rather than a blocked one.
 Worth stating because the trick got stricter once the interlock was traced
 (see the correction further down) and the obvious worry is that a two-close
 cycle is too slow. It is not, and none of these figures depends on the FNaF 4
-simulator, which is still incomplete:
+simulator. The current simulator uses the lower-bound timings as explicit
+`MODEL_ONLY` assumptions; it does not turn them into device timings.
 
 | | |
 |---|---|
@@ -204,11 +205,15 @@ and gives the cadence and the 50/50.
   timers found in the dump are Fredbear's room-entry coin flip, **not** a
   kill delay. These remain `[C]` and must be located before any route encodes
   them. Treat the video's numbers as unconfirmed.
-- `UNKNOWN(not-mapped)` The `follow` alterable is the player-position state
-  machine (`= 21` is left-door-shut, `= 43` is bed). The full map of its values
-  has not been built, and a route needs it.
-- `[C]` Foxy's four closet stages, and that a longer door hold pushes him back
-  further, are not yet traced in the dump.
+- `UNKNOWN(walk-cadence)` The rendered walk-flag groups do not state how many
+  zones a passed roll traverses for Foxy, Bonnie, Chica or Fredbear; the model
+  uses one leg per roll.
+- `UNKNOWN(listen-pair)` Fredbear's listening groups carry identical
+  conditions to different destinations, bed and closet; the model uses a
+  seeded coin for that unresolved pair.
+- `UNKNOWN(not-measured)` The `follow` station map is modelled from the traced
+  X values, but the animation lengths are lower bounds until handset control
+  readiness is measured. A route must not bind to them yet.
 - `[C]` The claim that checking the bed while a door-camper waits is an instant
   kill, rather than merely losing the 20 s.
 
@@ -226,10 +231,10 @@ cadence against a 5000 ms roll grid and a 4000 ms meter tick, which is the same
 problem shape as Minus Toys.
 
 **Recommended change to Plan 26:** FNaF 4 should no longer be sequenced last
-*because of audio*. Its real costs are the unmapped `follow` state machine and
-the unverified kill timers — both cheap to close from the dump we now hold. The
-ordering should be decided on prior-art novelty and control-surface cost, not on
-the audio objection, which this note retires.
+*because of audio*. Its real costs are the unresolved route timings, walk
+cadence and kill-timer questions, followed by device measurement. The ordering
+should be decided on prior-art novelty and control-surface cost, not on the
+audio objection, which this note retires.
 
 ## Provenance
 
