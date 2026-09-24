@@ -7,12 +7,11 @@
 #   tools/cue/capture-bt-audio.sh --stop  OUT_BASENAME            # -> OUT_BASENAME.bt.wav + .bt.json
 #
 # --start/--stop exist for night-run.sh (--bt-audio): the capture brackets a
-# whole run and its sidecar carries the host wall clock and CLOCK_MONOTONIC
-# instant `bluealsa-cli open` was spawned -- an UPPER bound on the first
-# sample's time, since the transport was already streaming. The run's HID
-# release event is on the same host clock, so audio time = release +
-# (t_audio - startMonotonicMs), to be CHECKED against a known event (the
-# winding ticks at the emitted wind holds) before any phase is read off it.
+# whole run. `bt-audio-collector.py` owns bluealsa-cli and records the first
+# and final PCM receipt bounds, excluding process-open and teardown overhead
+# from the duration/loss comparison. The run's HID release event is on the
+# same host clock, so audio still needs a known-event alignment before any
+# phase is read off it.
 # The PCM format is read from `bluealsa-cli info`, not assumed: the link is
 # aptX HD (S24 in 32-bit, 48 kHz) or SBC (S16, 44.1 kHz) depending on the
 # phone's codec pick. bluealsa-aplay runs as root here; a user pkill cannot
@@ -60,7 +59,9 @@ if ! [[ "$MAC" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
   exit 2
 fi
 
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$HERE/../.." && pwd)"
+COLLECTOR="$HERE/bt-audio-collector.py"
 DEV="dev_$(echo "$MAC" | tr ':' '_')"
 PCM="/org/bluealsa/hci0/$DEV/a2dpsnk/source"
 check_route() {
@@ -96,26 +97,58 @@ if [ "$MODE" = stop ]; then
   kill -TERM "$PID" 2>/dev/null || true
   for _ in $(seq 1 20); do kill -0 "$PID" 2>/dev/null || break; sleep 0.1; done
   if kill -0 "$PID" 2>/dev/null; then kill -KILL "$PID" 2>/dev/null || true; sleep 0.3; fi
+  # The collector owns its child and writes the receipt bounds in its finally
+  # block.  Do not race that atomic write and turn a clean stop into a missing
+  # sidecar merely because the PID disappeared first.
+  for _ in $(seq 1 30); do
+    if python3 - "$BASE.bt.stream.json" <<'PY' >/dev/null 2>&1
+import json, sys
+try:
+    status = json.load(open(sys.argv[1])).get('status')
+except (OSError, ValueError):
+    raise SystemExit(1)
+raise SystemExit(0 if status in {'STOPPED', 'ENDED', 'NO_PCM', 'FAILED'} else 1)
+PY
+    then break; fi
+    sleep 0.1
+  done
   STOP_WALL="$(date +%s%3N)"; STOP_MONO="$(mono_ms)"
   read -r FMT RATE CH < <(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["format"], d["rate"], d["channels"])' "$BASE.bt.json")
   case "$FMT" in S16_LE) F=s16le; GAIN=1 ;; S24_LE|S24_3LE|S32_LE) F=s32le; GAIN=256 ;; *) F=s16le; GAIN=1 ;; esac
   ffmpeg -hide_banner -loglevel error -y -f "$F" -ar "$RATE" -ac "$CH" -i "$BASE.bt.raw" -af "volume=$GAIN" "$BASE.bt.wav"
   BYTES="$(stat -c %s "$BASE.bt.raw")"
-  python3 - "$BASE.bt.json" "$STOP_WALL" "$STOP_MONO" "$BYTES" <<'PY'
+  python3 - "$BASE.bt.json" "$BASE.bt.stream.json" "$STOP_WALL" "$STOP_MONO" "$BYTES" <<'PY'
 import json, sys
-p, w, m, b = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+p, stream_p, w, m, b = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])
 d = json.load(open(p))
-d.update({'stopWallMs': w, 'stopMonotonicMs': m, 'rawBytes': b, 'wallDurationMs': w - d['startWallMs']})
-# Samples against the wall clock: the A2DP link drops blocks and the raw has
-# no timestamps, so a short raw is a broken time axis, not a short capture.
-# night6-anchorede2 (aptX-HD): 195.6 s of samples in 211.6 s of wall, 7.6 %
-# missing, the death scream 7 s early. Any reader must refuse above 0.5 %.
+d.update({'stopWallMs': w, 'stopMonotonicMs': m, 'rawBytes': b,
+          'sessionWallDurationMs': w - d['startWallMs']})
+# The collector's first/final PCM receipts exclude process-open and teardown
+# overhead. A missing or nonterminal receipt record is deliberately BROKEN:
+# the broad start/stop interval remains provenance, but not a sample clock.
+stream = None
+try:
+    stream = json.load(open(stream_p))
+except (OSError, ValueError, TypeError):
+    pass
 width = 4 if d['format'] in ('S24_LE', 'S24_3LE', 'S32_LE') else 2
 audio_ms = 1000.0 * b / (d['rate'] * d['channels'] * width)
-d['audioDurationMs'] = round(audio_ms, 1)
-d['missingMs'] = round(d['wallDurationMs'] - audio_ms, 1)
-d['missingFraction'] = round((d['wallDurationMs'] - audio_ms) / d['wallDurationMs'], 4) if d['wallDurationMs'] > 0 else None
-d['timeAxis'] = 'CONTINUOUS' if d['missingFraction'] is not None and abs(d['missingFraction']) <= 0.005 else 'BROKEN'
+d['audioDurationMs'] = round(audio_ms, 3)
+d['stream'] = stream
+if (stream and stream.get('status') in ('STOPPED', 'ENDED')
+        and stream.get('rawBytes') == b
+        and isinstance(stream.get('sampleSpanMs'), (int, float)) and stream['sampleSpanMs'] > 0):
+    d['measurementWindow'] = 'first-to-last-pcm-receipt'
+    d['wallDurationMs'] = round(stream['sampleSpanMs'], 3)
+    d['missingMs'] = round(d['wallDurationMs'] - audio_ms, 3)
+    d['missingFraction'] = round(d['missingMs'] / d['wallDurationMs'], 6)
+    d['timeAxis'] = 'CONTINUOUS' if abs(d['missingFraction']) <= 0.005 else 'BROKEN'
+else:
+    d['measurementWindow'] = 'UNAVAILABLE(no-matching-terminal-pcm-bounds)'
+    d['wallDurationMs'] = d['sessionWallDurationMs']
+    d['missingMs'] = None
+    d['missingFraction'] = None
+    d['timeAxis'] = 'BROKEN'
 json.dump(d, open(p, 'w'), indent=2); open(p, 'a').write('\n')
 PY
   echo "$BASE.bt.wav"
@@ -148,15 +181,22 @@ if [ "$MODE" = start ]; then
   if pgrep -f "bluealsa-cli open $PCM" >/dev/null; then
     echo "a previous capture still holds the PCM: $(pgrep -fa "bluealsa-cli open $PCM" | head -1); stop it (--stop) before starting another" >&2; exit 3
   fi
+  [ -x "$COLLECTOR" ] || { echo "bt-audio collector is not executable: $COLLECTOR" >&2; exit 3; }
   read -r FMT RATE CH < <(pcm_format)
   [ -n "$FMT" ] && [ -n "$RATE" ] || { echo "could not read the PCM format from bluealsa-cli info" >&2; exit 3; }
   START_WALL="$(date +%s%3N)"; START_MONO="$(mono_ms)"
-  nohup bluealsa-cli open "$PCM" > "$BASE.bt.raw" 2> "$BASE.bt.err" &
+  nohup python3 "$COLLECTOR" --pcm "$PCM" --raw "$BASE.bt.raw" --state "$BASE.bt.stream.json" \
+    --stderr "$BASE.bt.err" --format "$FMT" --rate "$RATE" --channels "$CH" \
+    > "$BASE.bt.collector.out" 2> "$BASE.bt.collector.err" < /dev/null &
   PID=$!
-  printf '{"schema":"bt-audio-capture-v1","mac":"%s","pcm":"%s","format":"%s","rate":%s,"channels":%s,"startWallMs":%s,"startMonotonicMs":%s,"startIsUpperBound":true,"pid":%s}\n' \
-    "$MAC" "$PCM" "$FMT" "$RATE" "$CH" "$START_WALL" "$START_MONO" "$PID" > "$BASE.bt.json"
+  printf '{"schema":"bt-audio-capture-v1","mac":"%s","pcm":"%s","format":"%s","rate":%s,"channels":%s,"startWallMs":%s,"startMonotonicMs":%s,"startIsUpperBound":true,"pid":%s,"streamState":"%s.bt.stream.json"}\n' \
+    "$MAC" "$PCM" "$FMT" "$RATE" "$CH" "$START_WALL" "$START_MONO" "$PID" "$BASE" > "$BASE.bt.json"
   sleep 1
-  if ! kill -0 "$PID" 2>/dev/null; then cat "$BASE.bt.err" >&2; echo "bluealsa-cli open exited at once" >&2; exit 3; fi
+  if ! kill -0 "$PID" 2>/dev/null; then
+    cat "$BASE.bt.err" "$BASE.bt.collector.err" 2>/dev/null >&2 || true
+    echo "BlueALSA PCM collector exited at once" >&2
+    exit 3
+  fi
   echo "$PID"
   exit 0
 fi

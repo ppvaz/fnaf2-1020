@@ -1,0 +1,63 @@
+{
+  "schema": "title-model-v1",
+  "build": "com.scottgames.fivenightsatfreddys v2.0.7 versionCode 40",
+  "device": "Moto g56 5G, 2400x1080 landscape",
+  "captured": "2026-09-19 (Night 1 save); 2026-09-24 (Night 5 save, 6th Night and Custom Night unlocked)",
+  "frames": 63,
+  "band": [650, 90],
+  "bright_min": 150,
+  "present_min": 0.02,
+  "absent_max": 0.01,
+  "items": {
+    "newGame": [520, 606],
+    "continue": [520, 725],
+    "sixthNight": [542, 853],
+    "customNight": [616, 973]
+  },
+  "title_gate": {
+    "box": [280, 50, 460, 100],
+    "min": 0.07,
+    "max_absent": 0.04,
+    "note": "The tightly bounded word 'Five' in FNaF 1's four-line logo. Across 35 settled FNaF 1 title frames it reads 0.1006-0.2480 at bright_min 150. The FNaF 1 loading/warning controls and all 56 retained FNaF 3/FNaF 4 title-family frames read 0.0000-0.0234. The intentionally open 0.04-0.07 interval refuses transitions rather than treating static as proof. The 16 unlocked-save frames of 2026-09-24 read 0.1006-0.1895: the two stars under the logo do not reach this box."
+  },
+  "menu_gate": {
+    "box": [1920, 810, 2320, 875],
+    "min": 0.06,
+    "max_absent": 0.03,
+    "note": "The right-aligned OPTIONS row. Across the same settled FNaF 1 title frames it reads 0.0957-0.4053 at bright_min 150 (0.0996-0.1426 on the unlocked save); the retained loading/warning and FNaF 3/FNaF 4 controls read exactly 0.0000. The open 0.03-0.06 interval is a refusal band. A live FNaF 1 Options-screen and New Game-dialog negative are still required before this model may ever authorize New Game."
+  },
+  "foreign_gate": {
+    "box": [165, 55, 235, 110],
+    "min": 0.2,
+    "max_absent": 0.02,
+    "note": "The top-left 'F' of FNaF 2's five-line logo, which FNaF 1 never draws on (its logo starts at x=334). FNaF 1 and FNaF 2 share versionName 2.0.7 on this handset and both open with 'Five' in the same corner, so the title gate alone passed FNaF 2: this model read 14 of 31 retained FNaF 2 title frames (artifacts/campaign-2026-09-20*/*title-observe.py.png and the captures/*/00-pre-state.png frames) as FNaF 1 titles, some with sixthNight and customNight present. The box reads 0.2969-0.3203 on all 31 FNaF 2 titles and 0.0000-0.1465 on 84 gate-passing FNaF 1 frames (95th percentile 0.0010). When the box is lit, the strip x 600-850 on the same rows says whether the static bar lit it: that strip reads 0.0000 on every FNaF 2 title (whose art lights the item guard's x 1000-1250 there), at most 0.0049 on clean FNaF 1 frames, and 0.1426 on the FNaF 1 bar frame.",
+    "static_x": [600, 850],
+    "static_max": 0.01
+  },
+  "static_guard": {
+    "x": [1000, 1250],
+    "max": 0.01,
+    "items": ["sixthNight", "customNight"],
+    "note": "FNaF 1's title static sweeps a bright full-width bar down the screen. On a row that can legitimately be absent it reads exactly like text: Night 1 frame f1-08 read sixthNight 0.2646 with the bar across it, against 0.0342-0.0498 for the real row. This strip lies right of every menu text (Custom Night ends at x=903) and left of the dim Freddy art, on each guarded band's own rows. It read 0.0000-0.0049 on all 16 unlocked-save frames and on every bar-free Night 1 frame, and 0.2812 on f1-08. Only rows whose absence is a real save state are guarded: New Game and Continue are always rendered, so a bar can only make them more present."
+  },
+  "measurement_note": "Night 1 save: 35 settled FNaF 1 title frames from captures/fnaf1-title-observe-20260919T221702Z/f1-02..f1-10 and captures/fnaf-title-observe-20260919T222059Z/fnaf1 plus fnaf-title-observe-20260919T222427Z/fnaf1, omitting each launch warning/loading t01, plus 12 gated title frames retained by the 2026-09-22 fnaf1-night-run attempts. Unlocked save: 16 frames from ~/fnaf-apks/fnaf1-device-runs/fnaf1-menu-title-unlocked-20260924T035214954Z (fnaf1-menu-probe --stage title, no input sent), showing two stars, Continue 'Night 5', 6th Night and Custom Night. The 650x90 bands cover the left-aligned rows; at bright_min 150 their settled readings are newGame 0.0342-0.0977, continue 0.0215-0.4238, sixthNight 0.0342-0.0498 and customNight 0.0430-0.0830 on the unlocked save, and sixthNight 0.0000-0.0068 and customNight 0.0000-0.0020 on every gate-passing, bar-free Night 1 frame. The row centres are the median-frame text extents (6th Night x 330-755 y 820-886; Custom Night x 330-903 y 941-1005), and they agree within 4 px with the event dump's placed instances (btn6thNight at design (289,566), btnCustomNight at (329,646)) under this frame's measured mapping screen_x = design_x * 1.875, screen_y = design_y * 1.5: Display Mode FULL stretches the 1280x720 frame to 2400x1080; it does not crop it. FNaF 1's title static can disturb a single frame, so callers must require a bounded multi-frame consensus before a menu action. The thresholds and geometry belong to FNaF 1 only: the FNaF 2 title model is not a fallback or calibration source.",
+  "vocabulary_note": "Continue is the semantic target for FNaF 1's CONTINUE row; sixthNight and customNight name the rows the StartOfFrame reads of 'beatgame' and 'beat6' show (title groups 0 and 94-97). OPTIONS and UNLOCKS are not action targets in this model: OPTIONS is the menu gate, while UNLOCKS has no safe campaign alias. New Game remains save-destructive and must retain its separate explicit authorization.",
+  "limitations": [
+    "Two save states are measured: a Night 1 cursor with nothing unlocked, and a Night 5 cursor with 6th Night and Custom Night unlocked (two stars). A save with 6th Night unlocked but Custom Night still locked has not been observed; the dump says it shows the 6th Night row and one star.",
+    "The New Game confirmation's Yes (btnYes) sits on the 6th Night row (design y 566 for both) and its No on the Continue row. The menu gate is the only discriminator and has no live dialog negative yet, so no caller may press sixthNight on the strength of this model alone until that negative is captured.",
+    "A live Options-screen negative and a New Game confirmation-dialog negative must be captured before this model authorizes any New Game path.",
+    "This model is calibrated only for Display Mode FULL, Perspective Effect ON and Vibrations ON, the settings in force when the title/control map were measured."
+  ],
+  "continue_subtitle": {
+    "box": [448, 764, 496, 806],
+    "static_x": [1000, 1250],
+    "static_max": 0.01,
+    "min_iou": 0.6,
+    "margin": 0.3,
+    "templates": {
+      "1": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/AAAAAAP/gAAAAAH/gAAAAAAfgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPgAAAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "5": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//AAAAAf//AAAAAf//AAAAAeAAAAAAAeAAAAAAAeAAAAAAAeAAAAAAAeAAAAAAA+AAAAAAA+AAAAAAA//wAAAAA//8AAAAAf//AAAAAAA/AAAAAAAPgAAAAAAHwAAAAAADwAAAAAADwAAAAAADwAAAAAAHwAAAAgAPgAAAB8AfAAAAB///AAAAA//8AAAAAP/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "note": "The digit of Continue's 'Night N' subtitle (night.String, set at StartOfFrame to 'Night ' + Max(1, Min(5, level)), title group 122), binarised at bright_min and compared by IoU with the median masks of the two cursors ever observed: Night 1 (44 bar-free frames, 2026-09-19/22) and Night 5 (35 bar-free frames, 2026-09-24). Bar-free Night 5 frames score 0.833-0.991 against '5' and at most 0.235 against '1'; Night 1 frames 0.725-1.000 against '1' and at most 0.261 against '5'. Nights 2-4 have never been on screen, so any other digit reads UNKNOWN rather than the nearest template. The subtitle is the save's Continue cursor: a probe that force-stops FNaF 1 must read the same night before and after."
+  }
+}

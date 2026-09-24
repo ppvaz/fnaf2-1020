@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/test-fnaf1-census.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/device/test-fnaf1-menu-probe.mjs && python3 tools/device/test-fnaf1-menus.py && node tools/device/test-fnaf1-night-run.mjs && python3 tools/device/test-fnaf1-door-light.py && python3 tools/cue/test-bt-audio-collector.py && python3 tools/device/test-fnaf1-teach-overlay.py && python3 tools/device/test-sensor.py && node tools/test-fnaf1-census.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -1826,6 +1826,66 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/models/fnaf1-community-loop-moto-g56-v207.json",
+      "invocation": "tools/device/models/fnaf1-community-loop-moto-g56-v207.json",
+      "kind": "model",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-night-run.sh",
+      "invocation": "tools/device/fnaf1-night-run.sh --live --confirm-live --bt-audio --teach-overlay --night N --cursor-observed N [--abort-restart] [--label NAME]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-door-light.py",
+      "invocation": "tools/device/fnaf1-door-light.py calibrate\\|score ...",
+      "kind": "live sensor",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-title-observe.sh",
+      "invocation": "tools/device/fnaf1-title-observe.sh [--continue-night]",
+      "kind": "live sensor",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/models/title-fnaf1-moto-g56-v207.json",
+      "invocation": "tools/device/models/title-fnaf1-moto-g56-v207.json",
+      "kind": "model",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-menu-probe.sh",
+      "invocation": "tools/device/fnaf1-menu-probe.sh --dry-run \\| --live --confirm-live --stage title\\|custom-night [--sweep \\| --set F,B,C,X] [--label NAME]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-custom-night-read.py",
+      "invocation": "tools/device/fnaf1-custom-night-read.py --model MODEL [--frame PATH]",
+      "kind": "live sensor",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/models/custom-night-fnaf1-moto-g56-v207.json",
+      "invocation": "tools/device/models/custom-night-fnaf1-moto-g56-v207.json",
+      "kind": "model",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-fnaf1-teach-overlay.py",
+      "invocation": "tools/device/test-fnaf1-teach-overlay.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-teach-overlay.sh",
+      "invocation": "tools/device/fnaf1-teach-overlay.sh --preflight\\|--show\\|--update\\|--clear ...",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/test-control-anchor.mjs",
       "invocation": "tools/device/test-control-anchor.mjs",
       "kind": "check",
@@ -2330,8 +2390,20 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/cue/test-bt-audio-collector.py",
+      "invocation": "tools/cue/test-bt-audio-collector.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/bt-audio-collector.py",
+      "invocation": "tools/cue/bt-audio-collector.py --pcm PCM --raw OUT --state OUT.json ...",
+      "kind": "recorder",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/cue/bt-audio-link.sh",
-      "invocation": "tools/cue/bt-audio-link.sh --ensure\\|--status [bt-mac]",
+      "invocation": "tools/cue/bt-audio-link.sh --ensure\\|--status [--game-package PACKAGE] [bt-mac]",
       "kind": "external-device action",
       "lifecycle": "supported"
     },

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import sys
 
@@ -18,7 +19,27 @@ def main() -> int:
     command = sys.argv[3:]
     try:
         with DeviceLock(serial):
-            return subprocess.run(command, check=False).returncode
+            # `subprocess.run()` lets SIGINT/SIGTERM kill this lease holder
+            # before its child can write its own terminal evidence. A bounded
+            # game runner handles those signals by releasing HID, finalizing
+            # audio, and (when explicitly requested) restarting the game.
+            # Relay the signal and keep the lease until that cleanup returns.
+            child: subprocess.Popen[str] | None = None
+
+            def relay(signum: int, _frame: object) -> None:
+                if child is not None and child.poll() is None:
+                    child.send_signal(signum)
+
+            original = {
+                signal.SIGINT: signal.signal(signal.SIGINT, relay),
+                signal.SIGTERM: signal.signal(signal.SIGTERM, relay),
+            }
+            try:
+                child = subprocess.Popen(command)
+                return child.wait()
+            finally:
+                for signum, previous in original.items():
+                    signal.signal(signum, previous)
     except DeviceBusy as error:
         print(f"DEVICE HOLD reason=device-busy serial={serial} detail={error}",
               file=sys.stderr)

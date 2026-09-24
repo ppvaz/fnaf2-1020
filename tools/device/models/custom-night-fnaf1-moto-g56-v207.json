@@ -1,0 +1,141 @@
+{
+  "schema": "fnaf1-custom-night-model-v1",
+  "build": "com.scottgames.fivenightsatfreddys:2.0.7+40",
+  "device": "moto g56 5G / ZF525F5BH5",
+  "geometry": [2400, 1080],
+  "claimLevel": "DEVICE_MEASURED",
+  "measuredAt": "2026-09-24",
+  "sources": [
+    "fnaf1-menu-probe --stage custom-night: ~/fnaf-apks/fnaf1-device-runs/fnaf1-menu-custom-night-discover-20260924T040032835Z (one press on the title's measured Custom Night row, the screen retained until it settled, then force-stop and relaunch to an unchanged title)",
+    "FNaF 1 event dump frame 14 (15-customize) and its placed instances (instance handle XOR 0 on this build)"
+  ],
+  "mapping": "screen_x = design_x * 1.875, screen_y = design_y * 1.5. Display Mode FULL stretches the 1280x720 frame to 2400x1080. Every control below sits within 1 px of its dump instance under this mapping: the arrows are 64x64 design sprites with centred hotspots (freddy left at design (96,496) -> (180,744), measured centre (179,743)).",
+  "entry": {
+    "from": "title",
+    "item": "customNight",
+    "note": "The title row is gated by 'beat6' (title groups 19/41/68/96-97); this screen is not reachable on a save that has not beaten Night 6."
+  },
+  "settle": {
+    "rule": "two consecutive identical native captures",
+    "observedMs": 2853,
+    "boundMs": 10000,
+    "note": "The screen has no static: after the fade (customize g89-g93, alpha +3 per 60 Hz frame) every capture is pixel-identical. The first identical pair came 2853 ms after the press release; frames at +1082 and +1828 ms were still fading. The bound caps the wait; it is not a measurement."
+  },
+  "screenGate": {
+    "rule": "the interiors of all eight arrow boxes, minus their glyph rectangles, are the flat grey the boxes are drawn in",
+    "grey": [67, 67, 67],
+    "tolerance": 8,
+    "minFraction": 0.9,
+    "note": "Measured grey (67,67,67) on every box of the settled screen; the title's static and the office never hold a flat grey field. The gate exists so a stale frame or a different screen cannot be read as dial values."
+  },
+  "controls": {
+    "back": {
+      "label": "Back",
+      "point": [2188, 965],
+      "textBounds": [2096, 941, 185, 50],
+      "effect": "whereToGo 1, then JumpToFrame to the title after the 200 ms timer (customize g32, g80-g85)"
+    },
+    "ready": {
+      "label": "Ready",
+      "point": [1199, 973],
+      "textBounds": [1084, 941, 232, 65],
+      "pressed": false,
+      "effect": "Starts the night: JumpToFrame what_day after the 200 ms timer (customize g31, g80-g82). When the four dials read 1/9/8/7 the counter '1987' is set (g60-g64) and Ready jumps to a different frame instead (g8, g83) -- that combination must never be sent."
+    },
+    "header": {
+      "label": "Customize Night",
+      "textBounds": [840, 60, 720, 66],
+      "pressed": false,
+      "effect": "SOURCE_DERIVED, not yet observed: a touch on title.Active toggles its flag 0, which sets all four dials to 20 (flag on) or 0 (flag off) (customize g51-g55)."
+    }
+  },
+  "dials": {
+    "freddy": {
+      "label": "Freddy",
+      "counter": "freddy AI",
+      "decrement": [179, 743],
+      "increment": [554, 743],
+      "decrementBox": [120, 696, 120, 96],
+      "incrementBox": [495, 696, 120, 96],
+      "readback": {
+        "box": [287, 700, 161, 86]
+      },
+      "defaultValue": 1
+    },
+    "bonnie": {
+      "label": "Bonnie",
+      "counter": "bonie AI",
+      "decrement": [734, 743],
+      "increment": [1109, 743],
+      "decrementBox": [675, 696, 120, 96],
+      "incrementBox": [1050, 696, 120, 96],
+      "readback": {
+        "box": [842, 700, 161, 86]
+      },
+      "defaultValue": 3
+    },
+    "chica": {
+      "label": "Chica",
+      "counter": "chica AI",
+      "decrement": [1289, 743],
+      "increment": [1664, 743],
+      "decrementBox": [1230, 696, 120, 96],
+      "incrementBox": [1605, 696, 120, 96],
+      "readback": {
+        "box": [1397, 700, 161, 86]
+      },
+      "defaultValue": 3
+    },
+    "foxy": {
+      "label": "Foxy",
+      "counter": "foxy AI",
+      "decrement": [1844, 743],
+      "increment": [2219, 743],
+      "decrementBox": [1785, 696, 120, 96],
+      "incrementBox": [2160, 696, 120, 96],
+      "readback": {
+        "box": [1952, 700, 161, 86]
+      },
+      "defaultValue": 1
+    }
+  },
+  "stepping": {
+    "min": 0,
+    "max": 20,
+    "modulus": 21,
+    "contactMs": 160,
+    "autoRepeatAfterMs": 200,
+    "autoRepeatClaimLevel": "SOURCE_DERIVED",
+    "note": "A new touch on an arrow's hit zone (104x120 design px, customize g66-g68) steps its counter once, wrapping modulo 21 (g41: (value + step + 21) mod 21). Holding it adds 10 x frame-time/16.67 ms per frame to a charge capped at 120 (g42) and then repeats a step every further 60 (g43-g44): a second step arrives about 200 ms after touch-down at any frame rate. The 160 ms contact is the measured FNaF 1 contact and clears that ceiling by 40 ms."
+  },
+  "defaultsNote": "1/3/3/1 on a fresh process, observed 2026-09-24 and confirmed by the sweep: any other starting values would have put two values on one hash across the four dials. No StartOfFrame event writes the four counters, so these are the counters' initial values; whether they persist across visits within one process is UNKNOWN(not-observed).",
+  "glyphs": {
+    "rule": "sha256 of the readback box binarised at min(R,G,B) > 150, packed MSB-first row-major; a hash not in this table is UNKNOWN",
+    "sharedAcrossDials": true,
+    "learnedFrom": "fnaf1-menu-probe --stage custom-night --sweep: ~/fnaf-apks/fnaf1-device-runs/fnaf1-menu-custom-night-sweep-glyphs-20260924T040557989Z",
+    "evidence": "168 checked presses (every dial 21 up and 21 down from 1/3/3/1) plus the settled entry frame. Each press changed only its own dial and every 21-press cycle closed; the labels (start + k mod 21) put all 21 values on all four dials with exactly one hash per value and no hash carrying two values. The four dials render every value to the same mask (their counters are centred on design x 196, 492, 788, 1084, the same sub-pixel phase), so one table serves all four. Glyph margins inside each 161x86 box: at least 11 px on every side; the widest values (10, 14, 20) are 121 px.",
+    "hashes": {
+      "435d9c4a05c62634afb525af6109868c94411a0f0af3b02c603bacbbced900a7": 0,
+      "481fc9c9de74f93d566b5de7761a017b9e07c60452228d3529190dd5e59487a7": 1,
+      "951769c6f42a40709bef1f7b4968b0c71e8f154e5ce8aebedd980db7d90c09f5": 2,
+      "75222b0c24c8c93df87a7191536ce2ce2069ca444247cb5fda055a6bedb9bce3": 3,
+      "1c566e2f7e46952b440a89c45cb2f0a98c7dc0f6126157124b1d50e0d845c8d7": 4,
+      "0df47c76bee0ce41e1dec29589f923eba83b0e1bf495286c413af15d3894f5e4": 5,
+      "5c35d90b6bdd57e9e85bab39f139f45746b03bcf2d21aeca3ab977d55920583e": 6,
+      "c551ad12141ebed9dbdd88dd71a7ba46a62851b7f01cf9cfb3e7ce129c6309e7": 7,
+      "7bdf9c626db04a4c26495b051cdf18dbeccb3c682669e423c5e7142874f9ac56": 8,
+      "0a3eb2267b1aa6e6c748d7b70708c6f917b2c23d02ad06511329c90ed02d50ed": 9,
+      "2cda2587df639a19731b5d884d97f9fb70db44017c16e7a5f819ed96b2aeb315": 10,
+      "e13b8b63ffa7e487b9d5e7a4a7d0c09922f68d2c60a1cbc5043e41e167a57eea": 11,
+      "cbca920a5ce009d6aed54770b715dae60c7a21806607ea29c1f1963568bffe51": 12,
+      "9fa881c23ad5807ebf1835ca439f3c05927462b25dd76e0f6025c82d03d33c49": 13,
+      "1d575b210e99139edc381064657627d0e40b24f232db0edf0a7c908b428f7a1a": 14,
+      "1ef8366fae396ffc3891680272a720191bc56d269b160a9dcef2399946b35148": 15,
+      "5f433d7a7b7e8a9aff12bad6b11bb943bf9d8a049a6ae521599989413d60b7f1": 16,
+      "d4dc02db969d881ba4004c3591b1a6abb22aca20dac9e249299c801fc1e8adfa": 17,
+      "f9ec28ee44c646935e5bfa0c332a40b68b8612951e095162dfbbb0ca83210e90": 18,
+      "b1f5fc61be14608e2f992f5cdd90e2489f538f879f65de138feabcd4b25c2049": 19,
+      "6d60ec2c7a9db2d09249105b58604e523aed4d333fc528f8773e94f4e106950c": 20
+    }
+  }
+}

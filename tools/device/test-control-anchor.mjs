@@ -69,6 +69,25 @@ assert.throws(() => resolveControlPoint('leftDoor', world0, { viewOffset: MAX_PA
 //    this whole schema is computed from the map rather than trusted from prose.
 for (const [control, point] of Object.entries(map.controlMap)) validateControlAnchor(control, point);
 
+// The run's edge holds are not smuggled in as generic screen taps.  Their
+// duration is device-measured, while their points are deliberately labelled
+// SOURCE_DERIVED from the event sheet's fastest pan bands.  Keeping that
+// distinction in the checked model stops a later caller from treating one as
+// evidence of the other.
+const pans = map.panMap;
+assert.equal(pans.left.claimLevel, 'SOURCE_DERIVED');
+assert.equal(pans.right.claimLevel, 'SOURCE_DERIVED');
+assert.equal(pans.left.durationClaimLevel, 'DEVICE_MEASURED');
+assert.equal(pans.right.durationClaimLevel, 'DEVICE_MEASURED');
+assert.equal(pans.left.durationMs, 310, 'the left pan clears the 270 ms floor with a named margin');
+assert.equal(pans.right.durationMs, 310, 'the right pan clears the 270 ms floor with a named margin');
+assert.ok(pans.left.x < 153 * map.view.scale,
+  'the left pan point stays inside the source-derived fastest left-edge band');
+assert.ok(pans.right.x > 1143 * map.view.scale,
+  'the right pan point stays inside the source-derived fastest right-edge band');
+assert.equal(pans.left.resultingPan, 0);
+assert.equal(pans.right.resultingPan, MAX_PAN);
+
 const doors = ['leftDoor', 'rightDoor'].map(c => worldX(c, map.controlMap[c]));
 const separation = Math.abs(doors[1] - doors[0]);
 assert.equal(separation, 2780, 'the doors sit 2780 px apart in world space, from these coordinates');

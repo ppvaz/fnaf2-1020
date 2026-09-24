@@ -684,5 +684,83 @@ wireplumber.profiles = { main = { monitor.bluez = disabled } }
   stream to the default sink at +48 dB so monitoring never drops, and restarts
   `bluealsa-aplay` on exit.
 
-Neither `bluealsa-aplay` nor the WirePlumber Bluetooth-disable survives a
-reboot as a service yet; re-run / re-check after one.
+The reboot state described here was superseded by the persistent setup below.
+
+### Current host modes and loss acceptance — 2026-09-22
+
+The reboot note above is historical.  The host now has a persistent two-mode
+setup, and the ownership invariant remains: **BlueALSA owns Bluetooth media
+endpoints; WirePlumber manages the PC's non-Bluetooth devices with its BlueZ
+monitor disabled.**  BlueALSA's system service enables both `a2dp-source`
+(PC -> headphones) and `a2dp-sink` (phone -> PC capture).
+
+The failure found on 2026-09-22 was not a codec failure.  A user PipeWire
+fragment unconditionally constructed an ALSA sink for the WH-1000XM6.  When
+the headphones were off, the BlueALSA ALSA plugin returned `ENODEV`; that
+optional object's failure aborted PipeWire itself.  The daemon restarted every
+three seconds, taking WirePlumber with it.  The repair is
+`flags = [ nofail ]` on that optional `context.objects` entry.  A missing
+headset now omits only that sink and leaves the built-in audio graph running.
+The Brave-specific forced target was also removed: desktop clients follow the
+current default sink and therefore fall back when Bluetooth disappears.
+
+`~/.local/bin/bluealsa-wh1000xm6-route` owns the remaining lifecycle, and
+`bluealsa-wh1000xm6-route.service` runs its `watch` command in the user systemd
+session.  It watches only the headphone playback PCM
+`.../dev_<headphone-mac>/a2dpsrc/sink`.  When that PCM appears, it restarts
+the optional PipeWire object once and selects it as the default.  It does not
+react to the phone capture PCM
+`.../dev_10_2B_1C_DA_18_2C/a2dpsnk/source`, so connecting the FNaF source does
+not rebuild the desktop graph.  `~/fix-bt-audio.sh` is a compatibility wrapper
+for the router's `regular` command.
+
+The two operator modes are:
+
+- `~/.local/bin/bluealsa-wh1000xm6-route regular` — leave capture isolation,
+  connect the WH-1000XM6, expose its BlueALSA PCM as a PipeWire sink, and make
+  it the desktop default.
+- `~/.local/bin/bluealsa-wh1000xm6-route fnaf` — set a runtime isolation guard
+  and disconnect the WH-1000XM6.  This keeps a simultaneous headphone A2DP
+  stream out of the phone-capture radio budget.  It does not alter or consume
+  the phone PCM.
+- `~/.local/bin/bluealsa-wh1000xm6-route status` — report the Bluetooth link,
+  BlueALSA PCM, PipeWire node, isolation guard, and current default sink.
+
+The PipeWire `nofail` repair and the FNaF recorder are different layers:
+`capture-bt-audio.sh` reads BlueALSA directly, so disabling `nofail` is not a
+valid capture A/B.  It merely restores the desktop daemon crash loop.  Compare
+the retained pre-repair sidecars with new captures under identical continuous
+content.  The old sidecars are a rough, non-paired baseline: the 2026-09-22
+census found 13 S24_LE/48-kHz captures with mean missing fraction 0.2385 and 6
+S16_LE/44.1-kHz captures with mean 0.0765; none was `CONTINUOUS`.  Different
+run lengths and content make those aggregate means diagnostic, not a codec
+ranking.
+
+Use `--start`/`--stop` for an acceptance capture.  That path reads the
+negotiated PCM format and emits the duration/loss sidecar; the fixed-seconds
+audition path does not provide the same acceptance evidence.
+
+```bash
+cd ~/Projects/fnaf2-1020
+~/.local/bin/bluealsa-wh1000xm6-route fnaf
+mkdir -p ~/fnaf-apks/bt-audio-captures
+
+tag="after-audio-route-fix-$(date +%Y%m%dT%H%M%S)"
+base="$HOME/fnaf-apks/bt-audio-captures/$tag"
+
+tools/cue/bt-audio-link.sh --ensure
+tools/cue/capture-bt-audio.sh --start "$base"
+# Keep the same continuous title/menu music or in-game ambience playing for
+# 300 seconds.  Do not lock the phone or allow another Bluetooth audio stream.
+tools/cue/capture-bt-audio.sh --stop "$base"
+
+jq '{format,rate,channels,wallDurationMs,audioDurationMs,missingMs,missingFraction,timeAxis}' \
+  "$base.bt.json"
+```
+
+Run three 300-second repetitions per condition.  A transport passes only when
+every repetition has `timeAxis = "CONTINUOUS"`, which this recorder defines as
+`abs(missingFraction) <= 0.005`.  The A2DP stream is known to suspend on true
+silence, so a silent loading interval confounds wall duration with packet loss;
+continuous known content is mandatory for this comparison.  Restore desktop
+headphone mode afterwards with `~/fix-bt-audio.sh`.

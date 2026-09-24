@@ -8,6 +8,8 @@ from `screencap` frames and an offline bilinear simulation rather than from
 Android's own VirtualDisplay scaler, and is therefore still uncalibrated -- so
 the 42 ms sensor cannot answer the question the 225 ms sensor can.
 """
+import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -15,7 +17,7 @@ import warnings
 from pathlib import Path
 
 warnings.simplefilter("ignore")
-from PIL import Image
+from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -70,7 +72,6 @@ def main():
 
         # And end to end through a real classifier.
         env = {"TITLE_MODEL": str(HERE / "models" / "title-moto-g56-v207.json")}
-        import os
         env = {**os.environ, **env}
         with open(other, "rb") as fh:
             out = subprocess.run([sys.executable, str(HERE / "title-observe.py")],
@@ -79,11 +80,47 @@ def main():
         check("title-observe refuses a foreign frame",
               "sensor-mismatch" in out.stdout, out.stdout.strip())
 
+        # The per-game wrapper must never inherit menu.sh's FNaF 2 default.
+        # This synthetic frame is deliberately shaped to satisfy FNaF 2's
+        # title model while leaving the FNaF 1 logo/menu gates dark.  It proves
+        # the wrapper gives title-observe FNaF 1's explicit model, rather than
+        # asserting that the two games' models happen to disagree on a blank
+        # screen.
+        f2_only = f"{tmp}/f2-only.png"
+        frame = Image.new("RGB", (2400, 1080), (8, 8, 12))
+        draw = ImageDraw.Draw(frame)
+        draw.rectangle((150, 40, 250, 140), fill=(255, 255, 255))
+        draw.rectangle((1780, 830, 1900, 900), fill=(255, 255, 255))
+        draw.rectangle((70, 652, 730, 678), fill=(255, 255, 255))
+        frame.save(f2_only)
+        f2_model = HERE / "models" / "title-moto-g56-v207.json"
+        with open(f2_only, "rb") as fh:
+            f2_result = subprocess.run([sys.executable, str(HERE / "title-observe.py")],
+                                       stdin=fh, capture_output=True, text=True,
+                                       env={**os.environ, "TITLE_MODEL": str(f2_model)}, check=False)
+        check("the FNaF 2 control frame is accepted by the FNaF 2 model",
+              f2_result.returncode == 0 and "newGame" in f2_result.stdout,
+              f2_result.stdout.strip())
+        f1_model = HERE / "models" / "title-fnaf1-moto-g56-v207.json"
+        with f1_model.open(encoding="utf-8") as fh:
+            f1_document = json.load(fh)
+        check("the FNaF 1 model identifies FNaF 1's package",
+              f1_document.get("build", "").startswith("com.scottgames.fivenightsatfreddys "),
+              str(f1_document.get("build")))
+        with open(f2_only, "rb") as fh:
+            f1_result = subprocess.run([str(HERE / "fnaf1-title-observe.sh")],
+                                       stdin=fh, capture_output=True, text=True,
+                                       env={**os.environ, "TITLE_MODEL": str(f2_model)}, check=False)
+        check("the FNaF 1 wrapper rejects an FNaF 2-only title frame",
+              f1_result.returncode == 3 and "not-the-title-screen" in f1_result.stdout,
+              f1_result.stdout.strip())
+
     if failed:
         print(f"{failed} sensor check(s) failed")
         return 1
     print("sensor: the native capture method reads; another refuses unless "
-          "declared, and a declared one still has to match its own geometry")
+          "declared, a declared one still has to match its own geometry, and "
+          "the FNaF 1 observer cannot inherit FNaF 2's title model")
     return 0
 
 

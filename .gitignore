@@ -8,3 +8,5 @@ node_modules/
 __pycache__/
 /android/companion/build/
 /android/companion/debug.keystore
+/android/fnaf1-teach/build/
+/android/fnaf1-teach/debug.keystore

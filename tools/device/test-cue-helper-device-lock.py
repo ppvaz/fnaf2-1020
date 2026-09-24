@@ -35,7 +35,10 @@ with tempfile.TemporaryDirectory(prefix="cue-helper-device-lock-") as directory:
         child = subprocess.Popen(
             [sys.executable, str(HERE / "device-lock-exec.py"), "one-device", "--",
              sys.executable, "-c",
-             "import signal; print('child-lease-acquired', flush=True); signal.pause()"],
+             "import signal, sys; "
+             "signal.signal(signal.SIGTERM, lambda signum, frame: "
+             "(print('child-signal=SIGTERM', flush=True), sys.exit(0))[1]); "
+             "print('child-lease-acquired', flush=True); signal.pause()"],
             env=os.environ.copy(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True)
         try:
@@ -48,7 +51,9 @@ with tempfile.TemporaryDirectory(prefix="cue-helper-device-lock-") as directory:
                 pass
         finally:
             child.terminate()
-            child.wait(timeout=5)
+            assert child.stdout is not None
+            assert child.stdout.readline().strip() == "child-signal=SIGTERM"
+            assert child.wait(timeout=5) == 0
             if child.poll() is None:
                 child.kill()
                 child.wait(timeout=5)

@@ -2,8 +2,8 @@
 # Bring the phone's A2DP audio link to this host up, from either side, without
 # a hand on the phone.
 #
-#   tools/cue/bt-audio-link.sh --ensure [bt-mac]     # exit 0 only when capture-bt-audio.sh --check says READY
-#   tools/cue/bt-audio-link.sh --status [bt-mac]
+#   tools/cue/bt-audio-link.sh --ensure [--game-package PACKAGE] [bt-mac]     # exit 0 only when capture-bt-audio.sh --check says READY
+#   tools/cue/bt-audio-link.sh --status [--game-package PACKAGE] [bt-mac]
 #   tools/cue/bt-audio-link.sh --tap-point NAME < ui.xml   # the parser alone: "X Y" for a uiautomator node
 #
 # After a host reboot on 2026-09-15 the bond was intact on both sides and the
@@ -24,8 +24,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DEFAULT_MAC=10:2B:1C:DA:18:2C
 A2DP_SOURCE_UUID=0000110a-0000-1000-8000-00805f9b34fb
-GAME=com.scottgames.fnaf2
-MODE="${1:?usage: bt-audio-link.sh --ensure|--status [bt-mac] | --tap-point NAME < ui.xml}"
+DEFAULT_GAME=com.scottgames.fnaf2
+MODE="${1:?usage: bt-audio-link.sh --ensure|--status [--game-package PACKAGE] [bt-mac] | --tap-point NAME < ui.xml}"
 shift || true
 
 # "X Y" of the centre of the first uiautomator node whose text is exactly NAME.
@@ -48,7 +48,19 @@ if [ "$MODE" = --tap-point ]; then
   exit $?
 fi
 
+GAME="$DEFAULT_GAME"
+if [ "${1:-}" = --game-package ]; then
+  GAME="${2:?--game-package needs an Android package name}"
+  shift 2
+fi
+case "$GAME" in
+  *[!A-Za-z0-9._]*|.*|*..*|*.)
+    echo "bt-link: invalid Android package name '$GAME'" >&2
+    exit 2
+    ;;
+esac
 MAC="${1:-$DEFAULT_MAC}"
+[ "$#" -le 1 ] || { echo "bt-link: too many arguments" >&2; exit 2; }
 DEV_PATH="/org/bluez/hci0/dev_${MAC//:/_}"
 PCM="/org/bluealsa/hci0/dev_${MAC//:/_}/a2dpsnk/source"
 
@@ -101,7 +113,7 @@ if ! pcm_up; then
   adb shell rm -f /sdcard/fnaf-bt-ui.xml >/dev/null 2>&1 || true
   if [ -n "$point" ]; then
     # Only ever with Settings in front: refuse if the game took focus meanwhile.
-    if adb shell dumpsys window 2>/dev/null | grep -q "mCurrentFocus=.*$GAME"; then
+    if adb shell dumpsys window 2>/dev/null | grep -Fq "$GAME"; then
       echo "bt-link: the game is in front; not tapping" >&2
     else
       # shellcheck disable=SC2086

@@ -863,11 +863,18 @@ view **601 px**, and 320 design px x (2400/1280) = **600**. So:
 
 ```
 screen_x = (design_x - pan) * 1.875      pan in design px, range 0..320
-screen_y = design_y * 1.875 - (crop)     width is filled, height is cropped
+screen_y = design_y * 1.5                the frame is stretched, not cropped
 ```
 
-Display Mode FULL **fills the width and crops the height** here (720 x 1.875 =
-1350 against 1080), which is the opposite of the assumed letterbox. This is
+~~Display Mode FULL **fills the width and crops the height** here (720 x 1.875 =
+1350 against 1080), which is the opposite of the assumed letterbox.~~
+**Retracted 2026-09-24:** FULL *stretches* the 1280x720 frame to 2400x1080
+(x 1.875, y 1.5). The dump's flip panel at design (554,668) lands on the
+measured monitor point (1040,1002) only under the stretch -- a centred crop puts
+it off-screen at y=1117 -- and the title rows and every Custom Night control
+land within 4 px of their placed instances under it
+(`tools/device/models/title-fnaf1-moto-g56-v207.json`,
+`tools/device/models/custom-night-fnaf1-moto-g56-v207.json`). This is
 mistake register #12 in a new costume — an absent observation became evidence
 before the detector had ever read the positive — and the operator caught it
 before it was written down.

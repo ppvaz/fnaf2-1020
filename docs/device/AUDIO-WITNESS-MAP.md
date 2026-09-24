@@ -13,7 +13,7 @@ capture paths is from [`ANDROID-AUDIO-CAPTURE.md`](ANDROID-AUDIO-CAPTURE.md).
 | path | status | what it carries |
 |---|---|---|
 | on-device `AudioPlaybackCapture` (Cue Helper `audioRecord`) | works, wrong stream | the deep-buffer loops only (music box s0015, Mangle s0020, ambience). Every discrete `Play sample` cue is on the FAST mixer and absent. Settled 2026-08-29. |
-| phone -> Bluetooth A2DP -> Linux BlueALSA (`bluealsa-cli open`, SBC) | validated 2026-08-29, manual | the full HAL mix: the winding tick s0033 matched at 0.44-0.56 NC while winding, 0.09-0.15 not winding. Not wired into `night-run.sh`; no host-clock stamp on the capture. |
+| phone -> Bluetooth A2DP -> Linux BlueALSA (`bluealsa-cli open`, SBC) | decoder validated 2026-08-29; integrated as `night-run.sh --bt-audio`; transport continuity still unqualified | the full HAL mix: the winding tick s0033 matched at 0.44-0.56 NC while winding, 0.09-0.15 not winding. `capture-bt-audio.sh --start/--stop` supplies host-clock bounds and a loss sidecar; see `ANDROID-AUDIO-CAPTURE.md` §"Current host modes and loss acceptance". |
 | phone -> ESP32 A2DP sink -> Wi-Fi PCM -> same phone | retracted 2026-08-31 (loss) | -- |
 | ESP32 as local DSP -> timestamped cue facts | firmware exists (`firmware/esp32-audio-consumer`), one shadow model (`~/fnaf-apks/cue-models/bang-shadow-g56-bluealsa-20260830.txt`, cue=bang id=17, threshold 0.35) | never connected on a graded run: every 2026-09-12/13 run reports `audio=ESP32 state=UNKNOWN reason=esp32-not-connected`, `audioAnalyzer=UNAVAILABLE reason=model-missing`. |
 | extracted references (`~/fnaf-apks/cue-refs`) | partial | s0015-s0033 as wav (s0015/s0020 also ogg). Handles 3-14 and 34-66 are not extracted. `tools/dump/extract-samples.sh` pulls from `base.apk`. |
@@ -63,7 +63,10 @@ Two corrections to the table above: s0017 also fires for the ENDPOINT bang
 (g538-548, five seconds after an encounter), so it is a roll witness only when
 no encounter precedes it; and the capture's time axis is only as good as the
 transport -- aptX-HD through BlueALSA lost 7.6 % of samples, SBC is the
-validated codec, and the sidecar now says CONTINUOUS or BROKEN.
+validated decoder control, and the sidecar now says CONTINUOUS or BROKEN.  A
+2026-09-22 census of sidecars found no continuous historical capture; the
+controlled acceptance gate is now three 300-second runs, each at no more than
+0.5 % missing samples, under continuous content and FNaF-isolated host mode.
 
 ## What the open questions need, and which handle answers them
 
@@ -104,11 +107,12 @@ video instruments in `grade-run.sh`; none touches the live loop, which
 
 ## Order
 
-1. Extend `extract-samples.sh` to every night-frame handle (no device needed).
-2. Wire the BlueALSA capture into `night-run.sh` with a host-clock stamp and
-   verify alignment on one Night 5 run (the WinD ticks at 500 ms are the
-   check: they must land on the wind holds the plan emitted).
-3. `tickphase.py` on that capture: the first direct measurement of the game's
+1. Qualify transport continuity with the three-run acceptance gate in
+   `ANDROID-AUDIO-CAPTURE.md`; do not read phase from a BROKEN time axis.
+2. Extend `extract-samples.sh` to every night-frame handle (no device needed).
+3. Verify alignment on a retained run: the WinD ticks at 500 ms must land on
+   the wind holds the plan emitted.
+4. `tickphase.py` on that capture: the first direct measurement of the game's
    five-second grid against the anchor. This is the instrument the Night 6
    band needs before the next anchored attempt is priced.
-4. `bb-inside.py` and `death-cue.py`, then re-read the three 2026-09-13 deaths.
+5. `bb-inside.py` and `death-cue.py`, then re-read the three 2026-09-13 deaths.

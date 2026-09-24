@@ -1503,6 +1503,38 @@
       ]
     },
     {
+      "file": "tools/device/fnaf1-menu-probe.mjs",
+      "imports": [
+        "../../apps/device/src/adb-bridge.js",
+        "../../apps/device/src/physical-ports.js",
+        "../../packages/adapters/src/transports/hid.js",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:perf_hooks",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/fnaf1-night-run.mjs",
+      "imports": [
+        "../../apps/device/src/adb-bridge.js",
+        "../../apps/device/src/physical-ports.js",
+        "../../packages/adapters/src/transports/hid.js",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:perf_hooks",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/gate-worker.mjs",
       "imports": [
         "./human-gate.mjs",
@@ -1852,6 +1884,24 @@
         "node:child_process",
         "node:fs",
         "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-fnaf1-menu-probe.mjs",
+      "imports": [
+        "./fnaf1-menu-probe.mjs",
+        "node:assert/strict",
+        "node:fs/promises"
+      ]
+    },
+    {
+      "file": "tools/device/test-fnaf1-night-run.mjs",
+      "imports": [
+        "./fnaf1-night-run.mjs",
+        "node:assert/strict",
+        "node:fs",
         "node:path",
         "node:url"
       ]

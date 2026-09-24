@@ -16,7 +16,7 @@
     "screenHeight": 1080,
     "scale": 1.875,
     "maxPanPx": 600,
-    "mapping": "screen_x = (design_x - pan) * 1.875, pan in design px over 0..320. Display Mode FULL fills the WIDTH and crops the height here (720 * 1.875 = 1350 against 1080), the opposite of the letterbox that was assumed.",
+    "mapping": "screen_x = (design_x - pan) * 1.875, pan in design px over 0..320. Display Mode FULL STRETCHES the 1280x720 frame to 2400x1080 (x 1.875, y 1.5); it neither letterboxes nor crops. The 2026-09-20 note here said it filled the width and cropped the height; that was retracted on 2026-09-24: the dump's flip panel at design (554,668) maps to (1039,1002) against the measured monitor point (1040,1002), where a centred crop would put it off-screen at y=1117, and all four title rows and every Custom Night control land within 4 px under the stretch.",
     "measuredPan": "A hold at the right edge moved the view 601 px against 600 predicted by 320 design px * (2400/1280). A 2500 ms hold at the LEFT edge moved 0 px, which measured saturation and not absence -- the view was already at its left limit. That null nearly became evidence of no pan at all (mistake register entry 12, in a new costume).",
     "startsAt": 0,
     "startsAtNote": "Every game here starts the night panned fully left. That makes pan at t=0 a known constant rather than something to observe."
@@ -27,6 +27,28 @@
     "rightDoor": { "x": 2286, "y": 520, "anchor": "world", "measuredAtPan": 600 },
     "rightDoorLight": { "x": 2286, "y": 707, "anchor": "world", "measuredAtPan": 600 },
     "monitor": { "x": 1040, "y": 1002, "anchor": "screen" }
+  },
+  "panMap": {
+    "left": {
+      "x": 200,
+      "y": 540,
+      "durationMs": 310,
+      "resultingPan": 0,
+      "claimLevel": "SOURCE_DERIVED",
+      "durationClaimLevel": "DEVICE_MEASURED",
+      "sourceBand": { "designX": "<153", "screenX": "<286.875", "scale": 1.875 },
+      "why": "The source's fastest left-scroll band is design x <153. At the measured 1.875 scale, x=200 is inside that band; 310 ms clears the measured 270 ms 5/5 floor by 40 ms. The exact point has not itself been device-qualified, so the runner records it as SOURCE_DERIVED rather than promoting it to a measured coordinate."
+    },
+    "right": {
+      "x": 2200,
+      "y": 540,
+      "durationMs": 310,
+      "resultingPan": 600,
+      "claimLevel": "SOURCE_DERIVED",
+      "durationClaimLevel": "DEVICE_MEASURED",
+      "sourceBand": { "designX": ">1143", "screenX": ">2143.125", "scale": 1.875 },
+      "why": "The source's fastest right-scroll band is design x >1143. At the measured 1.875 scale, x=2200 is inside that band; 310 ms clears the measured 270 ms 5/5 floor by 40 ms. The exact point has not itself been device-qualified, so the runner records it as SOURCE_DERIVED rather than promoting it to a measured coordinate."
+    }
   },
   "contactRule": "160 ms held contact, and a 270 ms floor for a pan hold (5/5, with 260 ms at 4/5 beneath it) against the 2500 ms that was being used. `adb shell input tap` is dropped phase-dependently by this engine.",
   "whyThisFileExists": "The two doors are 2779-2780 px apart in world space on a 2400 px screen, so they can never both be reachable from one view and every door press is pan-then-press. device-profile-v1's flat controlMap cannot express that; this is the first map that states an anchor kind and the pan its coordinate was read at. The separation is deliberately NOT stored: tools/device/test-control-anchor.mjs derives it from these coordinates, so the fact and the numbers cannot drift apart.",

@@ -10,6 +10,7 @@ menu an observation instead: nothing is tapped that was not seen.
     screencap -p | title-observe.py            # items=continue,newGame
     title-observe.py --adb                     # capture and classify
     title-observe.py --measure < frame.png     # the raw fractions, for calibration
+    title-observe.py --continue-night < frame.png   # night=5, for a model with continue_subtitle
 
 Output is exactly one line on stdout:
 
@@ -45,6 +46,7 @@ synthetic frames prove the plumbing, never the threshold.
 
 Exit codes: 0 confident, 3 unknown/refuse, 2 usage or I/O failure.
 """
+import base64
 import json
 import os
 import subprocess
@@ -88,7 +90,7 @@ def load_model(path):
                 or not all(isinstance(v, int) for v in point)):
             fail(f"title-model-bad-point:{name}")
     gates = {}
-    for key in ("title_gate", "menu_gate"):
+    for key in ("title_gate", "menu_gate", "foreign_gate"):
         gate = model.get(key)
         if gate is None:
             gates[key] = None
@@ -101,6 +103,17 @@ def load_model(path):
             fail(f"title-model-bad-gate:{key}")
         if len(box) != 4 or not gate["max_absent"] < gate["min"]:
             fail(f"title-model-bad-gate:{key}")
+        if key == "foreign_gate":
+            raw = model[key]
+            gate["static_x"] = None
+            if "static_x" in raw:
+                try:
+                    x0, x1 = (int(v) for v in raw["static_x"])
+                    gate["static_x"], gate["static_max"] = (x0, x1), float(raw["static_max"])
+                except (KeyError, TypeError, ValueError):
+                    fail(f"title-model-bad-gate:{key}")
+                if not 0 <= x0 < x1 <= GEOMETRY[0]:
+                    fail(f"title-model-bad-gate:{key}")
         gates[key] = gate
     # An undecided band is mandatory. A model whose present and absent
     # thresholds meet has no way to say "ambiguous", and this screen's whole
@@ -115,9 +128,41 @@ def load_model(path):
         fail("title-model-has-no-undecided-band")
     if band_w <= 0 or band_h <= 0:
         fail("title-model-bad-band")
+    subtitle = model.get("continue_subtitle")
+    if subtitle is not None:
+        try:
+            x0, y0, x1, y1 = (int(v) for v in subtitle["box"])
+            sx0, sx1 = (int(v) for v in subtitle["static_x"])
+            templates = {}
+            for digit, packed in subtitle["templates"].items():
+                bits = base64.b64decode(packed)
+                size = (x1 - x0) * (y1 - y0)
+                if not digit.isdigit() or len(bits) != (size + 7) // 8:
+                    raise ValueError(digit)
+                templates[int(digit)] = [(bits[i // 8] >> (7 - i % 8)) & 1 for i in range(size)]
+            subtitle = {"box": (x0, y0, x1, y1), "static_x": (sx0, sx1),
+                        "static_max": float(subtitle["static_max"]),
+                        "min_iou": float(subtitle["min_iou"]),
+                        "margin": float(subtitle["margin"]), "templates": templates}
+        except (KeyError, TypeError, ValueError):
+            fail("title-model-bad-continue-subtitle")
+    guard = model.get("static_guard")
+    if guard is not None:
+        try:
+            x0, x1 = (int(v) for v in guard["x"])
+            guard = {"x": (x0, x1), "max": float(guard["max"]),
+                     "items": tuple(guard["items"])}
+        except (KeyError, TypeError, ValueError):
+            fail("title-model-bad-static-guard")
+        if (not 0 <= x0 < x1 <= GEOMETRY[0] or not 0.0 <= guard["max"] < 1.0
+                or not guard["items"]
+                or any(name not in items for name in guard["items"])):
+            fail("title-model-bad-static-guard")
     return {"items": items, "present_min": present, "absent_max": absent,
             "bright_min": bright, "band": (band_w, band_h),
             "title_gate": gates["title_gate"], "menu_gate": gates["menu_gate"],
+            "foreign_gate": gates["foreign_gate"], "static_guard": guard,
+            "continue_subtitle": subtitle,
             "build": model.get("build", "unnamed")}
 
 
@@ -144,6 +189,32 @@ def bright_fraction(image, point, band, bright_min):
     return box_fraction(image, box, bright_min)
 
 
+def continue_night(image, model):
+    """The digit under Continue, by IoU with the only cursors ever observed;
+    any other digit is UNKNOWN, never the nearest template."""
+    spec = model["continue_subtitle"]
+    if spec is None:
+        fail("no-continue-subtitle")
+    x0, y0, x1, y1 = spec["box"]
+    lit = box_fraction(image, (spec["static_x"][0], y0, spec["static_x"][1], y1),
+                       model["bright_min"])
+    if lit > spec["static_max"]:
+        fail(f"ambiguous:static-bar:continue-night:{lit:.4f}")
+    mask = [1 if min(p) > model["bright_min"] else 0
+            for p in image.crop((x0, y0, x1, y1)).getdata()]
+    scores = {}
+    for digit, template in spec["templates"].items():
+        both = sum(a & b for a, b in zip(mask, template))
+        either = sum(a | b for a, b in zip(mask, template))
+        scores[digit] = both / either if either else 0.0
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    best, score = ranked[0]
+    second = ranked[1][1] if len(ranked) > 1 else 0.0
+    if score < spec["min_iou"] or score - second < spec["margin"]:
+        fail(f"ambiguous:continue-night:{best}:{score:.3f}")
+    return best
+
+
 def capture_via_adb(timeout):
     try:
         result = subprocess.run(
@@ -161,6 +232,7 @@ def capture_via_adb(timeout):
 def main(argv):
     measure = "--measure" in argv
     use_adb = "--adb" in argv
+    want_night = "--continue-night" in argv
     declared = None
     if "--sensor" in argv:
         idx = argv.index("--sensor")
@@ -212,6 +284,29 @@ def main(argv):
         if value < gate["min"]:
             fail(f"ambiguous:title-gate:{value:.4f}")
 
+    # Another game's title can pass this game's logo gate: FNaF 1 and FNaF 2
+    # both open with the word "Five" in the same corner, and FNaF 1's observer
+    # read 14 of 31 retained FNaF 2 title frames as its own -- 6th Night and
+    # Custom Night rows included, because FNaF 2's rows sit inside FNaF 1's
+    # bands. A foreign gate names a box the OTHER title always lights and this
+    # one never draws on. Bright there is someone else's title -- unless the
+    # static bar is across those rows, which a strip dark on BOTH titles
+    # reports; the interval between the thresholds refuses, as every gate does.
+    foreign = model["foreign_gate"]
+    if foreign is not None:
+        value = box_fraction(image, foreign["box"], model["bright_min"])
+        if value > foreign["max_absent"]:
+            if foreign["static_x"] is not None:
+                _, top, _, bottom = foreign["box"]
+                lit = box_fraction(image, (foreign["static_x"][0], top,
+                                           foreign["static_x"][1], bottom),
+                                   model["bright_min"])
+                if lit > foreign["static_max"]:
+                    fail(f"ambiguous:static-bar:foreign-gate:{lit:.4f}")
+            if value >= foreign["min"]:
+                fail(f"foreign-title:{value:.4f}")
+            fail(f"ambiguous:foreign-gate:{value:.4f}")
+
     # The logo being up does not mean the MENU is up. Pressing New Game raises a
     # "Start a new game?" confirmation that keeps the logo and reuses the same
     # three rows: the prompt sits in the New Game band, "No" on the Continue
@@ -232,8 +327,27 @@ def main(argv):
         if value < menu["min"]:
             fail(f"ambiguous:menu-gate:{value:.4f}")
 
+    # FNaF 1's title static sweeps a bright full-width bar down the screen. On
+    # a row whose absence is a real save state, that bar reads exactly like
+    # text: a Night 1 save's 6th Night band read 0.2646 with the bar across
+    # it, against 0.034-0.050 for the real row. The bar is full width and the
+    # menu text is not, so a text-free strip on the band's own rows tells them
+    # apart: lit there means the bar, and the item cannot be decided.
+    if want_night:
+        print(f"night={continue_night(image, model)}")
+        return 0
+
+    guard = model["static_guard"]
     present = []
     for name in sorted(model["items"]):
+        if guard is not None and name in guard["items"]:
+            y = model["items"][name][1]
+            half_h = model["band"][1] // 2
+            strip = (guard["x"][0], max(0, y - half_h),
+                     guard["x"][1], min(GEOMETRY[1], y + half_h))
+            lit = box_fraction(image, strip, model["bright_min"])
+            if lit > guard["max"]:
+                fail(f"ambiguous:static-bar:{name}:{lit:.4f}")
         value = bright_fraction(image, model["items"][name], model["band"],
                                 model["bright_min"])
         if value >= model["present_min"]:

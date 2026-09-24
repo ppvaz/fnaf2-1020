@@ -306,6 +306,16 @@ const ENGINE = [
   // refuses the rest. Resizing a foreign frame to fit is what makes a sensor
   // mismatch look like a working reading.
   ['sensor', ['device/test-sensor.py']],
+  // FNaF 1's live loop learns its doorway ROI and normal lit-frame variation
+  // from the current run. Native-only geometry and explicit UNKNOWN bands are
+  // safety properties, so the synthetic gate belongs beside sensor.
+  ['fnaf1 door light', ['device/test-fnaf1-door-light.py']],
+  // This pins the FNaF 1-only Continue title binding, audio requirement, and
+  // serial-lease wrapper without touching a phone.
+  ['fnaf1 night runner', ['device/test-fnaf1-night-run.mjs']],
+  // First/final PCM receipt bounds must survive an interactive stop; otherwise
+  // a recorder's startup and teardown become fabricated Bluetooth loss.
+  ['BT audio collector', ['cue/test-bt-audio-collector.py']],
   // Plan 19 P3: derive a native-resolution watch adapter from labelled frames;
   // weak separation is an explicit refusal and foreign geometry is not resized.
   ['watch calibration', ['device/test-watch-calibrate.py']],
@@ -383,6 +393,8 @@ const ENGINE = [
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
   ['cue detector (java)', ['../android/companion/test.sh']],
+  ['fnaf1 teach presenter (java)', ['../android/fnaf1-teach/test.sh']],
+  ['fnaf1 teach overlay clearance', ['device/test-fnaf1-teach-overlay.py']],
   // The device driver is assembled from named parts and piped to the phone.
   // `sh` executes a script before it has read all of it, so a truncated or
   // misordered driver does not fail at launch -- it presses real buttons and

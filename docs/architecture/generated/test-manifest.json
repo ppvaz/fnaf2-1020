@@ -23,6 +23,26 @@
       }
     },
     {
+      "id": "android/fnaf1-teach/test.sh",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
       "id": "apps/device/test/adb-bridge.test.js",
       "lane": "test:device:dry",
       "owner": "legacy migration",
@@ -1176,6 +1196,29 @@
       }
     },
     {
+      "id": "tools/cue/test-bt-audio-collector.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "time.sleep(0.02",
+        "time.sleep(0.01",
+        "time.sleep(0.01",
+        "time.sleep(0.12"
+      ],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
       "id": "tools/cue/test-bt-audio-link.sh",
       "lane": "test:unit",
       "owner": "legacy migration",
@@ -1834,6 +1877,96 @@
     },
     {
       "id": "tools/device/test-fact-register.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-fnaf1-door-light.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-fnaf1-menu-probe.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-fnaf1-menus.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-fnaf1-night-run.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-fnaf1-teach-overlay.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
       "timeoutMs": 180000,
@@ -2853,7 +2986,7 @@
       "sharedResources": [
         "local-http-port"
       ],
-      "subprocesses": false,
+      "subprocesses": true,
       "measurement": {
         "status": "NOT_MEASURED",
         "runs": 0,
