@@ -1,16 +1,18 @@
 # Architecture legibility follow-up register
 
-Status: open findings recorded on 2026-09-11. This register is a backlog for
-future implementation work; it does not claim that any item is fixed.
+Status: findings recorded on 2026-09-11; statuses updated 2026-09-25. This register
+is a backlog for implementation work; an item is only marked resolved with the change that did it.
 
 The scope is human and agent legibility: a contributor should be able to find
 the canonical owner, understand the state and safety invariants, and select the
 smallest trustworthy validation command without reconstructing the architecture
 from history, aliases, and unrelated tools.
 
-The existing architecture direction remains valid: `core` owns the model and
-semantic contracts, `runtime` owns temporal dispatch and safety, `adapters` own
-physical boundaries, and `apps/device` owns composition. These findings concern
+The architecture direction: `core` owns the model and semantic contracts,
+`adapters` own physical boundaries, and `apps/device` owns composition and the
+campaign's supervision. (`packages/runtime`, which owned a fixture temporal
+dispatcher and supervisor, was removed on 2026-09-25 with the fixture service
+path; its retained-run validators moved to `core/contracts`.) These findings concern
 the distance between that declared architecture and its executable surface.
 
 ## Triage rules
@@ -29,9 +31,10 @@ the distance between that declared architecture and its executable surface.
 
 ### LEG-001 — Make temporal dispatch fail closed (P0)
 
-**Status:** OPEN
-**Owner:** `packages/runtime`
-**Evidence:** [`scheduler.js` (line 69)](../../packages/runtime/src/scheduler/scheduler.js)
+**Status:** RESOLVED BY REMOVAL (2026-09-25) -- the fixture dispatcher was deleted with the
+service path it served; nights are dispatched by the device-local executor's own stream.
+**Owner:** `packages/runtime` (removed)
+**Evidence:** `packages/runtime/src/scheduler/scheduler.js` line 69 (removed; in git history before 2026-09-25)
 
 An expired command is recorded as `REJECTED`, then the dispatcher continues to
 the next command. There is no dependency model that can distinguish an
@@ -46,9 +49,10 @@ dependent command.
 
 ### LEG-002 — Enforce capability/action and physical-binding contracts (P0)
 
-**Status:** OPEN
-**Owner:** `packages/runtime`, `packages/adapters`
-**Evidence:** [`supervisor.js` (line 20)](../../packages/runtime/src/safety/supervisor.js), [`registry.js` (line 18)](../../packages/adapters/src/registry.js), [`actuators.js` (line 59)](../../packages/adapters/src/actuators.js)
+**Status:** PARTLY RESOLVED (2026-09-25) -- the runtime supervisor was removed with the fixture
+service path; the adapter registry and actuators below remain and are still open.
+**Owner:** `packages/adapters`
+**Evidence:** `packages/runtime/src/safety/supervisor.js` line 20 (removed), [`registry.js` (line 18)](../../packages/adapters/src/registry.js), [`actuators.js` (line 59)](../../packages/adapters/src/actuators.js)
 
 The supervisor checks the requested control but not `action.kind`, although
 the adapter registry declares supported actions. A profile that only declares
@@ -79,7 +83,7 @@ the affected runner from one machine-readable test manifest.
 
 **Status:** OPEN
 **Owner:** `apps/device`
-**Evidence:** [`adb-device-local-executor.js` (line 401)](../../apps/device/src/adb-device-local-executor.js), [`modern-campaign-ports.js` (line 172)](../../apps/device/src/modern-campaign-ports.js), [`service.js` (line 1)](../../apps/device/src/service.js)
+**Evidence:** [`adb-device-local-executor.js` (line 401)](../../apps/device/src/adb-device-local-executor.js), [`modern-campaign-ports.js` (line 172)](../../apps/device/src/modern-campaign-ports.js), `service.js` line 1 (removed 2026-09-25)
 
 The local executor combines artifact compilation, shell rendering, ADB process
 lifecycle, HID execution, observation, cleanup, and a machine compatibility
@@ -94,9 +98,11 @@ entry point, one owner, and one focused test file.
 
 ### LEG-005 — Narrow the public API and isolate legacy paths (P1)
 
-**Status:** OPEN
+**Status:** RESOLVED BY REMOVAL (2026-09-25) -- the device barrel and the extra composition roots
+it exported were deleted; `apps/device/src/cli.js` (`campaign`) is the one path onto a phone, and
+`tools/architecture-test.js` refuses a second `live` command.
 **Owner:** `apps/device`
-**Evidence:** [`index.js` (line 1)](../../apps/device/src/index.js), [`COMPATIBILITY.md` (line 21)](COMPATIBILITY.md)
+**Evidence:** `index.js` line 1 (removed), [`COMPATIBILITY.md` (line 21)](COMPATIBILITY.md)
 
 The device barrel exposes many composition roots, executors, compatibility
 facades, and modern paths together. A caller can import an implementation
@@ -129,7 +135,7 @@ capability relationships. Remove broad `any` escapes from boundary objects.
 
 **Status:** OPEN
 **Owner:** `packages/core/control`
-**Evidence:** [`vocabulary.js` (line 11)](../../packages/core/src/control/vocabulary.js), [`types.ts` (line 17)](../../packages/core/src/contracts/types.ts), [`service.js` (line 17)](../../apps/device/src/service.js)
+**Evidence:** [`vocabulary.js` (line 11)](../../packages/core/src/control/vocabulary.js), [`types.ts` (line 17)](../../packages/core/src/contracts/types.ts), `service.js` line 17 (removed 2026-09-25)
 
 The canonical vocabulary coexists with legacy aliases and repeated camera
 lists. `service.js`, the artifact executor, the adapter registry, and the

@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-/** CLI composition root; `dry-run` is the only non-interactive default. */
+/** CLI composition root for the campaign executor: nothing here touches a phone without --live --confirm-live. */
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { composeDevice } from './composition.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { CampaignStateMachine, DEFAULT_CAMPAIGN_NIGHTS, makeCampaignSpec } from './campaign.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 import { guidedCalibrationSteps, validateCustomNightCalibration } from './custom-night.js';
 import { evaluateCampaignPreflight } from './campaign-preflight.js';
 import { validateCampaignBundle } from './campaign-bundle.js';
-import { composeSeamFixture } from './calibration-fixture.js';
 import { AdbCueHelperPort } from './physical-ports.js';
 import { installCampaignSignalHandlers } from './campaign-signal.js';
 import { fitClockMap, CueHelperControlTransport } from '@fnaf2-1020/adapters';
@@ -20,22 +18,18 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PROFILES = join(ROOT, 'apps/device/profiles');
 
 function help() {
-  console.log(`fnaf2-device — bounded semantic device composition
+  console.log(`fnaf2-device — the campaign executor's command line (night-run.sh drives it)
 
 Usage:
-  npm run device:dry-run -- --profile fixture-hid-screencap
-  npm run device:run -- --profile PROFILE --live --confirm-live
+  npm run device:campaign -- --bundle DIR --nights N --profile hid-mediaprojection   (dry run)
+  npm run device:campaign -- --bundle DIR --nights N --profile hid-mediaprojection --live --confirm-live
   npm run device:preflight -- --profile hid-mediaprojection
   npm run device:campaign -- --guided
-  npm run device:calibrate -- --json
   npm run device:clockmap -- --count 12 --span-ms 30000 --out FILE
 
 Commands:
-  dry-run       run fixture adapters and retain a replayable bundle (default)
-  live          require --live --confirm-live and a non-fixture profile
+  campaign      validate the campaign chain, bundle and proof gates; with --live --confirm-live, play it
   preflight     inspect one ADB phone without sending game input
-  campaign      validate the story-night campaign chain and its proof gates
-  calibrate     exercise the bounded seam runner with the explicit fixture
   clockmap      measure device->host monotonic clock anchors (read-only, no game input)
   bench         print registered capability descriptors
   grade RUN_ID  show a retained result
@@ -45,10 +39,9 @@ Options:
   --serial ID   select one explicit ADB device
   --nights 1-7  campaign target nights, one ascending chain (default: 1,2,3,4,5,6,7)
   --max-attempts N  campaign attempts per target (default: 3)
-  --json        print machine-readable output for preflight/campaign/calibrate
+  --json        print machine-readable output for preflight/campaign
   --guided      print the one-time Custom Night calibration checklist
   --calibration FILE  measured Custom Night calibration artifact
-  --spec FILE   seam-calibration-spec-v1 (calibrate; fixture default)
   --bundle DIR  validated device bundle containing the requested plans
   --qualification FILE  DEVICE_MEASURED qualification artifact
   --ports MODULE  explicit campaign-port composition module
@@ -73,19 +66,19 @@ Options:
 
 function parse(argv) {
   const [first = 'help', ...tail] = argv;
-  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign', 'calibrate', 'clockmap']);
+  const knownCommands = new Set(['help', 'bench', 'grade', 'preflight', 'campaign', 'clockmap']);
   if (first === '--help' || first === '-h') return { command: 'help', help: true };
-  // Options without an explicit command are accepted for the documented
-  // non-interactive default, but an unknown positional command must never
-  // silently become a dry-run.
-  const command = first.startsWith('-') ? 'dry-run' : first;
-  const rest = first.startsWith('-') ? argv : tail;
+  // The fixture dry-run that used to be the default left with the service path
+  // on 2026-09-25; options without a command are refused rather than guessed.
+  if (first.startsWith('-')) throw new Error(`a command is required before ${first}; see --help`);
+  const command = first;
+  const rest = tail;
   if (!knownCommands.has(command)) throw new Error(`unknown command: ${first}`);
-  const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
+  const options = { command, profile: 'hid-mediaprojection', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
     guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, nightAnchorMaxK: null, nightAnchorPeriodMs: 1000, nightAnchorStrict: false, nightAnchorAuthorizeOnLatch: false, teachOverlay: false, calibration: undefined, bundle: undefined,
-    qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
+    qualification: undefined, ports: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
     const item = rest[index];
@@ -127,14 +120,6 @@ function parse(argv) {
     else if (item.startsWith('--profile=')) options.profile = item.slice('--profile='.length);
     else if (item === '--calibration') options.calibration = rest[++index];
     else if (item.startsWith('--calibration=')) options.calibration = item.slice('--calibration='.length);
-    else if (item === '--spec') {
-      options.spec = rest[++index];
-      if (!options.spec || options.spec.startsWith('--')) throw new Error('--spec requires a file');
-    }
-    else if (item.startsWith('--spec=')) {
-      options.spec = item.slice('--spec='.length);
-      if (!options.spec) throw new Error('--spec requires a file');
-    }
     else if (item === '--bundle') options.bundle = rest[++index];
     else if (item.startsWith('--bundle=')) options.bundle = item.slice('--bundle='.length);
     else if (item === '--qualification') options.qualification = rest[++index];
@@ -297,17 +282,6 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
   const selected = await profile(options.profile);
-  if (options.command === 'calibrate') {
-    if (options.live) throw new Error('live seam calibration is HOLD: qualified timed-block actuator, positive state calibration and clock mapping are not composed');
-    const spec = await jsonFile(options.spec ?? join(ROOT, 'apps/device/fixtures/seam-calibration.json'), 'seam spec');
-    const { service } = composeSeamFixture({ profile: selected, artifactRoot: join(ROOT, 'artifacts') });
-    service.startSession();
-    const result = await service.executeCalibration(spec);
-    console.log(options.json ? JSON.stringify(result, null, 2) :
-      `result=${result.outcome} claim=${result.claimLevel} calibration=${result.calibration.calibration} evidence=${result.evidenceId}`);
-    if (result.outcome !== 'PASS') process.exitCode = 1;
-    return;
-  }
   if (options.command === 'preflight') {
     const bridge = new AdbDeviceBridge({ serial: options.serial });
     const result = await bridge.preflight({ targetBuild: selected.targetBuild,
@@ -420,13 +394,6 @@ async function main(argv = process.argv.slice(2)) {
     }
     return;
   }
-  const live = options.command === 'live' || options.live;
-  if (live && (!options.live || !options.confirmLive)) throw new Error('live execution requires both --live and --confirm-live');
-  if (live) throw new Error('live transport is not composed by this CLI; inject a DEVICE_MEASURED adapter into DeviceControlService');
-  const service = composeDevice({ profile: selected, mode: live ? 'live' : 'dry-run', artifactRoot: join(ROOT, 'artifacts') });
-  service.startSession();
-  const result = await service.execute();
-  console.log(`result=${result.outcome} claim=${result.claimLevel} evidence=${result.evidenceId}`);
 }
 
 main().catch(error => { console.error(`device: ${error.message}`); process.exitCode = 2; });

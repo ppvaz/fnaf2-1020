@@ -6,8 +6,9 @@ never silently promote a model or fixture result. Plan 12 owns promotion;
 known negatives and retractions remain discoverable.
 
 Ownership is directional: `@fnaf2-1020/core` owns mechanics and semantic
-contracts; runtime schedules and supervises; adapters own capabilities,
-calibration, and transport; trainer, research, and device are leaves.
+contracts; adapters own transport, detection rules and calibration; the device
+app composes and supervises the campaign; trainer, research, and device are
+leaves.
 `research/sandbox` may depend inward, never vice versa. Production never
 imports tests, reports, mutable search knobs, DOM, shell, or device details
 into core.
@@ -22,7 +23,9 @@ fail-safe release/abort. Never infer mode, geometry, coordinates, timing, ports,
 or calibration from prose or conversation. No arbitrary shell is exposed to an
 agent.
 
-Start with `npm ci` and run affected gates plus `npm run device:dry-run`. Before
+Start with `npm ci` and run affected gates plus the campaign dry run over a
+committed winner (the CI step of that name: `npm run device:emit` then
+`npm run device:campaign -- --bundle DIR --nights N`, no phone). Before
 pushing run `npm run push-gate`, which runs the CI lanes against the pushed
 commit in a throwaway worktree; the working tree is a different measurement
 from CI's clean clone. `git config core.hooksPath .githooks` makes it automatic.
@@ -66,15 +69,19 @@ Night 7 (10/20, `golden-freddy`, 2026-09-14). The current execution target is
 cohort is 3 wins in 10, and no result has a Plan 12 promotion edge. Nothing
 outranks the next graded run bundle.
 
-**Promotion is blocked on custody, not on merit (measured 2026-09-17).**
-`npm run evidence -- list` sees 79 runs on this machine and **zero**
-`DEVICE_MEASURED`: every winning bundle — Night 5's, Night 6 h's, Night 7 k2's —
-is on the peer machine under gitignored `artifacts/`, so `evidence -- promote`
-cannot be run against any of them here. Three winners are committed
-(`campaign-night1-minimal`, `campaign-night6`, `campaign-night6-h`); the 10/20
-winner is not. `UNTRACKED_WINNER_DEBT` stands at 13 of its ceiling of 13, so the
-next untracked winner fails `test-fact-register.mjs`. Recovering those bundles is
-the first step of any promotion, not a chore after it.
+**Promotion waits on an attestation and on custody (measured 2026-09-25).**
+`npm run evidence -- pack <run>` commits a live night's text evidence to
+`docs/evidence/runs/<run>/` with every frame and recording named by sha256 only,
+and `night-run.sh` packs each campaign it runs: commit the directory. `list`,
+`show` and `promote` read packs on any checkout. Two packed wins
+(`night5-n5-armblock-20260920T004056Z`, `night6-n6h2-01-20260920T024030Z`)
+pass four of the five checks and wait only for Pedro's `plan12-attestation.json`
+(agents never write one). Custody is still open for the rest: the k3 cohort's
+campaign directories and videos are gone from the machine that played them, and
+Night 5 `contact-final`, Night 6 `h` and Night 7 `k2` must be packed on the peer
+machine. Eleven `winner-v1` bindings are committed, 10/20 k2 and k3 included, and
+`test-winners-rebuild.mjs` keeps them compiling; `UNTRACKED_WINNER_DEBT` stands
+at 11 of its ceiling of 13.
 
 ## Sensors and on-device code (Pedro, 2026-09-24/25 — start here, not with the old sensors)
 

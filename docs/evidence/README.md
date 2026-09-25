@@ -43,8 +43,8 @@ Device handoff is a separate `winner-v1` -> `device-bundle-v1` step:
 the winner, resolved profile, night plans, hashed semantic `artifact.json`, and
 bounded replay. The artifact consumer validates that exact bundle before any
 runner can use it;
-`trial.sh --artifact ... --dry-run` remains host/model-only while live device
-qualification is open. The modern campaign CLI composes
+`npm run device:campaign -- --bundle DIR --nights N` without `--live` checks
+it the same way, host-only. The campaign CLI composes
 `apps/device/src/modern-campaign-ports.js` by default (or accepts an explicit
 port module); it receives only compiled semantic blocks and bound hashes,
 never the strategy interpreter or historical transport lane.

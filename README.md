@@ -133,11 +133,12 @@ npm test
 npm run build:trainer
 npm run serve:trainer
 npm run research -- --help
-npm run device:dry-run -- --profile fixture-hid-screencap
+npm run device:emit -- --winner tools/device/campaign-night7-k3-winner.json --out /tmp/k3
+npm run device:campaign -- --bundle /tmp/k3 --nights 7 --profile hid-mediaprojection
 ```
 
 Everything after `npm ci` is safe without a phone or proprietary assets. The
-fixture device run resolves a versioned profile, uses semantic commands, emits
+campaign dry run resolves a versioned profile, uses semantic commands, emits
 telemetry, and retains a replayable result under ignored `artifacts/`.
 
 Focused lanes include `npm run test:core`, `npm run test:contracts`,

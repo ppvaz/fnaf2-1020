@@ -8,8 +8,8 @@ import { DEVICE_CONTROL_NAMES, ALL_GAME_CONTROL_NAMES, MAX_GAME_CAMERA_INDEX }
 
 export const CONTRACTS = Object.freeze([
   'plant-model-v1', 'semantic-control-v1', 'policy-program-v1', 'controller-v1',
-  'trajectory-v1', 'qualification-v1', 'raw-sample-v1', 'measurement-v1',
-  'detector-v1', 'state-estimate-v1', 'supervisor-v1', 'clock-v1',
+  'qualification-v1', 'raw-sample-v1', 'measurement-v1',
+  'detector-v1', 'state-estimate-v1', 'clock-v1',
   'actuator-v1', 'capability-v1', 'calibration-v1', 'device-profile-v1',
   'telemetry-event-v1', 'session-manifest-v1', 'experiment-spec-v1',
   'experiment-result-v1', 'winner-v1', 'device-bundle-v1', 'trainer-trace-v1', 'artifact-ref-v1',
@@ -202,6 +202,35 @@ export function validateClaimEvidence(input) {
   if (!isRecord(input) || input.schema !== 'claim-evidence-v1' || typeof input.id !== 'string' ||
       !Array.isArray(input.nodes) || !Array.isArray(input.edges)) fail('claim/evidence graph is incomplete');
   return input;
+}
+
+// Retained-run contracts. They lived in packages/runtime beside the fixture
+// scheduler and supervisor until 2026-09-25; the campaign preflight, the
+// artifact runner and the evidence index read them, so they belong here.
+export function validateQualification(value) {
+  if (!value || value.schema !== 'qualification-v1' || typeof value.policyHash !== 'string' ||
+      typeof value.modelHash !== 'string' || !Number.isInteger(value.sampleCount) || value.sampleCount < 1 ||
+      !['PASS', 'FAIL', 'INCONCLUSIVE'].includes(value.verdict) ||
+      typeof value.evidenceId !== 'string' || value.evidenceId.length === 0)
+    throw new TypeError('qualification is incomplete');
+  return value;
+}
+
+export function validateTelemetry(value) {
+  if (!value || value.schema !== 'telemetry-event-v1' || typeof value.sessionId !== 'string' ||
+      typeof value.type !== 'string' || typeof value.component !== 'string')
+    throw new TypeError('telemetry event is incomplete');
+  validateClockRef(value.at);
+  return value;
+}
+
+export function validateManifest(value) {
+  if (!value || value.schema !== 'session-manifest-v1' || typeof value.id !== 'string' ||
+      typeof value.profileHash !== 'string' || typeof value.targetBuild !== 'string' ||
+      !Array.isArray(value.events) || !value.artifacts || typeof value.artifacts !== 'object')
+    throw new TypeError('session manifest is incomplete');
+  for (const event of value.events) validateTelemetry(event);
+  return value;
 }
 
 export function canonicalJson(value) {

@@ -2,14 +2,9 @@
  * nothing here measures a handset, and an unfitted or refused artifact can
  * never become an OBSERVED state. */
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { calibrationStateRuleDigest, maskRuleDigest, parseMaskRule,
   parseCalibrationStateRule, measureCalibrationState, measureMaskOn } from '@fnaf2-1020/adapters';
 import { monitorRuleDigest } from '@fnaf2-1020/adapters';
-import { composeSeamFixtureLive } from '../src/live-seam-composition.js';
 
 const cell = (red, green, blue) => (red << 16) | (green << 8) | blue;
 const grid = new Array(180).fill(cell(40, 40, 40));
@@ -135,29 +130,4 @@ const proven = { ...maskRule,
 assert.doesNotThrow(() => parseCalibrationStateRule({ ...stateRule,
   mask: { rule: proven, digest: maskRuleDigest(proven) } }));
 
-// The live seam composition gate: binding, digest match, and qualification.
-const handset = JSON.parse(await readFile(new URL('../profiles/hid-mediaprojection.json', import.meta.url), 'utf8'));
-const digest = calibrationStateRuleDigest(stateRule);
-const spec = JSON.parse(await readFile(new URL('../fixtures/seam-calibration.json', import.meta.url), 'utf8'));
-const artifactRoot = await mkdtemp(join(tmpdir(), 'fnaf2-live-seam-'));
-const boundProfile = { ...handset, calibrations: { ...handset.calibrations, 'calibration-state': digest } };
-
-// Unbound profile keeps refusing live calibration.
-await assert.rejects(() => composeSeamFixtureLive({ profile: handset, spec, stateRule: null, artifactRoot }),
-  /positive office\/mask state calibration is not bound/);
-// Bound profile with a mismatched artifact refuses composition.
-await assert.rejects(() => composeSeamFixtureLive({ profile: { ...handset,
-  calibrations: { ...handset.calibrations, 'calibration-state': '0'.repeat(64) } }, spec, stateRule, artifactRoot }),
-  /digest does not match/);
-// Fully bound: the campaign completes and stays UNVERIFIED.
-const qualified = await composeSeamFixtureLive({ profile: boundProfile, spec, stateRule, artifactRoot });
-assert.equal(qualified.result.outcome, 'UNVERIFIED');
-assert.equal(qualified.result.calibration.workflow, 'COMPLETED');
-assert.equal(qualified.result.calibration.calibration, 'UNVERIFIED');
-// Missing or foreign qualification records refuse the live gate.
-await assert.rejects(() => composeSeamFixtureLive({ profile: boundProfile, spec, stateRule, artifactRoot,
-  qualification: { schema: 'qualification-v1', verdict: 'QUALIFIED' } }), /seam actuator qualification/);
-await assert.rejects(() => composeSeamFixtureLive({ profile: boundProfile, spec, stateRule, artifactRoot,
-  bindProfileHash: 'fnv1a-deadbeef' }), /profile-bound/);
-
-console.log('calibration-state rule: binding, both-positive resolution, and live seam gates pass');
+console.log('calibration-state rule: binding and both-positive resolution pass');

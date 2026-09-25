@@ -4,7 +4,7 @@
  * a bound full-night artifact, proof adapters, and a qualified local runner.
  * CONTRACT:device-campaign-preflight-v1.
  */
-import { validateQualification } from '@fnaf2-1020/runtime';
+import { validateQualification } from '@fnaf2-1020/core/contracts';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { validateCustomNightCalibration } from './custom-night.js';
 import { validateCampaignSpec } from './campaign.js';

@@ -101,6 +101,34 @@ this runner only; the campaign executor has no audio port. If Minus 7 comes back
 as a device bot that listens, restore the runner from the tag or give the
 executor an audio port.
 
+## The fixture service path and the artifact lane (2026-09-25, Plan 22 P9)
+
+The composition Plan 22 designed first: `DeviceControlService` over the
+`packages/runtime` scheduler and safety supervisor, composed by
+`composeDevice`, `composeModernDevice` and the seam-calibration fixture, and
+reached by `npm run device:dry-run`, `device:run`/`device:qualification` and
+`device:calibrate`. It never played a night -- `device:run` threw "live
+transport is not composed by this CLI" -- while CI's device lane exercised it
+and the campaign executor, which won Nights 5-7, went untested there. The
+artifact lane (`trial.sh` → `artifact-runner.mjs`) was the same kind of second
+path: its live branch needed an executor module nobody had written. Restore any
+of it from the last commit that carried it:
+`git checkout 7854394 -- <path>`.
+
+| Paths | What it was |
+|---|---|
+| `packages/runtime/` | Fixture temporal dispatcher (`trajectory-v1`), safety supervisor (`supervisor-v1`) and the retained-run validators |
+| `apps/device/src/service.js`, `composition.js`, `modern-composition.js`, `calibration-fixture.js`, `live-seam-composition.js`, `seam-calibration.js`, `index.js`, `apps/device/fixtures/seam-calibration.json` | The service, its composition roots, the seam calibration workflow (`seam-actuator-qualification-v1`) and the package barrel |
+| `createActuatorMcp` in `apps/device/src/mcp.js` | The MCP surface over the service; the Cue Helper MCP beside it stays |
+| `tools/device/trial.sh`, `tools/device/artifact-runner.mjs` | The artifact lane's launcher and runner |
+
+What moved rather than left: `validateQualification`, `validateTelemetry` and
+`validateManifest` now live in `core/contracts` (the campaign preflight and the
+evidence index read them); the executor-request boundary `test-bundle.mjs`
+checked through the artifact runner is checked on `makeExecutorRequest`
+directly. CI's device lane is now a campaign dry run over the committed Night 7
+winner, and `test-winners-rebuild.mjs` compiles every committed winner.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

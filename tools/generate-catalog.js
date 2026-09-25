@@ -37,7 +37,7 @@ const rootPackage = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'
 const commandRegistry = Object.entries(rootPackage.scripts).map(([id, command]) => ({
   id, command,
   lifecycle: id.includes('legacy') ? 'legacy'
-    : id.includes('qualification') || id === 'device:run' ? 'supported-live' : 'supported',
+    : id.includes('qualification') ? 'supported-live' : 'supported',
 }));
 const toolsIndex = await readFile(join(ROOT, 'tools/TOOLS.md'), 'utf8');
 const toolCommands = [...toolsIndex.matchAll(/^\| `([^`]+)` \| ([^|]+) \|/gm)].map(match => ({
@@ -50,18 +50,16 @@ const contractEvidence = {
   'semantic-control-v1': ['packages/core/test/contracts.test.js', 'tools/device/test-policy-interpreter.mjs'],
   'policy-program-v1': ['tools/policygrammartest.mjs', 'tools/device/test-policy-ir.mjs'],
   'controller-v1': ['tools/reactivetest.mjs', 'packages/core/test/cycle-controller.test.js'],
-  'trajectory-v1': ['packages/runtime/test/scheduler.test.js'],
-  'qualification-v1': ['apps/device/test/service.test.js'],
+  'qualification-v1': ['packages/core/test/contracts.test.js'],
   'raw-sample-v1': ['packages/adapters/test/conformance.test.js'],
   'measurement-v1': ['packages/core/test/contracts.test.js', 'packages/adapters/test/conformance.test.js'],
   'detector-v1': ['packages/adapters/test/conformance.test.js'],
   'state-estimate-v1': ['tools/estimatortest.mjs'],
-  'supervisor-v1': ['packages/runtime/test/supervisor.test.js'],
   'clock-v1': ['tools/phaseclocktest.mjs'],
   'actuator-v1': ['packages/adapters/test/conformance.test.js'],
   'capability-v1': ['packages/adapters/test/conformance.test.js'],
   'calibration-v1': ['packages/adapters/test/conformance.test.js'],
-  'device-profile-v1': ['apps/device/test/service.test.js'],
+  'device-profile-v1': ['tools/device/test-bundle.mjs'],
   'telemetry-event-v1': ['tools/factlinktest.mjs'],
   'session-manifest-v1': ['tools/device/test-session-manifest.sh'],
   'experiment-spec-v1': ['packages/research/test/experiment.test.js'],
@@ -77,7 +75,7 @@ const contractEvidence = {
   'fact-message-v1': ['packages/core/test/fixtures/fact-message-v1.jsonl'],
   'pcm-udp-v1': ['tools/cue/test-audio-authority.py'],
   'hid-executor-v1': ['packages/adapters/test/conformance.test.js', 'apps/device/test/adb-device-local-executor.test.js'],
-  'device-executor-v1': ['apps/device/test/service.test.js'],
+  'device-executor-v1': ['apps/device/test/adb-device-local-executor.test.js'],
   'device-campaign-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-runner.test.js'],
   'device-adb-preflight-v1': ['apps/device/test/adb-bridge.test.js'],
   'device-campaign-result-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-runner.test.js'],
@@ -106,7 +104,6 @@ const contractEvidence = {
   'camera-rule-v1': ['packages/adapters/test/camera-rule.test.js', 'tools/device/test-camera-calibrate.py'],
   'calibration-state-v1': ['apps/device/test/calibration-state-rule.test.js'],
   'control-exclusion-v1': ['packages/adapters/test/control-exclusion.test.js'],
-  'seam-actuator-qualification-v1': ['apps/device/test/calibration-state-rule.test.js'],
 };
 const repositoryPaths = new Set(files.map(path => relative(ROOT, path)));
 for (const contract of contractRegister.contracts) {
@@ -179,7 +176,7 @@ const tests = [];
 for (const path of sourceFiles.filter(path => /(?:test|check|spec)[^/]*\.(?:mjs|js|py|sh)$/.test(path))) {
   const source = await readFile(path, 'utf8');
   const id = relative(ROOT, path);
-  const lane = path.includes('browser') || path.includes('realtime') ? 'test:browser:realtime' : path.includes('device') ? 'test:device:dry' : 'test:unit';
+  const lane = path.includes('browser') || path.includes('realtime') ? 'test:browser:realtime' : path.includes('device') ? 'test:contracts' : 'test:unit';
   const fixedSleeps = [...source.matchAll(/(?:setTimeout|sleep|time\.sleep)\s*\(([^\n)]*)/g)]
     .map(match => match[0].trim()).slice(0, 12);
   const nondeterministic = [...source.matchAll(/\b(Math\.random|Date\.now|new Date\(|performance\.now|crypto\.randomUUID)\b/g)]
@@ -221,39 +218,32 @@ const duplicateResponsibilities = [
 // the removal gate records the evidence still needed to make deletion safe.
 const legacyPaths = [
   {
-    id: 'device.trial-launcher', path: 'tools/device/trial.sh', category: 'device',
-    lifecycle: 'compatibility', owner: '@fnaf2-1020/device',
-    replacement: 'apps/device/src/cli.js + tools/device/artifact-runner.mjs',
-    removalGate: 'P9: fold the artifact lane into the campaign executor, then remove',
-    notes: 'Facade over artifact-runner.mjs and the fixture dry-run. Its FNAF2_LEGACY_TRIAL=1 branch and the historical runner behind it were archived 2026-09-25 (docs/ARCHIVED-ROUTES.md).',
-  },
-  {
     id: 'device.shell-session', path: 'tools/device/session.sh', category: 'device',
     lifecycle: 'compatibility', owner: '@fnaf2-1020/device',
-    replacement: 'DeviceControlService session manifest and retained result bundle',
-    removalGate: 'Legacy-runner migration retains equivalent session provenance',
-    notes: 'Sourced manifest bridge used by the historical shell runner.',
+    replacement: 'run packs (docs/evidence/runs/) for nights; this bridge stays for collect-cue-audio.sh and capture-screen-sample.sh',
+    removalGate: 'The cue-audio and screen-sample collectors write run packs or retire',
+    notes: 'Sourced manifest bridge; the historical shell runner that also used it was archived 2026-09-25.',
   },
   {
     id: 'device.session-manifest-producer', path: 'tools/device/session-manifest.py', category: 'device',
     lifecycle: 'legacy', owner: '@fnaf2-1020/device',
-    replacement: 'runtime `session-manifest-v1` emitter used by DeviceControlService',
+    replacement: 'run packs for nights; `session-manifest-v1` (core/contracts) for research sessions',
     removalGate: 'Historical manifests are indexed/replayable and the shell runner is removed',
     notes: 'Plan 09 producer for the shell-specific `fnaf2.session-manifest` dialect.',
   },
   {
     id: 'device.session-manifest-validator', path: 'tools/device/validate-session.py', category: 'device',
     lifecycle: 'transitional', owner: '@fnaf2-1020/evidence',
-    replacement: 'runtime manifest validator + evidence CLI',
+    replacement: 'core/contracts validateManifest + evidence CLI',
     removalGate: 'Historical shell manifests remain inspectable through the evidence boundary',
-    notes: 'Validator for the legacy shell manifest; its filename must not be confused with the runtime contract.',
+    notes: 'Validator for the legacy shell manifest; its filename must not be confused with the core `session-manifest-v1` contract.',
   },
   {
     id: 'device.session-manifest-schema', path: 'tools/device/schema/session-manifest-v1.json', category: 'device',
     lifecycle: 'legacy', owner: '@fnaf2-1020/device',
-    replacement: 'runtime `session-manifest-v1` contract',
+    replacement: 'core/contracts `session-manifest-v1` contract',
     removalGate: 'Legacy `fnaf2.session-manifest` fixtures and consumers are archived',
-    notes: 'Legacy schema whose internal id is `fnaf2.session-manifest`; it is not the runtime JSON contract.',
+    notes: 'Legacy schema whose internal id is `fnaf2.session-manifest`; it is not the core JSON contract.',
   },
   {
     id: 'device.legacy-grader', path: 'tools/device/grade-run.sh', category: 'device-evidence',
@@ -279,7 +269,7 @@ const legacyPaths = [
   {
     id: 'device.shell-menu', path: 'tools/device/menu.sh', category: 'device',
     lifecycle: 'transitional', owner: '@fnaf2-1020/device',
-    replacement: 'title/menu detector and DeviceControlService state gate',
+    replacement: 'title/menu detector and the campaign executor state gate',
     removalGate: 'Automated menu-state detector has calibrated evidence and a dry-run fixture',
     notes: 'Human-safe selector retained because the current phone cursor is not machine-qualified.',
   },

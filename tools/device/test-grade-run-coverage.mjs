@@ -107,7 +107,6 @@ const EXCLUDED = new Map([
   ['provision-cue-model.sh', 'installs a generated model into the helper\'s private storage on a phone; a provisioner, not a grader -- it has no run to read'],
   ['soak-cue-helper.sh', 'live helper, mock-gated by test-soak-cue-helper.sh'],
   ['select-adb.sh', 'transport helper, gated by test-select-adb.sh'],
-  ['trial.sh', 'run launcher'],
 
   // Added 2026-09-08. These nineteen accumulated after the list was last
   // extended, and the registry bug above hid them behind twelve false
@@ -135,7 +134,6 @@ const EXCLUDED = new Map([
   // read as covered. Do not extend this block without a reason this specific.
   ['screen-calibrate.py', 'GAP: screen-class anchor fitter with no gate of its own -- the only one of the five calibrate fitters without one. test-screencheck.py drives build-screen-model.py and replay-screen-model.py, not this. Fits a rule adapters consume on device, so it wants a synthetic-frame gate of its own, modelled on the maskOn fitter\'s'],
   ['validate-session.py', 'Plan 09 session-manifest validator, run by session-manifest.py when a session producer (collect-cue-audio.sh, capture-screen-sample.sh) finalizes; night-run.sh writes no session manifest, so no night has one to grade; gated by test-validate-session.py'],
-  ['artifact-runner.mjs', 'GAP: host-side artifact consumer with no gate. Its only invoker is trial.sh, which is a compatibility-lifecycle launcher in legacy-paths.json -- a legacy caller is not coverage, so this is unexercised by the modern path'],
 ]);
 
 // tools/cue and tools/dump, under the same rule. The audit that widened this

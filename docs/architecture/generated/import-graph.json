@@ -31,14 +31,6 @@
       ]
     },
     {
-      "file": "apps/device/src/calibration-fixture.js",
-      "imports": [
-        "./service.js",
-        "@fnaf2-1020/adapters/actuators",
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
       "file": "apps/device/src/campaign-bundle.js",
       "imports": [
         "./artifact-executor.js",
@@ -59,8 +51,7 @@
       "imports": [
         "./campaign.js",
         "./custom-night.js",
-        "@fnaf2-1020/core/contracts",
-        "@fnaf2-1020/runtime"
+        "@fnaf2-1020/core/contracts"
       ]
     },
     {
@@ -90,13 +81,11 @@
       "file": "apps/device/src/cli.js",
       "imports": [
         "./adb-bridge.js",
-        "./calibration-fixture.js",
         "./campaign-bundle.js",
         "./campaign-preflight.js",
         "./campaign-runner.js",
         "./campaign-signal.js",
         "./campaign.js",
-        "./composition.js",
         "./custom-night.js",
         "./physical-ports.js",
         "@fnaf2-1020/adapters",
@@ -105,14 +94,6 @@
         "node:fs/promises",
         "node:path",
         "node:url"
-      ]
-    },
-    {
-      "file": "apps/device/src/composition.js",
-      "imports": [
-        "./service.js",
-        "@fnaf2-1020/adapters/actuators",
-        "@fnaf2-1020/adapters/sensors"
       ]
     },
     {
@@ -142,41 +123,8 @@
       ]
     },
     {
-      "file": "apps/device/src/index.js",
-      "imports": [
-        "./adb-bridge.js",
-        "./adb-device-local-executor.js",
-        "./artifact-executor.js",
-        "./campaign-composition.js",
-        "./campaign-preflight.js",
-        "./campaign-proof.js",
-        "./campaign-runner.js",
-        "./campaign.js",
-        "./composition.js",
-        "./custom-night.js",
-        "./device-local-executor.js",
-        "./mcp.js",
-        "./modern-campaign-ports.js",
-        "./modern-composition.js",
-        "./physical-ports.js",
-        "./service.js"
-      ]
-    },
-    {
-      "file": "apps/device/src/live-seam-composition.js",
-      "imports": [
-        "./seam-calibration.js",
-        "./service.js",
-        "@fnaf2-1020/adapters",
-        "@fnaf2-1020/adapters/actuators",
-        "@fnaf2-1020/adapters/registry",
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
       "file": "apps/device/src/mcp.js",
       "imports": [
-        "@fnaf2-1020/core/contracts",
         "node:child_process",
         "node:url",
         "node:util"
@@ -204,14 +152,6 @@
       ]
     },
     {
-      "file": "apps/device/src/modern-composition.js",
-      "imports": [
-        "./composition.js",
-        "./physical-ports.js",
-        "@fnaf2-1020/adapters"
-      ]
-    },
-    {
       "file": "apps/device/src/night-anchor.js",
       "imports": [
         "@fnaf2-1020/adapters/night-onset"
@@ -224,28 +164,6 @@
         "node:child_process",
         "node:fs",
         "node:net"
-      ]
-    },
-    {
-      "file": "apps/device/src/seam-calibration.js",
-      "imports": [
-        "@fnaf2-1020/adapters",
-        "@fnaf2-1020/core/contracts",
-        "@fnaf2-1020/core/control"
-      ]
-    },
-    {
-      "file": "apps/device/src/service.js",
-      "imports": [
-        "./artifact-executor.js",
-        "./seam-calibration.js",
-        "@fnaf2-1020/adapters/registry",
-        "@fnaf2-1020/core/contracts",
-        "@fnaf2-1020/core/control",
-        "@fnaf2-1020/runtime",
-        "node:crypto",
-        "node:fs/promises",
-        "node:path"
       ]
     },
     {
@@ -273,12 +191,8 @@
     {
       "file": "apps/device/test/calibration-state-rule.test.js",
       "imports": [
-        "../src/live-seam-composition.js",
         "@fnaf2-1020/adapters",
-        "node:assert/strict",
-        "node:fs/promises",
-        "node:os",
-        "node:path"
+        "node:assert/strict"
       ]
     },
     {
@@ -368,38 +282,6 @@
       "imports": [
         "../src/night-anchor.js",
         "node:assert/strict"
-      ]
-    },
-    {
-      "file": "apps/device/test/seam-calibration.test.js",
-      "imports": [
-        "../src/calibration-fixture.js",
-        "../src/mcp.js",
-        "../src/seam-calibration.js",
-        "@fnaf2-1020/adapters",
-        "node:assert/strict",
-        "node:fs/promises",
-        "node:os",
-        "node:path"
-      ]
-    },
-    {
-      "file": "apps/device/test/service.test.js",
-      "imports": [
-        "../src/artifact-executor.js",
-        "../src/composition.js",
-        "../src/mcp.js",
-        "../src/modern-composition.js",
-        "../src/service.js",
-        "@fnaf2-1020/adapters",
-        "@fnaf2-1020/adapters/actuators",
-        "@fnaf2-1020/adapters/sensors",
-        "@fnaf2-1020/core/contracts",
-        "node:assert/strict",
-        "node:fs/promises",
-        "node:os",
-        "node:path",
-        "node:url"
       ]
     },
     {
@@ -1200,46 +1082,6 @@
       ]
     },
     {
-      "file": "packages/runtime/src/contracts.js",
-      "imports": [
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
-      "file": "packages/runtime/src/index.js",
-      "imports": [
-        "./contracts.js",
-        "./safety/supervisor.js",
-        "./scheduler/scheduler.js"
-      ]
-    },
-    {
-      "file": "packages/runtime/src/safety/supervisor.js",
-      "imports": [
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
-      "file": "packages/runtime/src/scheduler/scheduler.js",
-      "imports": [
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
-      "file": "packages/runtime/test/scheduler.test.js",
-      "imports": [
-        "../src/scheduler/scheduler.js",
-        "node:assert/strict"
-      ]
-    },
-    {
-      "file": "packages/runtime/test/supervisor.test.js",
-      "imports": [
-        "../src/safety/supervisor.js",
-        "node:assert/strict"
-      ]
-    },
-    {
       "file": "tools/activitygatetest.mjs",
       "imports": [
         "@fnaf2-1020/core/training",
@@ -1400,18 +1242,6 @@
         "./recipe.mjs",
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
-      ]
-    },
-    {
-      "file": "tools/device/artifact-runner.mjs",
-      "imports": [
-        "../../apps/device/src/artifact-executor.js",
-        "./artifact-commands.mjs",
-        "./bundle.mjs",
-        "@fnaf2-1020/runtime",
-        "node:fs",
-        "node:path",
-        "node:url"
       ]
     },
     {
@@ -1822,6 +1652,7 @@
     {
       "file": "tools/device/test-bundle.mjs",
       "imports": [
+        "../../apps/device/src/artifact-executor.js",
         "./artifact-commands.mjs",
         "./bundle.mjs",
         "@fnaf2-1020/core/contracts",
@@ -2149,7 +1980,6 @@
         "./evidence-pack.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/research",
-        "@fnaf2-1020/runtime",
         "node:fs/promises",
         "node:os",
         "node:path",

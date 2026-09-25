@@ -11,7 +11,8 @@ retractions.
 npm ci
 npm test
 npm run build:trainer
-npm run device:dry-run -- --profile fixture-hid-screencap
+npm run device:emit -- --winner tools/device/campaign-night7-k3-winner.json --out /tmp/k3
+npm run device:campaign -- --bundle /tmp/k3 --nights 7 --profile hid-mediaprojection
 ```
 
 Use `npm run test:unit` for boundary checks, `npm run test:contracts` for

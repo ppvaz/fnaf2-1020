@@ -34,9 +34,10 @@ if (changed.some(path => path.startsWith('packages/core/'))) {
 }
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
-  add('device-service', 'node', ['apps/device/test/service.test.js']);
-  add('device-seam-calibration', 'node', ['apps/device/test/seam-calibration.test.js']);
-  add('device-dry-run', 'node', ['apps/device/src/cli.js', 'dry-run']);
+  add('device-executor', 'node', ['apps/device/test/adb-device-local-executor.test.js']);
+  add('device-campaign', 'node', ['apps/device/test/campaign.test.js']);
+  add('device-cli', 'node', ['apps/device/test/cli.test.js']);
+  add('winners-rebuild', 'node', ['tools/device/test-winners-rebuild.mjs']);
 }
 if (changed.some(path => path.startsWith('packages/core/src/control/') ||
     path.startsWith('tools/device/policy-') || path.startsWith('tools/device/closed-families'))) {

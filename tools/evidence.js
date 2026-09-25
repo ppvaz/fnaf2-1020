@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalJson, stableHash, validateArtifactRef } from '@fnaf2-1020/core/contracts';
-import { validateManifest } from '@fnaf2-1020/runtime';
+import { validateManifest } from '@fnaf2-1020/core/contracts';
 import { replayModelResult } from '@fnaf2-1020/research';
 import { BUNDLE_SCHEMA, validateBundle } from './device/bundle.mjs';
 import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';

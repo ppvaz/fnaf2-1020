@@ -20,23 +20,17 @@ Lifecycle meanings:
 
 | Surface | Lifecycle | Canonical replacement | Removal gate |
 |---|---|---|---|
-| `tools/device/trial.sh` | compatibility | `apps/device/src/cli.js` + `tools/device/artifact-runner.mjs` | P5 command/trace equivalence, then P9 audit |
-| `tools/device/legacy-trial.sh` | legacy (deprecated 2026-09-02) | `device-bundle-v1` + `DeviceControlService` + `device-executor-v1` | remote executor and trace equivalence, live qualification, then P9 |
-| `tools/device/trial/*.sh` and `assemble.sh` | legacy | `device-executor-v1` semantic artifact stream | remove with the historical runner after each responsibility has an adapter/test owner |
-| `tools/device/trial-maskcamp.sh` and `run-batch.sh` | legacy | structured observation/qualification experiment artifacts | migrate or archive the experiment recipes; no new route work |
-| `tools/device/preflight.sh` | compatibility | `DeviceControlService.preflight` plus profile/qualification checks | modern CLI covers helper, focus, title, and qualification checks |
-| `tools/device/session.sh` | compatibility | service-owned session manifest and result bundle | legacy migration retains equivalent provenance |
-| `tools/device/session-manifest.py` + `validate-session.py` | legacy/transitional | runtime manifest validator and evidence CLI | historical shell manifests are indexed and replayable |
+| `tools/device/session.sh` | compatibility | run packs for nights; kept for `collect-cue-audio.sh` and `capture-screen-sample.sh` | those collectors write run packs or retire |
+| `tools/device/session-manifest.py` + `validate-session.py` | legacy/transitional | `core/contracts` manifest validator and evidence CLI | historical shell manifests are indexed and replayable |
 | `tools/device/grade-run.sh` | transitional | evidence CLI over content-addressed device bundles | historical video/HID/session artifacts have an equivalent structured grader |
 | `tools/device/select-adb.sh` | transitional | injected transport selected by the device composition root | direct-ADB probes become adapters or are explicitly archived |
 | `tools/device/coords.sh` | transitional | resolved profile `controlMap` | every device action consumes profile geometry |
-| `tools/device/menu.sh` | transitional | calibrated title/menu detector and service state gate | detector evidence and a dry-run fixture cover the menu states |
+| `tools/device/menu.sh` | transitional | calibrated title/menu detector and the campaign state gate | detector evidence and a dry-run fixture cover the menu states |
 
-The old runner is intentionally not hidden behind a new name: if it is needed
-for historical characterization, callers must opt into
-`FNAF2_LEGACY_TRIAL=1`. The artifact facade never falls back to it. In
-particular, `preflight.sh` is a historical shell gate, not permission to start
-a modern live run.
+The historical shell runner, its launcher facade, the artifact runner and the
+fixture `DeviceControlService` were archived on 2026-09-25
+([`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)); `apps/device/src/cli.js`
+`campaign` is the one path onto a phone.
 
 **Deprecated 2026-09-02.** `legacy-trial.sh` is reference and characterization
 input only. It may not produce new evidence on

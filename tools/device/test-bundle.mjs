@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { compileBundle, parsePlan, validateBundle } from './bundle.mjs';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { compileArtifactPlans } from './artifact-commands.mjs';
+import { makeExecutorRequest } from '../../apps/device/src/artifact-executor.js';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const expectFailure = (fn, message) => {
@@ -13,7 +14,6 @@ const expectFailure = (fn, message) => {
   try { fn(); } catch { failed = true; }
   check(failed, message);
 };
-const ARTIFACT_RUNNER = join(process.cwd(), 'tools/device/artifact-runner.mjs');
 
 const root = mkdtempSync(join(tmpdir(), 'fnaf2-device-bundle-'));
 try {
@@ -208,44 +208,19 @@ try {
     action.control === 'hallLight' && action.ventControl === 'rightVentLight'),
   'minus3 did not compile the hall/right-vent compound');
 
-  const output = execFileSync(process.execPath, [ARTIFACT_RUNNER,
-    '--artifact', bundlePath, '--dry-run', '--night', '2'], { encoding: 'utf8' });
-  check(output.includes('artifact READY (dry-run)') && output.includes('night-2.plan'),
-    'artifact-runner did not consume the exact artifact');
-  expectFailure(() => execFileSync(process.execPath, [ARTIFACT_RUNNER,
-    '--artifact', bundlePath]), 'artifact-runner allowed artifact execution without a mode');
-
-  const qualificationPath = join(root, 'qualification.json');
-  writeFileSync(qualificationPath, JSON.stringify({ schema: 'qualification-v1',
-    evidenceId: 'fixture-device-evidence', claimLevel: 'DEVICE_MEASURED',
-    policyHash: ready.manifest.winnerHash, modelHash: ready.manifest.engineHash,
-    sampleCount: 1, verdict: 'PASS' }) + '\n');
-  let liveError = '';
-  try {
-    execFileSync(process.execPath, [ARTIFACT_RUNNER, '--artifact', bundlePath,
-      '--live', '--confirm-live', '--qualification', qualificationPath], { encoding: 'utf8' });
-  } catch (error) { liveError = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
-  check(liveError.includes('live artifact execution requires --executor MODULE'),
-    'artifact live lane bypassed the explicit executor-composition gate');
-
-  const executorModule = join(root, 'executor.mjs');
-  writeFileSync(executorModule, `
-    export function createExecutor() {
-      return {
-        execute: async request => {
-          if (request.schema !== 'device-executor-v1') throw new Error('wrong executor schema');
-          if (JSON.stringify(request).includes('"strategy"') || JSON.stringify(request).includes('"policy"'))
-            throw new Error('strategy leaked');
-          return { outcome: 'PASS', blockCount: request.blocks.length };
-        },
-        abort: async () => {}, releaseAll: async () => {},
-      };
-    }
-  `);
-  const liveOutput = execFileSync(process.execPath, [ARTIFACT_RUNNER, '--artifact', bundlePath,
-    '--live', '--confirm-live', '--qualification', qualificationPath, '--executor', executorModule], { encoding: 'utf8' });
-  check(liveOutput.includes('artifact execution PASS') && liveOutput.includes('blocks='),
-    'artifact live lane did not pass the explicit executor boundary');
+  // What crosses into the device executor is the compiled semantic blocks and
+  // bound hashes, never the strategy or its plan interpreter. (This was checked
+  // through artifact-runner.mjs until that second lane onto the phone was
+  // retired on 2026-09-25; the executor request is the boundary itself.)
+  const request = makeExecutorRequest({ manifest: ready.manifest, profile: ready.profile,
+    compiledPlans: ready.compiled.filter(plan => plan.night === 2), mode: 'dry-run' });
+  check(request.schema === 'device-executor-v1', 'executor request lost its schema');
+  check(request.blocks.length > 0 && request.blocks.every(block => block.night === 2),
+    'executor request did not carry the selected night\'s compiled blocks');
+  check(!JSON.stringify(request).includes('"strategy"') && !JSON.stringify(request).includes('"policy"'),
+    'the strategy leaked into the executor request');
+  expectFailure(() => makeExecutorRequest({ manifest: ready.manifest, profile: ready.profile,
+    compiledPlans: ready.compiled, mode: 'machine' }), 'executor request accepted an unknown mode');
 
   // A phase offset rotates the whole emitted stream against the game's own
   // frame grid, so the replay that gates the winner has to score it. The
@@ -293,7 +268,7 @@ try {
   check(phaseRefusal.includes('minus3 cannot replay a phase offset'),
     `a strategy whose replay cannot evaluate a phase offset still accepted one (${phaseRefusal})`);
 
-  console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and artifact runner pass');
+  console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and the executor boundary pass');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

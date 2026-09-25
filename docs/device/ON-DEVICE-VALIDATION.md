@@ -1,10 +1,10 @@
 # On-device validation (bot over adb)
 
-> Migration notice: new device composition goes through `@fnaf2-1020/device`
-> and `DeviceControlService` (`npm run device:dry-run`). The shell procedure
-> below is retained as historical characterization under
-> `tools/device/legacy-trial.sh`; it is not a source of new architecture or
-> claim promotion.
+> Historical record. Nights now run through `tools/device/night-run.sh` and the
+> campaign executor (`npm run device:campaign`). The shell procedure below ran
+> under `tools/device/legacy-trial.sh`, archived on 2026-09-25 with the fixture
+> `DeviceControlService` (`docs/ARCHIVED-ROUTES.md`); it is kept as
+> characterization, not as a source of new architecture or claim promotion.
 
 Started 2026-08-20 with the Moto g56 5G plugged in over USB. Goal: test the
 decoded Android model's load-bearing rules against the real
@@ -14,8 +14,8 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 
 ## Service-owned seam calibration (2026-09-05)
 
-`npm run device:calibrate -- --json` exercises the bounded runner through
-`DeviceControlService`, with the explicit
+Retired 2026-09-25 with the fixture service path. `npm run device:calibrate
+-- --json` exercised the bounded runner through `DeviceControlService`, with the explicit
 `apps/device/fixtures/seam-calibration.json` protocol and synthetic state.
 The CLI opens no phone; `--live` refuses, and physical profiles cannot silently
 select this fixture. `--spec FILE` accepts only the versioned, bounded semantic

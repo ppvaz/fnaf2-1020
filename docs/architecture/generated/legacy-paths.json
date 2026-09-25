@@ -3,24 +3,14 @@
   "generatedFrom": "tools/generate-catalog.js",
   "entries": [
     {
-      "id": "device.trial-launcher",
-      "path": "tools/device/trial.sh",
-      "category": "device",
-      "lifecycle": "compatibility",
-      "owner": "@fnaf2-1020/device",
-      "replacement": "apps/device/src/cli.js + tools/device/artifact-runner.mjs",
-      "removalGate": "P9: fold the artifact lane into the campaign executor, then remove",
-      "notes": "Facade over artifact-runner.mjs and the fixture dry-run. Its FNAF2_LEGACY_TRIAL=1 branch and the historical runner behind it were archived 2026-09-25 (docs/ARCHIVED-ROUTES.md)."
-    },
-    {
       "id": "device.shell-session",
       "path": "tools/device/session.sh",
       "category": "device",
       "lifecycle": "compatibility",
       "owner": "@fnaf2-1020/device",
-      "replacement": "DeviceControlService session manifest and retained result bundle",
-      "removalGate": "Legacy-runner migration retains equivalent session provenance",
-      "notes": "Sourced manifest bridge used by the historical shell runner."
+      "replacement": "run packs (docs/evidence/runs/) for nights; this bridge stays for collect-cue-audio.sh and capture-screen-sample.sh",
+      "removalGate": "The cue-audio and screen-sample collectors write run packs or retire",
+      "notes": "Sourced manifest bridge; the historical shell runner that also used it was archived 2026-09-25."
     },
     {
       "id": "device.session-manifest-producer",
@@ -28,7 +18,7 @@
       "category": "device",
       "lifecycle": "legacy",
       "owner": "@fnaf2-1020/device",
-      "replacement": "runtime `session-manifest-v1` emitter used by DeviceControlService",
+      "replacement": "run packs for nights; `session-manifest-v1` (core/contracts) for research sessions",
       "removalGate": "Historical manifests are indexed/replayable and the shell runner is removed",
       "notes": "Plan 09 producer for the shell-specific `fnaf2.session-manifest` dialect."
     },
@@ -38,9 +28,9 @@
       "category": "device",
       "lifecycle": "transitional",
       "owner": "@fnaf2-1020/evidence",
-      "replacement": "runtime manifest validator + evidence CLI",
+      "replacement": "core/contracts validateManifest + evidence CLI",
       "removalGate": "Historical shell manifests remain inspectable through the evidence boundary",
-      "notes": "Validator for the legacy shell manifest; its filename must not be confused with the runtime contract."
+      "notes": "Validator for the legacy shell manifest; its filename must not be confused with the core `session-manifest-v1` contract."
     },
     {
       "id": "device.session-manifest-schema",
@@ -48,9 +38,9 @@
       "category": "device",
       "lifecycle": "legacy",
       "owner": "@fnaf2-1020/device",
-      "replacement": "runtime `session-manifest-v1` contract",
+      "replacement": "core/contracts `session-manifest-v1` contract",
       "removalGate": "Legacy `fnaf2.session-manifest` fixtures and consumers are archived",
-      "notes": "Legacy schema whose internal id is `fnaf2.session-manifest`; it is not the runtime JSON contract."
+      "notes": "Legacy schema whose internal id is `fnaf2.session-manifest`; it is not the core JSON contract."
     },
     {
       "id": "device.legacy-grader",
@@ -88,7 +78,7 @@
       "category": "device",
       "lifecycle": "transitional",
       "owner": "@fnaf2-1020/device",
-      "replacement": "title/menu detector and DeviceControlService state gate",
+      "replacement": "title/menu detector and the campaign executor state gate",
       "removalGate": "Automated menu-state detector has calibrated evidence and a dry-run fixture",
       "notes": "Human-safe selector retained because the current phone cursor is not machine-qualified."
     },

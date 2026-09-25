@@ -44,7 +44,7 @@
     },
     {
       "id": "apps/device/test/adb-bridge.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -64,7 +64,7 @@
     },
     {
       "id": "apps/device/test/adb-device-local-executor.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -92,16 +92,14 @@
     },
     {
       "id": "apps/device/test/calibration-state-rule.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
       "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [
-        "device-transport"
-      ],
+      "sharedResources": [],
       "subprocesses": false,
       "measurement": {
         "status": "NOT_MEASURED",
@@ -112,7 +110,7 @@
     },
     {
       "id": "apps/device/test/campaign-composition.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -132,7 +130,7 @@
     },
     {
       "id": "apps/device/test/campaign-infrastructure.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -152,7 +150,7 @@
     },
     {
       "id": "apps/device/test/campaign-runner.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -172,7 +170,7 @@
     },
     {
       "id": "apps/device/test/campaign-signal.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -190,7 +188,7 @@
     },
     {
       "id": "apps/device/test/campaign.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -210,7 +208,7 @@
     },
     {
       "id": "apps/device/test/cli.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -230,7 +228,7 @@
     },
     {
       "id": "apps/device/test/clock-map.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -248,7 +246,7 @@
     },
     {
       "id": "apps/device/test/cycle-lesson.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -266,7 +264,7 @@
     },
     {
       "id": "apps/device/test/modern-campaign-terminal.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -284,7 +282,7 @@
     },
     {
       "id": "apps/device/test/night-anchor.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -301,48 +299,8 @@
       }
     },
     {
-      "id": "apps/device/test/seam-calibration.test.js",
-      "lane": "test:device:dry",
-      "owner": "legacy migration",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [
-        "device-transport"
-      ],
-      "subprocesses": false,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
-      "id": "apps/device/test/service.test.js",
-      "lane": "test:device:dry",
-      "owner": "legacy migration",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [
-        "device-transport"
-      ],
-      "subprocesses": true,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
       "id": "apps/device/test/timed-start.test.js",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -925,42 +883,6 @@
       }
     },
     {
-      "id": "packages/runtime/test/scheduler.test.js",
-      "lane": "test:unit",
-      "owner": "package boundary",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
-      "id": "packages/runtime/test/supervisor.test.js",
-      "lane": "test:unit",
-      "owner": "package boundary",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
       "id": "tools/activitygatetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
@@ -1005,7 +927,9 @@
       "deterministic": true,
       "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
+      "sharedResources": [
+        "device-transport"
+      ],
       "subprocesses": true,
       "measurement": {
         "status": "NOT_MEASURED",
@@ -1368,7 +1292,7 @@
     },
     {
       "id": "tools/device/bench-screencheck.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1388,7 +1312,7 @@
     },
     {
       "id": "tools/device/build-screencheck.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1408,7 +1332,7 @@
     },
     {
       "id": "tools/device/sweepcheck.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1426,7 +1350,7 @@
     },
     {
       "id": "tools/device/test-actuation-frame-metric.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1444,7 +1368,7 @@
     },
     {
       "id": "tools/device/test-actuator.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1462,7 +1386,7 @@
     },
     {
       "id": "tools/device/test-anchor-aim-band.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1480,7 +1404,7 @@
     },
     {
       "id": "tools/device/test-artifact-animation-gates.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1498,7 +1422,7 @@
     },
     {
       "id": "tools/device/test-bb-cue-state.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1516,7 +1440,7 @@
     },
     {
       "id": "tools/device/test-bundle.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1536,7 +1460,7 @@
     },
     {
       "id": "tools/device/test-camera-calibrate.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1554,7 +1478,7 @@
     },
     {
       "id": "tools/device/test-camtrace.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1572,7 +1496,7 @@
     },
     {
       "id": "tools/device/test-control-anchor.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1592,7 +1516,7 @@
     },
     {
       "id": "tools/device/test-cue-helper-device-lock.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1610,7 +1534,7 @@
     },
     {
       "id": "tools/device/test-cue-helper-mcp.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1628,7 +1552,7 @@
     },
     {
       "id": "tools/device/test-cue-helper-queue.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1648,7 +1572,7 @@
     },
     {
       "id": "tools/device/test-cue-helper-setup.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1668,7 +1592,7 @@
     },
     {
       "id": "tools/device/test-cycle-ledger.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1686,7 +1610,7 @@
     },
     {
       "id": "tools/device/test-death-cause.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1704,7 +1628,7 @@
     },
     {
       "id": "tools/device/test-deathchart.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1725,7 +1649,7 @@
     },
     {
       "id": "tools/device/test-decode-once.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1743,7 +1667,7 @@
     },
     {
       "id": "tools/device/test-device-input-gaps.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1761,7 +1685,7 @@
     },
     {
       "id": "tools/device/test-fact-register.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1779,7 +1703,7 @@
     },
     {
       "id": "tools/device/test-fnaf1-door-light.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1797,7 +1721,7 @@
     },
     {
       "id": "tools/device/test-fnaf1-menu-probe.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1815,7 +1739,7 @@
     },
     {
       "id": "tools/device/test-fnaf1-menus.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1833,7 +1757,7 @@
     },
     {
       "id": "tools/device/test-fnaf1-night-run.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1851,7 +1775,7 @@
     },
     {
       "id": "tools/device/test-fnaf1-teach-overlay.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1869,7 +1793,7 @@
     },
     {
       "id": "tools/device/test-framesource.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1887,7 +1811,7 @@
     },
     {
       "id": "tools/device/test-game-teardown.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1907,7 +1831,7 @@
     },
     {
       "id": "tools/device/test-grade-night.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1925,7 +1849,7 @@
     },
     {
       "id": "tools/device/test-grade-run-coverage.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1946,7 +1870,7 @@
     },
     {
       "id": "tools/device/test-hid-intersection-probe.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1966,7 +1890,7 @@
     },
     {
       "id": "tools/device/test-hid-sweep-probe.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -1986,7 +1910,7 @@
     },
     {
       "id": "tools/device/test-hid-trace.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2006,7 +1930,7 @@
     },
     {
       "id": "tools/device/test-human-gate.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 240000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2026,7 +1950,7 @@
     },
     {
       "id": "tools/device/test-index-observations.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2046,7 +1970,7 @@
     },
     {
       "id": "tools/device/test-input-frame-align.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2064,7 +1988,7 @@
     },
     {
       "id": "tools/device/test-inputtrace.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2082,7 +2006,7 @@
     },
     {
       "id": "tools/device/test-intersection-state-gate.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2102,7 +2026,7 @@
     },
     {
       "id": "tools/device/test-intro-card.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2122,7 +2046,7 @@
     },
     {
       "id": "tools/device/test-mask-calibrate.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2140,7 +2064,7 @@
     },
     {
       "id": "tools/device/test-menu.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2161,7 +2085,7 @@
     },
     {
       "id": "tools/device/test-minus-toys-jitter.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2179,7 +2103,7 @@
     },
     {
       "id": "tools/device/test-minus-toys-margin.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2197,7 +2121,7 @@
     },
     {
       "id": "tools/device/test-minus-toys-plan.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2217,7 +2141,7 @@
     },
     {
       "id": "tools/device/test-minus3-frame-light.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2237,7 +2161,7 @@
     },
     {
       "id": "tools/device/test-monitor-calibrate.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2255,7 +2179,7 @@
     },
     {
       "id": "tools/device/test-native-regions.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2275,7 +2199,7 @@
     },
     {
       "id": "tools/device/test-night-matrix.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2293,7 +2217,7 @@
     },
     {
       "id": "tools/device/test-night7-presets.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2311,7 +2235,7 @@
     },
     {
       "id": "tools/device/test-office-seed-bracket.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2329,7 +2253,7 @@
     },
     {
       "id": "tools/device/test-overlay-qualification-observe.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2349,7 +2273,7 @@
     },
     {
       "id": "tools/device/test-overlay-qualification.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2367,7 +2291,7 @@
     },
     {
       "id": "tools/device/test-phase-reconstruct.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2388,7 +2312,7 @@
     },
     {
       "id": "tools/device/test-policy-interpreter.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2406,7 +2330,7 @@
     },
     {
       "id": "tools/device/test-policy-ir.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2424,7 +2348,7 @@
     },
     {
       "id": "tools/device/test-provision-cue-model.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2444,7 +2368,7 @@
     },
     {
       "id": "tools/device/test-query-cue-helper.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2464,7 +2388,7 @@
     },
     {
       "id": "tools/device/test-recipe.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2484,7 +2408,7 @@
     },
     {
       "id": "tools/device/test-schedule-economy.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2504,7 +2428,7 @@
     },
     {
       "id": "tools/device/test-screen-map.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2524,7 +2448,7 @@
     },
     {
       "id": "tools/device/test-screencheck.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2542,7 +2466,7 @@
     },
     {
       "id": "tools/device/test-screenstate.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2563,7 +2487,7 @@
     },
     {
       "id": "tools/device/test-seam-slack.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2583,7 +2507,7 @@
     },
     {
       "id": "tools/device/test-seedpin.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2601,7 +2525,7 @@
     },
     {
       "id": "tools/device/test-select-adb.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2621,7 +2545,7 @@
     },
     {
       "id": "tools/device/test-sensor.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2641,7 +2565,7 @@
     },
     {
       "id": "tools/device/test-session-manifest.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2661,7 +2585,7 @@
     },
     {
       "id": "tools/device/test-shell-footguns.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2681,7 +2605,7 @@
     },
     {
       "id": "tools/device/test-soak-cue-helper.sh",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2701,7 +2625,7 @@
     },
     {
       "id": "tools/device/test-sweepcheck.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2719,7 +2643,7 @@
     },
     {
       "id": "tools/device/test-tap-stall-audit.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2739,7 +2663,7 @@
     },
     {
       "id": "tools/device/test-teach-panel-clearance.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2760,7 +2684,7 @@
     },
     {
       "id": "tools/device/test-validate-session.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2778,7 +2702,7 @@
     },
     {
       "id": "tools/device/test-watch-calibrate.py",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -2796,7 +2720,7 @@
     },
     {
       "id": "tools/device/test-winners-rebuild.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",
@@ -3562,7 +3486,7 @@
     },
     {
       "id": "tools/test-fnaf1-device-lane.mjs",
-      "lane": "test:device:dry",
+      "lane": "test:contracts",
       "owner": "legacy migration",
       "timeoutMs": 180000,
       "timeoutSource": "tools/test.mjs per-test watchdog",

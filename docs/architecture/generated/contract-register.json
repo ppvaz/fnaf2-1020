@@ -27,14 +27,8 @@
       "validator": "Controller"
     },
     {
-      "id": "trajectory-v1",
-      "owner": "runtime",
-      "kind": "data",
-      "validator": "validateTrajectory"
-    },
-    {
       "id": "qualification-v1",
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
       "validator": "validateQualification"
     },
@@ -61,12 +55,6 @@
       "owner": "core/estimation",
       "kind": "data",
       "validator": "validateStateEstimate"
-    },
-    {
-      "id": "supervisor-v1",
-      "owner": "runtime",
-      "kind": "port",
-      "validator": "Supervisor"
     },
     {
       "id": "clock-v1",
@@ -100,13 +88,13 @@
     },
     {
       "id": "telemetry-event-v1",
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
       "validator": "validateTelemetry"
     },
     {
       "id": "session-manifest-v1",
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "artifact",
       "validator": "validateManifest"
     },
@@ -142,7 +130,7 @@
     },
     {
       "id": "artifact-ref-v1",
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
       "validator": "validateArtifactRef"
     },
@@ -217,12 +205,6 @@
       "owner": "packages/adapters",
       "kind": "data",
       "validator": "packages/adapters/src/control-exclusion.js reconcileExclusiveControls"
-    },
-    {
-      "id": "seam-actuator-qualification-v1",
-      "owner": "apps/device",
-      "kind": "artifact",
-      "validator": "apps/device/src/seam-calibration.js parseSeamActuatorQualification"
     },
     {
       "id": "device-campaign-v1",

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { PlantModel } from '../src/mechanics/plant.js';
 import {
   canonicalJson, stableHash, validateActuationResult, validateControlCommand,
-  validateMeasurement, validateClockRef,
+  validateMeasurement, validateClockRef, validateQualification, validateManifest,
 } from '../src/contracts/index.js';
 import { decodeFactMessage } from '../src/telemetry/fact-link.js';
 
@@ -36,4 +36,19 @@ const model = new PlantModel({ seed: 1, night: 7, durationFrames: 8, lethal: fal
 model.apply(command); model.advance(8);
 assert.equal(model.frame, 8);
 assert.equal(model.terminalState().alive, true);
-console.log('core contracts: semantic command, unknown measurement, clock, result, and PlantModel pass');
+// Retained-run contracts: a qualification the campaign preflight binds, and a
+// session manifest the evidence index reads (research sessions write them).
+const qualification = { schema: 'qualification-v1', policyHash: 'p', modelHash: 'm', sampleCount: 16,
+  verdict: 'PASS', evidenceId: 'q-1' };
+assert.equal(validateQualification(qualification), qualification);
+for (const broken of [{ ...qualification, sampleCount: 0 }, { ...qualification, verdict: 'QUALIFIED' },
+  { ...qualification, evidenceId: '' }, { ...qualification, schema: 'qualification-v0' }])
+  assert.throws(() => validateQualification(broken), /qualification is incomplete/);
+const manifest = { schema: 'session-manifest-v1', id: 's-1', profileHash: 'h', targetBuild: 'b', artifacts: {},
+  events: [{ schema: 'telemetry-event-v1', sessionId: 's-1', type: 'experiment.result', component: 'research',
+    at: { clock: 'simulator-frame', value: 0 } }] };
+assert.equal(validateManifest(manifest), manifest);
+assert.throws(() => validateManifest({ ...manifest, events: [{ ...manifest.events[0], component: undefined }] }),
+  /telemetry event is incomplete/);
+assert.throws(() => validateManifest({ ...manifest, artifacts: null }), /session manifest is incomplete/);
+console.log('core contracts: semantic command, unknown measurement, clock, result, PlantModel, qualification and session manifest pass');

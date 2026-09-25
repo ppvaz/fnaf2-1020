@@ -36,7 +36,6 @@ assets.
 | Compare policy families under execution error | `tools/policytest.mjs` |
 | Explore a strategy or cycle | `tools/cyclesearch.mjs` |
 | Run a night on the phone | `tools/device/night-run.sh` (records, runs the campaign, grades, packs the evidence, resets the game) |
-| Exercise serialized mask/monitor/flash calibration gates | `npm run device:calibrate -- --json` (FIXTURE only; physical calibration remains open) |
 | Analyze a recorded phone trial | `grade-minus7.py`, `camtrace.py`, `windpct.py`, `find-events.py` |
 | Classify a screenshot entirely on-device | the `tools/device/screencheck` pipeline |
 | Inspect the Android event-sheet dump | `tools/dump/readdump.py`, `tools/dump/coverage.py` |
@@ -164,18 +163,16 @@ accept a page URL when a focused run is useful.
 
 ### Coordinates, state, and active trials
 
-New device composition uses `npm run device:dry-run` and
-`DeviceControlService`. The legacy shell route is explicitly named below so
-it cannot be mistaken for the canonical command surface.
+Nights run through `tools/device/night-run.sh`, which drives `npm run
+device:campaign`; `npm run device:campaign` without `--live` is the phone-free
+dry run. The legacy shell route was archived on 2026-09-25
+(`docs/ARCHIVED-ROUTES.md`).
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
-| `tools/device/trial.sh` | compatibility launcher | Facade over `artifact-runner.mjs` for a validated bundle, or the fixture dry-run with no arguments. The historical shell runner it used to reach with `FNAF2_LEGACY_TRIAL=1` was archived on 2026-09-25 (`docs/ARCHIVED-ROUTES.md`). |
 | `npm run device:emit -- --winner winner.json --out artifacts/run-001` | compiler/check | Converts a `winner-v1` into an immutable `device-bundle-v1`: `manifest.json`, one `night-N.plan` per requested night, the resolved `profile.json`, and hashed transport-neutral `artifact.json` semantic blocks. It validates interpreter syntax, controls, contacts/timings, policy/night/profile identity, content hashes, and a bounded exact-engine replay before returning `READY`; the strategy registry contains `minus-toys`, `minus3`, and `minus7`. |
 | `tools/device/emit.mjs --winner winner.json --out artifacts/run-001` | compiler | CLI implementation of `device:emit`; it writes only a new/empty output directory and fails closed on an invalid winner or bundle. |
-| `tools/device/artifact-runner.mjs --artifact artifacts/run-001 --dry-run [--night N]` | check/report | Validates a persisted bundle, reports its bounded replay hash, and reports the persisted target-state monitor operations plus UP/DOWN-preconditioned semantic blocks (pre-Plan-22 bundles are compiled only for offline inspection). It performs no ADB/HID action. |
 | `tools/device/artifact-commands.mjs` | module/check | Compiles validated plan rows into bounded `artifact-action-block-v1` semantic blocks. Monitor targets and camera/office preconditions are explicit; it emits no coordinates or transport bytes. |
-| `tools/device/trial.sh --artifact artifacts/run-001 (--dry-run \| --live --confirm-live --qualification FILE --executor MODULE) [--night N]` | artifact consumer | Revalidates the persisted winner, profile, plan hashes, deterministic emission, and replay. Live additionally requires artifact-bound `DEVICE_MEASURED` qualification and an explicit Plan 22 executor module; only `device-executor-v1` semantic blocks plus hashes cross the boundary, and it never falls back to the legacy runner. |
 | `apps/device/src/artifact-executor.js` | device boundary | Validates the transport-neutral `device-executor-v1` request (profile/winner/plan bindings, bounded semantic blocks, no strategy/legacy fields) and wraps an explicitly injected `execute`/`abort`/`releaseAll` port. |
 | `npm run device:campaign -- --guided [--json]` | guided preflight | Prints the single Custom Night calibration session: measured menu/dial points, readback boxes, and start control. It does not touch a phone. |
 | `npm run device:campaign -- --live --confirm-live --bundle DIR --calibration FILE --qualification FILE` | supported-live gate | Runs closed ADB preflight plus campaign gates; it remains `HOLD` until a matching Night 6/7 bundle, measured Custom Night calibration, external `DEVICE_MEASURED` qualification, device-local executor, and positive lifecycle/save proof ports are composed. |

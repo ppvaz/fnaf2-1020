@@ -87,32 +87,12 @@
       ]
     },
     {
-      "contractId": "trajectory-v1",
-      "id": "trajectory-v1",
-      "version": 1,
-      "owner": "runtime",
-      "kind": "data",
-      "purpose": "Stable trajectory-v1 boundary for runtime; its validator is validateTrajectory.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "validateTrajectory",
-      "conformanceFixtures": [
-        "packages/runtime/test/scheduler.test.js"
-      ]
-    },
-    {
       "contractId": "qualification-v1",
       "id": "qualification-v1",
       "version": 1,
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
-      "purpose": "Stable qualification-v1 boundary for runtime; its validator is validateQualification.",
+      "purpose": "Stable qualification-v1 boundary for core/contracts; its validator is validateQualification.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -123,7 +103,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateQualification",
       "conformanceFixtures": [
-        "apps/device/test/service.test.js"
+        "packages/core/test/contracts.test.js"
       ]
     },
     {
@@ -205,26 +185,6 @@
       "runtimeValidation": "validateStateEstimate",
       "conformanceFixtures": [
         "tools/estimatortest.mjs"
-      ]
-    },
-    {
-      "contractId": "supervisor-v1",
-      "id": "supervisor-v1",
-      "version": 1,
-      "owner": "runtime",
-      "kind": "port",
-      "purpose": "Stable supervisor-v1 boundary for runtime; its validator is Supervisor.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "Supervisor",
-      "conformanceFixtures": [
-        "packages/runtime/test/supervisor.test.js"
       ]
     },
     {
@@ -324,16 +284,16 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateProfile",
       "conformanceFixtures": [
-        "apps/device/test/service.test.js"
+        "tools/device/test-bundle.mjs"
       ]
     },
     {
       "contractId": "telemetry-event-v1",
       "id": "telemetry-event-v1",
       "version": 1,
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
-      "purpose": "Stable telemetry-event-v1 boundary for runtime; its validator is validateTelemetry.",
+      "purpose": "Stable telemetry-event-v1 boundary for core/contracts; its validator is validateTelemetry.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -351,9 +311,9 @@
       "contractId": "session-manifest-v1",
       "id": "session-manifest-v1",
       "version": 1,
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "artifact",
-      "purpose": "Stable session-manifest-v1 boundary for runtime; its validator is validateManifest.",
+      "purpose": "Stable session-manifest-v1 boundary for core/contracts; its validator is validateManifest.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -471,9 +431,9 @@
       "contractId": "artifact-ref-v1",
       "id": "artifact-ref-v1",
       "version": 1,
-      "owner": "runtime",
+      "owner": "core/contracts",
       "kind": "data",
-      "purpose": "Stable artifact-ref-v1 boundary for runtime; its validator is validateArtifactRef.",
+      "purpose": "Stable artifact-ref-v1 boundary for core/contracts; its validator is validateArtifactRef.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -646,7 +606,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "apps/device/src/artifact-executor.js validateExecutorRequest",
       "conformanceFixtures": [
-        "apps/device/test/service.test.js"
+        "apps/device/test/adb-device-local-executor.test.js"
       ]
     },
     {
@@ -729,26 +689,6 @@
       "runtimeValidation": "packages/adapters/src/control-exclusion.js reconcileExclusiveControls",
       "conformanceFixtures": [
         "packages/adapters/test/control-exclusion.test.js"
-      ]
-    },
-    {
-      "contractId": "seam-actuator-qualification-v1",
-      "id": "seam-actuator-qualification-v1",
-      "version": 1,
-      "owner": "apps/device",
-      "kind": "artifact",
-      "purpose": "Stable seam-actuator-qualification-v1 boundary for apps/device; its validator is apps/device/src/seam-calibration.js parseSeamActuatorQualification.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "apps/device/src/seam-calibration.js parseSeamActuatorQualification",
-      "conformanceFixtures": [
-        "apps/device/test/calibration-state-rule.test.js"
       ]
     },
     {

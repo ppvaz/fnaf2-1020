@@ -11,10 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const rootPackage = JSON.parse(await readFile(join(ROOT, 'package.json')));
-const compatibility = await readFile(join(ROOT, 'docs/architecture/COMPATIBILITY.md'), 'utf8');
 assert.deepEqual(rootPackage.workspaces, ['packages/*', 'apps/*']);
 assert.equal(rootPackage.private, true);
-assert.ok(rootPackage.scripts['device:dry-run']);
+assert.ok(rootPackage.scripts['device:campaign']);
 
 async function files(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -107,9 +106,6 @@ for (const [name, select] of Object.entries(catalogPaths)) {
     `${name} names ${foreign.length} path(s) outside this repository, starting ` +
     `with ${foreign[0]}; regenerate with npm run catalog`);
 }
-for (const shim of ['tools/device/trial.sh']) {
-  assert.match(compatibility, new RegExp(shim.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')), `${shim} is missing from the compatibility inventory`);
-}
 try {
   const rootSrc = await readdir(join(ROOT, 'src'));
   assert.equal(rootSrc.length, 0, 'root src must remain empty after P9 shim removal');
@@ -163,8 +159,14 @@ for (const path of [...await files(join(ROOT, 'apps')), ...await files(join(ROOT
     assert.fail(`${path} reaches a physical actuator outside the device composition root`);
 }
 const cli = await readFile(join(ROOT, 'apps/device/src/cli.js'), 'utf8');
-assert.match(cli, /live execution requires both --live and --confirm-live/,
+// The campaign is the only command that touches a phone; its live branch must
+// keep refusing without the explicit confirmation.
+assert.match(cli, /if \(!options\.confirmLive\) throw new Error\('live campaign requires --confirm-live'\);/,
   'device live execution lost its explicit confirmation gate');
-assert.match(cli, /live transport is not composed by this CLI/,
-  'device CLI must remain fail-closed until a qualified live composition exists');
+// No second way onto the phone: the generic `live` command and the fixture
+// service behind it were retired on 2026-09-25, and must not come back as a
+// path around the campaign's gates.
+const commands = cli.match(/const knownCommands = new Set\(\[([^\]]*)\]\)/)?.[1] ?? '';
+assert.ok(commands && !/'(live|dry-run|calibrate)'/.test(commands),
+  'device CLI must not regain a live command outside the campaign');
 console.log(`architecture: ${core.length} core modules and ${production.length} package modules obey boundary checks`);

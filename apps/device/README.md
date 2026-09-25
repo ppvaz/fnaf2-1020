@@ -1,15 +1,17 @@
 # `@fnaf2-1020/device`
 
-The device app is the only composition root that chooses a profile, adapters,
-runtime services, artifact retention, and live mode. It exposes a fixture-backed
-dry run from a clean checkout and an explicit live lane that requires a lease,
-resolved profile, bounded budget, and operator confirmation.
+The device app is the campaign executor and the only composition root that
+reaches a phone: `cli.js campaign` chooses the profile, composes the ports in
+`modern-campaign-ports.js`, and plays a validated bundle only with `--live
+--confirm-live`. `tools/device/night-run.sh` drives it for every night.
 
-Public API: `DeviceControlService`, `composeDevice`, the CLI, and the bounded
-JSON-RPC/MCP-shaped adapter. Dependencies: core, runtime, and adapters.
-Commands: `device:dry-run`, `device:bench`, `device:preflight`,
-`device:campaign`, `device:qualification`, and `device:grade`. Artifacts: resolved profiles, telemetry, manifests, and result
-bundles under ignored `artifacts/`.
+Public surface: the CLI and the Cue Helper MCP (`mcp.js`). Dependencies: core
+and adapters. Commands: `device:campaign`, `device:preflight`,
+`device:clockmap`, `device:bench` and `device:grade`. Artifacts: campaign
+directories under ignored `artifacts/`, which `npm run evidence -- pack` turns
+into committed run packs. The fixture `DeviceControlService`, `composeDevice`,
+`composeModernDevice`, the seam-calibration fixture and the `dry-run`, `live`
+and `calibrate` commands were retired on 2026-09-25 (`docs/ARCHIVED-ROUTES.md`).
 
 The campaign control plane is available through safe dry-run, guided, and
 read-only preflight entry points:
@@ -41,12 +43,13 @@ only after all ten 20 dials plus Puppet 15 are read back and the menu return is
 observed.
 
 ```sh
-npm run device:dry-run -- --profile fixture-hid-screencap
+npm run device:emit -- --winner tools/device/campaign-night7-k3-winner.json --out /tmp/k3
+npm run device:campaign -- --bundle /tmp/k3 --nights 7 --profile hid-mediaprojection
 ```
 
-The generated session manifest and result bundle are retained under the ignored
-`artifacts/` directory. Coordinates and transport details come from the
-profile; they are never inferred from a policy or conversation.
+That is the phone-free dry run CI performs over a committed winner. Coordinates
+and transport details come from the profile; they are never inferred from a
+policy or conversation.
 
 Research winners use a separate, content-addressed handoff before any device
 lane is considered: `npm run device:emit -- --winner winner.json --out
@@ -60,20 +63,6 @@ trial lane. Plans are compiled into bounded state-conditioned blocks: monitor
 operations name an UP/DOWN target, camera coordinates require two agreeing UP
 observations, and office controls require DOWN. UNKNOWN or a failed bounded
 retry aborts and releases all contacts instead of continuing by toggle parity.
-
-`composeDevice` is the shared composition factory for fixture and qualification
-profiles. Live composition requires injected ADB/HID and sensor transports,
-`abort`/`releaseAll`, a `qualification-v1` record with external evidence, and
-an observed sensor→detector result before each command. Transport self-report
-cannot create a `DEVICE_MEASURED` claim; the stock CLI refuses to invent that
-composition, so hardware qualification remains an operator-owned lane.
-
-`composeModernDevice` is the Plan 22 physical seam for the current HID +
-MediaProjection profile. It accepts explicit adapter-owned HID and cue-helper
-ports; those ports must already use the device-local execution path. It does
-not import the legacy trial, infer coordinates, or turn transport availability
-into qualification evidence. Pass an explicit `DeviceArtifactExecutor` when
-consuming a compiled artifact; without it artifact execution is refused.
 
 `CampaignStateMachine` is the lifecycle seam above that executor. It requires
 positive menu and intro identity, records bounded attempts, treats unknown
