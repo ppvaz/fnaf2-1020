@@ -1,0 +1,124 @@
+{
+  "status": "COMPLETE",
+  "mode": "live",
+  "result": {
+    "schema": "device-campaign-result-v1",
+    "version": 1,
+    "specHash": "fnv1a-a7a252a1",
+    "state": "COMPLETE",
+    "targetIndex": 0,
+    "completedNights": [
+      2
+    ],
+    "attempts": [
+      {
+        "night": 2,
+        "mode": "story",
+        "attempt": 1,
+        "status": "WIN",
+        "terminal": {
+          "night": 2,
+          "outcome": "sixam",
+          "sixAm": true
+        },
+        "terminalVerification": {
+          "sixAm": true,
+          "positive": true
+        },
+        "save": {
+          "customNightVisible": false,
+          "continueVisible": false,
+          "sixthNightVisible": false,
+          "menuReturned": false,
+          "customCompleted": false,
+          "nextNightStarted": true,
+          "observed": true
+        },
+        "proofHash": "fnv1a-5ec627c0",
+        "proof": true
+      }
+    ],
+    "events": [
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "PREFLIGHT",
+        "at": 10814.326614,
+        "data": {
+          "previous": "IDLE"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "MENU",
+        "at": 11289.973835,
+        "data": {
+          "previous": "PREFLIGHT",
+          "device": "ZF525F5BH5"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "INTRO_VERIFY",
+        "at": 25308.735016,
+        "data": {
+          "previous": "MENU",
+          "target": "continue"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "ACTIVE",
+        "at": 31921.025827,
+        "data": {
+          "previous": "INTRO_VERIFY",
+          "night": 2
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.attempt",
+        "state": "ACTIVE",
+        "at": 31921.173983,
+        "data": {
+          "night": 2,
+          "attempt": 1
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "TERMINAL_VERIFY",
+        "at": 449226.423256,
+        "data": {
+          "previous": "ACTIVE",
+          "night": 2,
+          "outcome": "sixam"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "SAVE_VERIFY",
+        "at": 449841.487082,
+        "data": {
+          "previous": "TERMINAL_VERIFY",
+          "sixAm": true
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "COMPLETE",
+        "at": 500282.261236,
+        "data": {
+          "previous": "SAVE_VERIFY",
+          "completedNight": 2
+        }
+      }
+    ]
+  }
+}

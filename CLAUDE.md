@@ -86,19 +86,30 @@ target survives in it: promotion of what is won is S1 and comes first, Night 7
 reliability is S4. Nights 1-7 have all reached 6 AM on the phone; the best
 Night 7 cohort is k3's 8 of 10, and no result has a promotion edge yet.
 
-**S1 — promotion waits on an attestation and on custody (measured 2026-09-25).**
-`npm run evidence -- pack <run>` commits a live night's text evidence to
-`docs/evidence/runs/<run>/` with every frame and recording named by sha256 only,
-and `night-run.sh` packs each campaign it runs: commit the directory. `list`,
-`show` and `promote` read packs on any checkout. Two packed wins
-(`night5-n5-armblock-20260920T004056Z`, `night6-n6h2-01-20260920T024030Z`)
-pass four of the five checks and wait only for Pedro's `plan12-attestation.json`
-(agents never write one). Custody is still open for the rest: the k3 cohort's
-campaign directories and videos are gone from the machine that played them, and
-Night 5 `contact-final`, Night 6 `h` and Night 7 `k2` must be packed on the peer
-machine. Eleven `winner-v1` bindings are committed, 10/20 k2 and k3 included, and
-`test-winners-rebuild.mjs` keeps them compiling; `UNTRACKED_WINNER_DEBT` stands
-at 11 of its ceiling of 13.
+**S1 — promotion waits on an attestation and a custody decision (measured
+2026-09-25).** `npm run evidence -- pack <run>` commits a live night's text
+evidence to `docs/evidence/runs/<run>/` with every frame and recording named by
+sha256 only, and `night-run.sh` packs each campaign it runs: commit the
+directory. `list`, `show` and `promote` read packs on any checkout. Campaign
+directories that are gone are recovered from the night-run's `campaign.log`,
+which captured the CLI's event rows and printed result byte for byte (9 of 9 and
+7 of 7 on the campaigns that still have both,
+`docs/evidence/custody-recovery-20260925.json`); such a pack names its custody
+and what is lost. 83 packs are committed: all 39 executor-proven 6 AMs whose
+evidence survives on this machine (Nights 1-7), every k2 and k3 cohort slot
+(computed from packs with `npm run evidence -- cohort`: 3/10 and 8/10, the hand
+records' winning slots), the registered bindings' runs, and two nights whose
+video shows 6 AM and whose executor did not (`night5-anchor4`,
+`night5-perfetto1`). Two packed wins kept their original directories
+(`night5-n5-armblock-20260920T004056Z`, `night6-n6h2-01-20260920T024030Z`) and
+pass four of the five checks, waiting only for Pedro's `plan12-attestation.json`
+(agents never write one). The recovered wins also fail `manifestComplete`,
+because `request.json` was never logged: whether Plan 12 accepts a recovered
+pack is Pedro's decision. No k2 or k3 video exists on this machine by name or by
+content hash. 26 `winner-v1` bindings are committed and rebuild
+(`test-winners-rebuild.mjs`); `UNTRACKED_WINNER_DEBT` is 1 of 1, Night 6 `a`,
+whose winner was found but no longer rebuilds. The Night 7 4/20 Minus 3 winner
+is held back because `test-seam-slack.mjs` refuses its 0 ms margin.
 
 ## Sensors and on-device code (Pedro, 2026-09-24/25 — start here, not with the old sensors)
 

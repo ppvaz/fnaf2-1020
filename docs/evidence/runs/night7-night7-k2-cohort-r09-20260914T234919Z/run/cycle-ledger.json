@@ -1,0 +1,25 @@
+{
+ "schema": "cycle-ledger-v1",
+ "run": "night7-night7-k2-cohort-r09-20260914T234919Z",
+ "releaseVideoS": 37.281,
+ "timingsMs": {
+  "maskOn": 1749,
+  "maskOff": 7000,
+  "hallFlash": 7460,
+  "camdrop": 11150
+ },
+ "encountersFromAudio": [],
+ "cycles": [
+  {
+   "cycle": 0,
+   "occupant": "empty",
+   "occupantPx": 14936,
+   "hue": null,
+   "flashDoor": 9.9,
+   "flashPreDoor": 5.6,
+   "flash": "DIM",
+   "officeAfterMaskOff": 11.5,
+   "defended": false
+  }
+ ]
+}

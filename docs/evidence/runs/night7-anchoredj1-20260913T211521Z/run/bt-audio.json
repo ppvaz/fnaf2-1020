@@ -1,0 +1,20 @@
+{
+  "schema": "bt-audio-capture-v1",
+  "mac": "10:2B:1C:DA:18:2C",
+  "pcm": "/org/bluealsa/hci0/dev_10_2B_1C_DA_18_2C/a2dpsnk/source",
+  "format": "S24_LE",
+  "rate": 48000,
+  "channels": 2,
+  "startWallMs": 1789334123969,
+  "startMonotonicMs": 3474000,
+  "startIsUpperBound": true,
+  "pid": 56928,
+  "stopWallMs": 1789334136120,
+  "stopMonotonicMs": 3486000,
+  "rawBytes": 2829024,
+  "wallDurationMs": 12151,
+  "audioDurationMs": 7367.2,
+  "missingMs": 4783.8,
+  "missingFraction": 0.3937,
+  "timeAxis": "BROKEN"
+}

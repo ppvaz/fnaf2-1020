@@ -1,0 +1,20 @@
+run          night1-minus7-n1-first-20260919T215533Z
+bundle       artifacts/minus7-night1
+campaign dir artifacts/campaign-2026-09-19T21-55-48.277Z
+campaign exit 0
+--- attempt 1 of 1: artifacts/campaign-2026-09-19T21-55-48.277Z ---
+--- modern campaign bundle (executor-owned facts) ---
+  night reached               yes
+  arm mode                    UNKNOWN
+  arm                         UNKNOWN on attempt 1 (0 retries, 0 samples)
+  arm verified at             UNKNOWN
+  parked prefix (plan)        UNKNOWN
+  PHASE LAG (suffix shift)    UNKNOWN
+  cycle gates                 0 (0 agreed, 0 corrected, 0 aborted)
+  gate lag                    UNKNOWN
+  delivered offset            UNKNOWN
+  corrections landed          0 confirmed, 0 unconfirmed, 0 unread, 0 never read back
+  press acceptance            326 graded -- 119 MISSING, 101 PASS, 86 UNKNOWN, 20 UNSTABLE
+    SYSTEMATIC MISS           clear-3 monitorUp->true missing on 54 of 55 cycles (the rule read this state 35x elsewhere, so it can see it)
+    SYSTEMATIC MISS           clear-3 maskOn->false missing on 48 of 55 cycles (the rule read this state 500x elsewhere, so it can see it)
+  stop reason                 actuator-stopped

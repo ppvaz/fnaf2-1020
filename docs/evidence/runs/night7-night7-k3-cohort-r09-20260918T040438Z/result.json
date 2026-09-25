@@ -1,0 +1,136 @@
+{
+  "status": "COMPLETE",
+  "mode": "live",
+  "result": {
+    "schema": "device-campaign-result-v1",
+    "version": 1,
+    "specHash": "fnv1a-5378603e",
+    "state": "COMPLETE",
+    "targetIndex": 0,
+    "completedNights": [
+      7
+    ],
+    "attempts": [
+      {
+        "night": 7,
+        "mode": "custom",
+        "attempt": 1,
+        "status": "WIN",
+        "terminal": {
+          "night": 7,
+          "outcome": "sixam",
+          "sixAm": true
+        },
+        "terminalVerification": {
+          "sixAm": true,
+          "positive": true
+        },
+        "save": {
+          "customNightVisible": false,
+          "continueVisible": false,
+          "sixthNightVisible": false,
+          "menuReturned": true,
+          "customCompleted": true,
+          "nextNightStarted": false,
+          "observed": true
+        },
+        "customReadback": {},
+        "proofHash": "fnv1a-a0d52e72",
+        "proof": true
+      }
+    ],
+    "events": [
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "PREFLIGHT",
+        "at": 12699.321645,
+        "data": {
+          "previous": "IDLE"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "MENU",
+        "at": 13190.95161,
+        "data": {
+          "previous": "PREFLIGHT",
+          "device": "ZF525F5BH5"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "CUSTOM_VERIFY",
+        "at": 23672.853455,
+        "data": {
+          "previous": "MENU",
+          "target": "customNight"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "INTRO_VERIFY",
+        "at": 27788.899353,
+        "data": {
+          "previous": "CUSTOM_VERIFY",
+          "target": "customNight",
+          "readback": true
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "ACTIVE",
+        "at": 35085.933162,
+        "data": {
+          "previous": "INTRO_VERIFY",
+          "night": 7
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.attempt",
+        "state": "ACTIVE",
+        "at": 35086.428198,
+        "data": {
+          "night": 7,
+          "attempt": 1
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "TERMINAL_VERIFY",
+        "at": 454734.647697,
+        "data": {
+          "previous": "ACTIVE",
+          "night": 7,
+          "outcome": "sixam"
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "SAVE_VERIFY",
+        "at": 455338.098979,
+        "data": {
+          "previous": "TERMINAL_VERIFY",
+          "sixAm": true
+        }
+      },
+      {
+        "schema": "campaign-event-v1",
+        "type": "campaign.state",
+        "state": "COMPLETE",
+        "at": 483296.932759,
+        "data": {
+          "previous": "SAVE_VERIFY",
+          "completedNight": 7
+        }
+      }
+    ]
+  }
+}

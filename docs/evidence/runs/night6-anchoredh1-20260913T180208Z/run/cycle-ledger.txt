@@ -1,0 +1,43 @@
+cycle | occupant at drop | flash door/pre class | office after mask-off
+    0 | empty                  |  10.3/  9.9 FLAT |  16.2
+    1 | empty                  |  10.3/  9.9 FLAT |  16.2
+    2 | empty                  |  10.2/  9.9 FLAT |  16.2
+    3 | empty                  |  10.3/  9.9 FLAT |  16.2
+    4 | empty                  |  15.4/  9.9 DIM  |  16.2
+    5 | empty                  |  15.4/  9.9 DIM  |  16.2
+    6 | empty                  |  28.8/  9.9 LIT  |  16.1
+    7 | empty                  |  10.3/  9.9 FLAT |  16.2
+    8 | empty                  |   3.4/  2.2 FLAT |   3.7  defended
+    9 | empty                  |  10.3/  9.9 FLAT |  16.1
+   10 | empty                  |  28.9/  9.9 LIT  |  16.1
+   11 | empty                  |  10.3/  9.9 FLAT |  16.1
+   12 | empty                  |  10.3/  9.9 FLAT |  16.1
+   13 | empty                  |  28.8/  9.9 LIT  |  16.1
+   14 | W.Bonnie               |   3.4/  2.2 FLAT |   3.7  defended
+   15 | empty                  |   7.5/  2.2 DIM  |   3.7  defended
+   16 | unlabelled hue 57      |  28.9/  9.9 LIT  |  16.1
+   17 | empty                  |   3.5/  2.3 FLAT |   4.0  defended
+   18 | empty                  |  10.3/  9.9 FLAT |  16.1
+   19 | empty                  |  28.9/  9.9 LIT  |  16.1
+   20 | W.Bonnie               |   3.4/  2.3 FLAT |   3.9  defended
+   21 | empty                  |   3.5/  2.3 FLAT |   3.8  defended
+   22 | unlabelled hue 57      |  10.3/  9.9 FLAT |  16.1
+   23 | empty                  |   4.1/  2.2 FLAT |   3.7  defended
+   24 | empty                  |  10.3/  9.9 FLAT |  16.1
+   25 | empty                  |  10.3/  9.9 FLAT |  16.1
+   26 | empty                  |   7.4/  2.2 DIM  |   3.7  defended
+   27 | unlabelled hue 57      |   3.5/  2.2 FLAT |   3.8  defended
+   28 | empty                  |   7.7/  2.2 DIM  |   3.8  defended
+   29 | unlabelled hue 57      |  15.4/  9.9 DIM  |  16.1
+   30 | empty                  |   3.3/  2.1 FLAT |   3.7  defended
+   31 | W.Bonnie               |  10.3/  9.9 FLAT |  16.1
+   32 | unlabelled hue 57      |   7.7/  2.2 DIM  |   3.7  defended
+   33 | empty                  |   4.2/  2.1 FLAT |   3.6  defended
+   34 | empty                  |  10.3/  9.9 FLAT |  16.1
+   35 | empty                  |  28.9/  9.9 LIT  |  16.1
+   36 | empty                  |   7.8/  2.2 DIM  |   3.7  defended
+   37 | empty                  |  10.3/  9.9 FLAT |  16.2
+   38 | empty                  |   7.7/  2.2 DIM  |   3.7  defended
+   39 | empty                  |  28.9/  9.9 LIT  |  16.1
+   40 | empty                  |   7.4/  2.1 DIM  |   3.7  defended
+   41 | empty                  |  17.3/ 17.3 FLAT |   3.7  defended

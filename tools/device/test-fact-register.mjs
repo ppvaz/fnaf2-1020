@@ -73,13 +73,14 @@ for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
 }
 // A registered binding must be rebuildable from the tree: its winner.json,
 // hashed as stored, must be committed under tools/device/*-winner.json. The
-// thirteen bindings registered before 2026-09-15 are carried as a closed debt
-// list; anything else without a tracked winner is refused, and so is any
-// growth of that list.
+// thirteen bindings registered before 2026-09-15 were carried as a closed debt
+// list; on 2026-09-25 ten of the eleven left were found on this machine and
+// committed, and the one that no longer rebuilds is all that remains. Anything
+// else without a tracked winner is refused, and so is any growth of that list.
 const trackedWinners = new Map(readdirSync(join(ROOT, 'tools/device'))
   .filter(name => name.endsWith('-winner.json'))
   .map(name => [stableHash(JSON.parse(readFileSync(join(ROOT, 'tools/device', name), 'utf8'))), name]));
-const DEBT_CEILING = 13;
+const DEBT_CEILING = 1;
 if (Object.keys(UNTRACKED_WINNER_DEBT).length > DEBT_CEILING)
   fail(`UNTRACKED_WINNER_DEBT grew past its ${DEBT_CEILING} closed entries: commit the winner instead`);
 for (const hash of Object.keys(UNTRACKED_WINNER_DEBT))

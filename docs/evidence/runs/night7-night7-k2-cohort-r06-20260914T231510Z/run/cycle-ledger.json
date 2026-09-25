@@ -1,0 +1,256 @@
+{
+ "schema": "cycle-ledger-v1",
+ "run": "night7-night7-k2-cohort-r06-20260914T231510Z",
+ "releaseVideoS": 36.518,
+ "timingsMs": {
+  "maskOn": 1749,
+  "maskOff": 7000,
+  "hallFlash": 7460,
+  "camdrop": 11150
+ },
+ "encountersFromAudio": [],
+ "cycles": [
+  {
+   "cycle": 0,
+   "occupant": "empty",
+   "occupantPx": 14972,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.2,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.8,
+   "defended": false
+  },
+  {
+   "cycle": 1,
+   "occupant": "empty",
+   "occupantPx": 14899,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.8,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 2,
+   "occupant": "W.Bonnie",
+   "occupantPx": 27582,
+   "hue": 227.6,
+   "flashDoor": 15.5,
+   "flashPreDoor": 4.1,
+   "flash": "DIM",
+   "officeAfterMaskOff": 16.1,
+   "defended": false
+  },
+  {
+   "cycle": 3,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 7.6,
+   "flashPreDoor": 2.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 4,
+   "occupant": "empty",
+   "occupantPx": 15453,
+   "hue": null,
+   "flashDoor": 7.7,
+   "flashPreDoor": 2.3,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.6,
+   "defended": true
+  },
+  {
+   "cycle": 5,
+   "occupant": "W.Bonnie",
+   "occupantPx": 27593,
+   "hue": 227.4,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.9,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 6,
+   "occupant": "empty",
+   "occupantPx": 1,
+   "hue": null,
+   "flashDoor": 7.6,
+   "flashPreDoor": 1.7,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.8,
+   "defended": true
+  },
+  {
+   "cycle": 7,
+   "occupant": "empty",
+   "occupantPx": 14837,
+   "hue": null,
+   "flashDoor": 4.3,
+   "flashPreDoor": 2.3,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 3.4,
+   "defended": true
+  },
+  {
+   "cycle": 8,
+   "occupant": "empty",
+   "occupantPx": 14969,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.2,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.8,
+   "defended": false
+  },
+  {
+   "cycle": 9,
+   "occupant": "W.Bonnie",
+   "occupantPx": 27568,
+   "hue": 227.7,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.2,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.4,
+   "defended": false
+  },
+  {
+   "cycle": 10,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26824,
+   "hue": 57.3,
+   "flashDoor": 3.3,
+   "flashPreDoor": 2.5,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 3.4,
+   "defended": true
+  },
+  {
+   "cycle": 11,
+   "occupant": "empty",
+   "occupantPx": 14941,
+   "hue": null,
+   "flashDoor": 7.7,
+   "flashPreDoor": 2.1,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.4,
+   "defended": true
+  },
+  {
+   "cycle": 12,
+   "occupant": "empty",
+   "occupantPx": 1,
+   "hue": null,
+   "flashDoor": 10.4,
+   "flashPreDoor": 4.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 15.6,
+   "defended": false
+  },
+  {
+   "cycle": 13,
+   "occupant": "empty",
+   "occupantPx": 1,
+   "hue": null,
+   "flashDoor": 7.6,
+   "flashPreDoor": 1.9,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.6,
+   "defended": true
+  },
+  {
+   "cycle": 14,
+   "occupant": "empty",
+   "occupantPx": 15532,
+   "hue": null,
+   "flashDoor": 4.3,
+   "flashPreDoor": 2.6,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 15,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26814,
+   "hue": 57.3,
+   "flashDoor": 10.4,
+   "flashPreDoor": 3.9,
+   "flash": "DIM",
+   "officeAfterMaskOff": 15.6,
+   "defended": false
+  },
+  {
+   "cycle": 16,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 7.6,
+   "flashPreDoor": 2.1,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.5,
+   "defended": true
+  },
+  {
+   "cycle": 17,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26818,
+   "hue": 57.3,
+   "flashDoor": 7.6,
+   "flashPreDoor": 2.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.4,
+   "defended": true
+  },
+  {
+   "cycle": 18,
+   "occupant": "empty",
+   "occupantPx": 15503,
+   "hue": null,
+   "flashDoor": 7.6,
+   "flashPreDoor": 1.9,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 19,
+   "occupant": "empty",
+   "occupantPx": 1,
+   "hue": null,
+   "flashDoor": 10.4,
+   "flashPreDoor": 4.0,
+   "flash": "DIM",
+   "officeAfterMaskOff": 15.4,
+   "defended": false
+  },
+  {
+   "cycle": 20,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26819,
+   "hue": 57.4,
+   "flashDoor": 7.3,
+   "flashPreDoor": 2.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.6,
+   "defended": true
+  },
+  {
+   "cycle": 21,
+   "occupant": "empty",
+   "occupantPx": 14940,
+   "hue": null,
+   "flashDoor": 3.3,
+   "flashPreDoor": 2.5,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 3.5,
+   "defended": true
+  }
+ ]
+}

@@ -1,0 +1,145 @@
+==============================================================
+run: night7-anchoredi2-20260913T184345Z
+==============================================================
+capture: night7-anchoredi2-20260913T184345Z.mp4
+hid trace: MISSING (run with HID_TRACE_RUN=1)
+input trace: none (run atrace-input.sh around the command)
+SurfaceFlinger latency: none (set SF_LAYER for capture)
+cue trace: none (run with CUE_HELPER=1)
+legacy night PCM: none (receiver owns live audio)
+audio facts: none (run with external authority socket)
+session manifest: none (unmanifested run)
+campaign bundle: artifacts/campaign-2026-09-13T18-43-58.687Z
+frame trace: night7-anchoredi2-20260913T184345Z-768141615358630.tsv
+capture rate: 45 fps (ffprobe 107730000/2401583)
+  using measured 45 fps for timing-sensitive graders (nominal 60)
+
+--- session manifest (v1 provenance contract) ---
+  no night7-anchoredi2-20260913T184345Z-session.json: this run is unmanifested, so nothing below can
+  name its game build, model hashes, clock alignment or win evidence.
+  Nothing was validated.
+  Run under tools/device/trial.sh, which emits one.
+
+--- input dispatch / frame landing (Perfetto) ---
+  no input trace kept for night7-anchoredi2-20260913T184345Z; rendered video cannot establish dispatch.
+
+--- clock transitions (HUD first frame, 1 AM) ---
+clocktrace: HUD first=31000ms; 1 AM was not found
+
+[ 1/13   7%] --- video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) ---
+           ... video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) still running (20s)
+--- survival (the only number that is a run length) ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: 213 frames at 4.0 fps
+  night HUD appears at 31.0s
+  1 HUD-absent stretches contain no death static -- the monitor is up; longest 19.5s at 33.8s
+  1 of them go fully dark and the HUD returns after -- longest 19.5s at 33.8s. A dark camera, a raised mask and a death minigame are not separated here: UNKNOWN(dark is ambiguous)
+  HUD last seen at 33.5s of 53.2s recorded
+  ALIVE for at least 2.8s -- nothing in this recording shows the run ending, so this is a lower bound
+[decode-once] survival (the only number that is a run length): exit 0, 12s, ok
+--- camera selections ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: selected-camera trace at 45 fps
+  cam 07    4.31s ->   4.36s  (0.04s)
+summary: 0 complete 10-04-07-11 sweeps, 0 incomplete sweep starts
+[decode-once] camera selections: exit 0, 12s, ok
+--- camera light actually flashing ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: signature sweepcheck-signature.json  (sweep lit iff >=2/3 cams)
+summary: 0/0 sweeps lit (>=2 of 3 cameras)
+NO GRADABLE SWEEP: no sweep window was found in this run, so this instrument says nothing about whether the light fired.
+[decode-once] camera light actually flashing: exit 3, 24s, a result about the run, not an instrument failure
+--- keyframes (what the run contained) ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: 107 frames at 2.0 fps, 12 kept
+  timestamps: 0.0s 1.0s 4.0s 11.5s 12.0s 14.0s 23.0s 26.0s 30.5s 33.5s 45.0s 50.0s
+  sheet: tools/device/../../captures/night7-anchoredi2-20260913T184345Z-keyframes.png
+[decode-once] keyframes (what the run contained): exit 0, 24s, ok
+--- music box ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: 53.33s sampled at 12 fps
+  no CAM 11 music-box gauge detected
+[decode-once] music box: exit 0, 12s, ok
+--- office / mask / camera intervals ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: 53.33s sampled at 12 fps
+  camera   0.08s ->   2.08s  (2.00s)
+  camera   2.67s ->   4.25s  (1.58s)
+  camera  12.00s ->  23.00s  (11.00s)
+  office  31.00s ->  33.75s  (2.75s)
+  camera  37.67s ->  39.50s  (1.83s)
+  camera  50.42s ->  53.00s  (2.58s)
+summary: 5 camera intervals, 0 visible hall flashes, 0 latched-mask intervals
+note: visible hall flashes are only a rendering lower bound; the sourced movement blackout can hide logically accepted Foxy flashes
+[decode-once] office / mask / camera intervals: exit 0, 12s, ok
+--- run timeline and terminal outcome ---
+tools/device/../../captures/night7-anchoredi2-20260913T184345Z.mp4: 107 frames at 2.0 fps, 640x288
+      0.0s ->     5.0s  (   5.0s)  other
+      5.0s ->     9.0s  (   4.0s)  camera
+      9.0s ->    25.0s  (  16.0s)  other
+     25.0s ->    26.5s  (   1.5s)  camera
+     26.5s ->    29.0s  (   2.5s)  intro
+     29.0s ->    31.0s  (   2.0s)  dark
+     31.0s ->    38.0s  (   7.0s)  office
+     38.0s ->    41.0s  (   3.0s)  other
+     41.0s ->    45.0s  (   4.0s)  camera
+     45.0s ->    47.5s  (   2.5s)  other
+     47.5s ->    50.0s  (   2.5s)  camera
+     50.0s ->    53.5s  (   3.5s)  other
+
+  TERMINAL: unknown
+  nothing terminal was captured; the recording may stop before the end of the night
+[decode-once] run timeline and terminal outcome: exit 0, 24s, ok
+[decode-once] 2 shared decode(s) for 7 instruments: 7 branches in 10.1s (exit 0), 3 branches in 9.3s (exit 0)
+[ 1/13   7%] video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) took 24s (pipeline 30s)
+
+[ 2/13  15%] --- campaign bundle (executor-owned facts) ---
+--- modern campaign bundle (executor-owned facts) ---
+  night reached               NO -- the run never entered a night
+  arm mode                    observe-once
+  arm                         UNKNOWN on attempt 1 (0 retries, 0 samples)
+  arm verified at             UNKNOWN
+  parked prefix (plan)        UNKNOWN
+  PHASE LAG (suffix shift)    none -- observe-once never parks the stream
+  cycle gates                 0 (0 agreed, 0 corrected, 0 aborted)
+  gate lag                    UNKNOWN
+  delivered offset            UNKNOWN
+  corrections landed          0 confirmed, 0 unconfirmed, 0 unread, 0 never read back
+  press acceptance            no transition was graded
+  stop reason                 campaign-abort (adb device-local executor: HID schedule exceeds the observation envelope)
+[ 2/13  15%] campaign bundle (executor-owned facts) took 0s (pipeline 30s)
+
+[ 3/13  23%] --- delivered phase vs the model band ---
+file://tools/device/phase-reconstruct.mjs:32
+const fail = message => { throw new Error(`phase reconstruction: ${message}`); };
+                                ^
+
+Error: phase reconstruction: bundle has no hid.schedule-start
+    at fail (file://tools/device/phase-reconstruct.mjs:32:33)
+    at reconstruct (file://tools/device/phase-reconstruct.mjs:151:15)
+    at file://tools/device/phase-reconstruct.mjs:371:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.2
+  ^ FAILED (resource-limited or diagnostic error)
+[ 3/13  23%] delivered phase vs the model band took 0s (pipeline 30s)
+
+[ 4/13  30%] --- native-frame state coverage for the actuation ---
+ACTUATION_METRIC trace=night7-anchoredi2-20260913T184345Z-768141615358630.tsv scope=full-trace frames=1175 monitor_unknown_frame_pct=86.213 mask_unknown_frame_pct=86.213 state_basis=native-strokes unknown_frames=1013/1175 unknown_frame_pct=86.213
+[ 4/13  30%] native-frame state coverage for the actuation took 0s (pipeline 30s)
+
+[ 5/13  38%] --- scheduled contacts against frame stalls ---
+tap-stall-audit: bundle has no hid.night-go: the run never reached a night
+  ^ FAILED (resource-limited or diagnostic error)
+[ 5/13  38%] scheduled contacts against frame stalls took 0s (pipeline 30s)
+
+--- input dispatch aligned to presented frames ---
+  a frame trace is present but no Perfetto input trace is: dispatch
+  cannot be aligned to frames. Run atrace-input.sh around the command.
+
+--- elegance (inputs sent vs needed) ---
+  no driver log for night7-anchoredi2-20260913T184345Z; nothing to count. Runs before 2026-08-26 have none.
+
+--- Balloon Boy's vent bang ---
+  no raw audio kept for night7-anchoredi2-20260913T184345Z; scan-night requires a receiver PCM capture.
+  external authority facts are also absent; run with CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH.
+
+==============================================================
+VERDICT: at least one instrument FAILED for night7-anchoredi2-20260913T184345Z -- read above
+==============================================================

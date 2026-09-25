@@ -393,23 +393,9 @@ export const ANCHOR_AIMS = Object.freeze({
 // its winner (tools/device/campaign-night<N>-<name>-winner.json) from the
 // path each line names.
 export const UNTRACKED_WINNER_DEBT = Object.freeze({
-  'fnv1a-81b5e51c': 'night 5 (2026-09-12): winner path not named by its evidence',
-  'fnv1a-bc5e044c': 'night 6 a: winner path not named by its evidence',
-  'fnv1a-94baf687': 'night 6 b: winner path not named by its evidence',
-  'fnv1a-5d414fce': 'night 6 c: winner path not named by its evidence',
-  'fnv1a-1292e481': 'night 6 d: winner path not named by its evidence',
-  'fnv1a-1cd7cd43': 'night 6 e: winner path not named by its evidence',
-  'fnv1a-3554e353': 'night 6 f: winner path not named by its evidence',
-  'fnv1a-e89a28ca': 'night 6 g: winner path not named by its evidence',
-  'fnv1a-37278c63': 'night 6 h: the binding as registered. The migrated binding that actually ran ' +
-    '(6 AM on 2026-09-13 and again on 2026-09-16) is tracked as ' +
-    'tools/device/campaign-night6-h-winner.json, fnv1a-3d5b2167; the hash moved when observeUntilMs ' +
-    'gained a default, with plan, profile and replay identical ' +
-    '(artifacts/night6-cohort-h/qualification-seedlock.json). That migration is now EXECUTABLE, not ' +
-    'prose: the entry declares alsoBinds, anchorAimFor resolves the tracked hash to this aim, and ' +
-    'test-fact-register.mjs re-emits the winner to prove it still emits plan fnv1a-c651e2ff',
-  'fnv1a-651ed623': 'night 7 i: winner path not named by its evidence',
-  'fnv1a-f337717a': 'night 7 j: artifacts/night7-anchored-j/winner.json (peer machine)',
+  'fnv1a-bc5e044c': 'night 6 a: found 2026-09-25 at artifacts/night6-anchored/bundle/winner.json with this ' +
+    'stableHash, but not committable: it no longer rebuilds (winner.gate.replayHash does not match the ' +
+    'candidate replay under the current engine), which test-winners-rebuild.mjs refuses by design',
 });
 
 /** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */

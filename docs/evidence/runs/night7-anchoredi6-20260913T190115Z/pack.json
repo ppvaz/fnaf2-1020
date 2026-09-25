@@ -1,0 +1,260 @@
+{
+  "schema": "run-pack-v1",
+  "version": 1,
+  "id": "night7-anchoredi6-20260913T190115Z",
+  "campaign": "campaign-2026-09-13T19-01-29.243Z",
+  "run": "night7-anchoredi6-20260913T190115Z",
+  "outcome": "RESULT_LOST",
+  "claimLevel": "UNKNOWN",
+  "nights": null,
+  "bundle": {
+    "path": "artifacts/night7-anchored-i/bundle",
+    "winnerHash": "fnv1a-651ed623"
+  },
+  "files": [
+    {
+      "name": "events.jsonl",
+      "sha256": "1aa36b6db2743b752317ee2d7d4ea057c8141d989683c32ac330f24e390b2162",
+      "bytes": 38641,
+      "source": {
+        "sha256": "0052cb35aa57189abd4466c7ec46e77f72d4dd82675743e2874970eb96e73107",
+        "bytes": 49973
+      },
+      "redactions": {
+        "paths": 1,
+        "pixelArrays": 12,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-aim.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-max-k.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-period.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/bt-audio.err",
+      "sha256": "4539117e51f9d097da3144703f08563fc1a6852d1d624bc316a8dd862fa7d9ef",
+      "bytes": 119,
+      "source": {
+        "sha256": "4539117e51f9d097da3144703f08563fc1a6852d1d624bc316a8dd862fa7d9ef",
+        "bytes": 119
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/bt-audio.json",
+      "sha256": "73e62b013e817cdbf37afa43735ce5cd2412cd9bec96210c6847e41b4750f909",
+      "bytes": 522,
+      "source": {
+        "sha256": "73e62b013e817cdbf37afa43735ce5cd2412cd9bec96210c6847e41b4750f909",
+        "bytes": 522
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/campaign.exit",
+      "sha256": "8fd79ff1a65b7a94b38d3a5dcfa3006fb83e8b2d2566534683b1e3c0bf2f3bb1",
+      "bytes": 16,
+      "source": {
+        "sha256": "8fd79ff1a65b7a94b38d3a5dcfa3006fb83e8b2d2566534683b1e3c0bf2f3bb1",
+        "bytes": 16
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/grade.log",
+      "sha256": "e2ecde35bfd27eb6d8cf89d43263a8a0da5fd1f0d3bb9b38e707624165ba0e46",
+      "bytes": 29965,
+      "source": {
+        "sha256": "0f85ba0ec1d59751cc078f3617662a67ac47c1b676ce94364cd10ccb9595432f",
+        "bytes": 30317
+      },
+      "redactions": {
+        "paths": 11,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/phase.json",
+      "sha256": "eea5e565f25f84dd509eb7c58743911707e6c1328e195471c5009aeaed2a3991",
+      "bytes": 16463,
+      "source": {
+        "sha256": "0a2b4fda160501154608ac2a4dacb9019b96d3d5acd06c3161b872bce058ee11",
+        "bytes": 16495
+      },
+      "redactions": {
+        "paths": 1,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/phase.log",
+      "sha256": "904f5e9b431bbaecde301758c98f8f7e16dc933c016424ddc4437f8a97bb1e26",
+      "bytes": 61,
+      "source": {
+        "sha256": "904f5e9b431bbaecde301758c98f8f7e16dc933c016424ddc4437f8a97bb1e26",
+        "bytes": 61
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/post-run-title.txt",
+      "sha256": "9900ea9ddb44f81f8e371da75452c22318a4af0849a20e2447d79fac7fe0ec23",
+      "bytes": 55,
+      "source": {
+        "sha256": "9900ea9ddb44f81f8e371da75452c22318a4af0849a20e2447d79fac7fe0ec23",
+        "bytes": 55
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/run-report.json",
+      "sha256": "0708bc2ef32a600ff2457baaa8061ed3cdd3510f4a09a3e7c9929351427b0235",
+      "bytes": 1696,
+      "source": {
+        "sha256": "0708bc2ef32a600ff2457baaa8061ed3cdd3510f4a09a3e7c9929351427b0235",
+        "bytes": 1696
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/verdict.txt",
+      "sha256": "84f597f38d6eaa4c725c61cf18cb2804493f266b49edaf6a27e898256f85f217",
+      "bytes": 976,
+      "source": {
+        "sha256": "ef0db45cdd27dc675b4497bd21fd0b9a67e05bf3ebce2e1f773ec3ec2f58d802",
+        "bytes": 1040
+      },
+      "redactions": {
+        "paths": 2,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/video.sha256",
+      "sha256": "d323460470373489690e37e31e2a6f58c7be39db741dcd47a008360cd68f763a",
+      "bytes": 114,
+      "source": {
+        "sha256": "d323460470373489690e37e31e2a6f58c7be39db741dcd47a008360cd68f763a",
+        "bytes": 114
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    }
+  ],
+  "withheld": [
+    {
+      "name": "night7-anchoredi6-20260913T190115Z.mp4",
+      "sha256": "feb8e000d25a757d8b096175c604c6bd8154449fea5ae9422109166a16337216",
+      "bytes": null,
+      "kind": "video"
+    },
+    {
+      "name": "run/campaign.log",
+      "sha256": "c73c6356c68349a9e0639fd2924a870687124507235d9c5bbcf0307e5dff246a",
+      "bytes": 55763,
+      "kind": "other"
+    },
+    {
+      "name": "run/frame-trace.file",
+      "sha256": "3c4add6bfac61923c7cbffeb778fb78114cdc2d1e033487779b7deec3d448c46",
+      "bytes": 55,
+      "kind": "other"
+    },
+    {
+      "name": "run/frame-trace.state",
+      "sha256": "fca909a659de0cd997f77f4664430d397c1f87c148898e588fd84ed179db3c11",
+      "bytes": 7,
+      "kind": "other"
+    },
+    {
+      "name": "run/input-events.txt",
+      "sha256": "d9c05b1e5a4976f02c04f2bbdf145a9507a1ce7c92f3c990e78f08021c6b0f87",
+      "bytes": 107104,
+      "kind": "other"
+    }
+  ],
+  "packer": "tools/evidence-pack.mjs",
+  "custody": {
+    "kind": "recovered-from-run-log",
+    "source": "run/campaign.log",
+    "sourceSha256": "c73c6356c68349a9e0639fd2924a870687124507235d9c5bbcf0307e5dff246a",
+    "recovered": [
+      "events.jsonl"
+    ],
+    "lost": [
+      "observations.jsonl",
+      "observer frames",
+      "request.json",
+      "result.json"
+    ],
+    "validation": "docs/evidence/custody-recovery-20260925.json"
+  }
+}

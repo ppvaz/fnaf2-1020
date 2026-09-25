@@ -1,0 +1,15 @@
+{"at":"2026-09-13T17:34:35.031Z","type":"evidence.started","evidenceDirectory":"artifacts/campaign-2026-09-13T17-34-35.030Z"}
+{"at":"2026-09-13T17:34:35.031Z","type":"arm.mode","mode":"observe-once"}
+{"at":"2026-09-13T17:34:37.050Z","type":"observation","label":"items=continue,newGame,sixthNight","frame":"00001-title-observe.py.png"}
+{"at":"2026-09-13T17:34:45.995Z","type":"observation","label":"state=title","frame":"00003-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:46.988Z","type":"observation","label":"state=intro","frame":"00004-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:48.719Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00006-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:49.918Z","type":"origin.anchor","status":"scheduled","aimMs":4870,"maxK":0,"onsetHostMs":24677.146592378616,"plannedAfterOnsetMs":543.7871756213826,"candidates":[{"k":0,"releaseHostMs":29547.146592378616}],"authorizedAtHostMs":null,"hostClock":"performance-now-ms","wallMinusHostMs":1789320864696.7527,"reads":25,"failures":0,"onsetDeviceMs":763991899.830998,"offsetMs":-763967222.6844056,"uncertaintyMs":2.320055500000308,"rttMs":4.640111000000616}
+{"at":"2026-09-13T17:34:51.078Z","type":"observation","label":"state=night","frame":"00008-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:54.244Z","type":"origin.anchor","status":"released","aimMs":4870,"k":0,"releaseHostMs":29547.146592378616,"firedHostMs":29547.324901,"firedWallMs":1789320894244,"lateMs":0.17830862138362136,"releasedAimMs":4870.178308621384,"uncertaintyMs":2.320055500000308,"authorizedAtHostMs":26381.12041,"authorizedAfterOnsetMs":1703.9738176213832}
+{"at":"2026-09-13T17:34:54.248Z","type":"campaign.abort.restart","reason":"adb device-local executor: action toys-7 overlaps the previous HID macro"}
+{"at":"2026-09-13T17:34:55.662Z","type":"observation","label":"unknown=no-signature-matched","frame":"00009-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:56.744Z","type":"observation","label":"state=intro","frame":"00010-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:34:58.608Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00012-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:35:00.358Z","type":"observation","label":"state=title","frame":"00013-lifecycle-observe.py.png"}
+{"at":"2026-09-13T17:35:11.734Z","type":"campaign.abort.restarted","state":"title","launcher":"com.scottgames.fnaf2/.Main","cueHelperPort":49707}

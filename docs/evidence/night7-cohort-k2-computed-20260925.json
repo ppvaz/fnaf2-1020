@@ -1,0 +1,213 @@
+{
+  "schema": "cohort-result-v2",
+  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
+  "night": 7,
+  "binding": "fnv1a-7e4bf3e8",
+  "size": 10,
+  "prefix": "night7-k2-cohort",
+  "rule": "WIN = executor terminal sixam AND video terminal clear (the predeclared rule)",
+  "counted": 10,
+  "wins": 3,
+  "deaths": 2,
+  "ungraded": 0,
+  "disputed": 0,
+  "unknown": 5,
+  "missing": 0,
+  "winRate": "3/10",
+  "wrongBinding": [],
+  "status": "INCOMPLETE",
+  "slots": [
+    {
+      "slot": "r01",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r01b-20260914T220233Z",
+          "packSha256": "e350e23b36057de08e1ad40f6a46a268d2627fedf27554d9655b73fe24f97e47",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455.0s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r02",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r02-20260914T221655Z",
+          "packSha256": "ce7c43baf3700751ccd4af8b1f030a59c9b640b8208f486c7b0a3219db7a8476",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r03",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r03-20260914T223207Z",
+          "packSha256": "a9403cfa155743a6bf50fb10ec1c876904d23a7f16ef7879b15d765515bc03a4",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 454.5s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r04",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r04-20260914T224934Z",
+          "packSha256": "b4a7f82a5bb410580f15125872392c818d9498a471647393e6cc5021dc590990",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r05",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r05-20260914T225440Z",
+          "packSha256": "6ebaeed50cdc6a70f5b9c9ae860960b0cf955f0873de839f375e3baecc89fba1",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455.0s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r06",
+      "status": "DEATH",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r06-20260914T231510Z",
+          "packSha256": "9673cd59ab49ede924840157a5ec625e3a109c8d3b31f482138f72b27a83c74d",
+          "reached": true,
+          "executor": "DEATH",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": null,
+          "bindingMatches": true,
+          "status": "DEATH",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r07",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r07-20260914T232510Z",
+          "packSha256": "079c14471da547e1f285e66651882df986f809f7b5f961a523d501e6267c1836",
+          "reached": false,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "anchored release refused (onset-not-latched); strict anchor does not release unanchored",
+          "bindingMatches": true,
+          "status": "EXCLUDED",
+          "role": "excluded"
+        },
+        {
+          "run": "night7-night7-k2-cohort-r07b-20260914T232905Z",
+          "packSha256": "21051e13339481b91a69fd837e5a1a8441f54ebca396eb4cc58dd18272b587e1",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r08",
+      "status": "DEATH",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r08-20260914T233902Z",
+          "packSha256": "5377278c450f2dd718743f877e0e9a9a95a55caa8b68c0785c055c72329e7251",
+          "reached": true,
+          "executor": "DEATH",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": null,
+          "bindingMatches": true,
+          "status": "DEATH",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r09",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r09-20260914T234919Z",
+          "packSha256": "9e08b25187794203aea2c51df34878483b59a1cc2e2878da769aba1555140fde",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r10",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k2-cohort-r10-20260914T235238Z",
+          "packSha256": "e58853219951e399fef99b8981239aad52d906535f9576d188cd5aed15e0e68a",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": null,
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+ "schema": "cycle-ledger-v1",
+ "run": "night7-night7-k2-cohort-r07b-20260914T232905Z",
+ "releaseVideoS": 36.702,
+ "timingsMs": {
+  "maskOn": 1749,
+  "maskOff": 7000,
+  "hallFlash": 7460,
+  "camdrop": 11150
+ },
+ "encountersFromAudio": [],
+ "cycles": [
+  {
+   "cycle": 0,
+   "occupant": "empty",
+   "occupantPx": 14768,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 5.3,
+   "flash": "LIT",
+   "officeAfterMaskOff": 16.0,
+   "defended": false
+  },
+  {
+   "cycle": 1,
+   "occupant": "empty",
+   "occupantPx": 14852,
+   "hue": null,
+   "flashDoor": 15.5,
+   "flashPreDoor": 4.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 16.0,
+   "defended": false
+  },
+  {
+   "cycle": 2,
+   "occupant": "empty",
+   "occupantPx": 14755,
+   "hue": null,
+   "flashDoor": 15.5,
+   "flashPreDoor": 7.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 16.0,
+   "defended": false
+  },
+  {
+   "cycle": 3,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 5.8,
+   "flash": "LIT",
+   "officeAfterMaskOff": 16.1,
+   "defended": false
+  },
+  {
+   "cycle": 4,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26408,
+   "hue": 57.1,
+   "flashDoor": 4.3,
+   "flashPreDoor": 1.6,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 4.0,
+   "defended": true
+  },
+  {
+   "cycle": 5,
+   "occupant": "empty",
+   "occupantPx": 14934,
+   "hue": null,
+   "flashDoor": 7.5,
+   "flashPreDoor": 1.8,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 6,
+   "occupant": "W.Bonnie",
+   "occupantPx": 27598,
+   "hue": 227.4,
+   "flashDoor": 28.9,
+   "flashPreDoor": 5.2,
+   "flash": "LIT",
+   "officeAfterMaskOff": 16.1,
+   "defended": false
+  },
+  {
+   "cycle": 7,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 7.5,
+   "flashPreDoor": 1.5,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 8,
+   "occupant": "W.Freddy",
+   "occupantPx": 38811,
+   "hue": 19.2,
+   "flashDoor": 4.3,
+   "flashPreDoor": 2.1,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 9,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 7.1,
+   "flashPreDoor": 2.0,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.4,
+   "defended": true
+  },
+  {
+   "cycle": 10,
+   "occupant": "empty",
+   "occupantPx": 14919,
+   "hue": null,
+   "flashDoor": 8.0,
+   "flashPreDoor": 2.0,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.7,
+   "defended": true
+  },
+  {
+   "cycle": 11,
+   "occupant": "empty",
+   "occupantPx": 14952,
+   "hue": null,
+   "flashDoor": 15.4,
+   "flashPreDoor": 4.8,
+   "flash": "DIM",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 12,
+   "occupant": "W.Bonnie",
+   "occupantPx": 27615,
+   "hue": 227.4,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.5,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 13,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26255,
+   "hue": 57.4,
+   "flashDoor": 8.0,
+   "flashPreDoor": 2.0,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.9,
+   "defended": true
+  },
+  {
+   "cycle": 14,
+   "occupant": "empty",
+   "occupantPx": 14917,
+   "hue": null,
+   "flashDoor": 7.5,
+   "flashPreDoor": 1.8,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.9,
+   "defended": true
+  },
+  {
+   "cycle": 15,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 4.5,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 16,
+   "occupant": "empty",
+   "occupantPx": 14977,
+   "hue": null,
+   "flashDoor": 7.7,
+   "flashPreDoor": 2.1,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.8,
+   "defended": true
+  },
+  {
+   "cycle": 17,
+   "occupant": "unlabelled hue 57",
+   "occupantPx": 26806,
+   "hue": 57.2,
+   "flashDoor": 15.5,
+   "flashPreDoor": 4.5,
+   "flash": "DIM",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 18,
+   "occupant": "empty",
+   "occupantPx": 0,
+   "hue": null,
+   "flashDoor": 7.5,
+   "flashPreDoor": 2.1,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.6,
+   "defended": true
+  },
+  {
+   "cycle": 19,
+   "occupant": "empty",
+   "occupantPx": 14950,
+   "hue": null,
+   "flashDoor": 7.1,
+   "flashPreDoor": 2.2,
+   "flash": "DIM",
+   "officeAfterMaskOff": 3.3,
+   "defended": true
+  }
+ ]
+}

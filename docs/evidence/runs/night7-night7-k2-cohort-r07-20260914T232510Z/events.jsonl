@@ -1,0 +1,22 @@
+{"at":"2026-09-14T23:25:26.045Z","type":"evidence.started","evidenceDirectory":"artifacts/campaign-2026-09-14T23-25-26.044Z"}
+{"at":"2026-09-14T23:25:26.046Z","type":"arm.mode","mode":"observe-once"}
+{"at":"2026-09-14T23:25:28.003Z","type":"observation","label":"items=continue,customNight,newGame,sixthNight","frame":"00001-title-observe.py.png"}
+{"at":"2026-09-14T23:25:36.855Z","type":"observation","label":"state=title","frame":"00003-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:37.765Z","type":"observation","label":"{\"status\": \"PASS\", \"dials\": {\"withfreddy\": 20, \"withbonnie\": 20, \"withchica\": 20, \"foxy\": 20, \"toyfreddy\": 0, \"toybonnie\": 0, \"toychica\": 0, \"mangle\": 0, \"bb\": 0, \"golden\": 0}, \"puppet\": 15, \"unknown\": [], \"scores\": {\"withfreddy\": {\"20\": 1.0, \"0\": 0.062}, \"withbonnie\": {\"20\": 1.0, \"0\": 0.17}, \"withchica\": {\"20\": 1.0, \"0\": 0.083}, \"foxy\": {\"20\": 1.0, \"0\": 0.105}, \"toyfreddy\": {\"20\": -0.002, \"0\": 1.0}, \"toybonnie\": {\"20\": 0.191, \"0\": 1.0}, \"toychica\": {\"20\": 0.015, \"0\": 1.0}, \"mangle\": {\"20\": 0.285, \"0\": 1.0}, \"bb\": {\"20\": 0.05, \"0\": 1.0}, \"golden\": {\"20\": 0.163, \"0\": 1.0}}}","frame":"00004-custom-night-readback.py.png"}
+{"at":"2026-09-14T23:25:38.774Z","type":"observation","label":"{\"status\": \"PASS\", \"dials\": {\"withfreddy\": 20, \"withbonnie\": 20, \"withchica\": 20, \"foxy\": 20, \"toyfreddy\": 20, \"toybonnie\": 20, \"toychica\": 20, \"mangle\": 20, \"bb\": 20, \"golden\": 20}, \"puppet\": 15, \"unknown\": [], \"scores\": {\"withfreddy\": {\"20\": 1.0, \"0\": 0.062}, \"withbonnie\": {\"20\": 1.0, \"0\": 0.17}, \"withchica\": {\"20\": 1.0, \"0\": 0.083}, \"foxy\": {\"20\": 1.0, \"0\": 0.105}, \"toyfreddy\": {\"20\": 1.0, \"0\": -0.002}, \"toybonnie\": {\"20\": 1.0, \"0\": 0.191}, \"toychica\": {\"20\": 1.0, \"0\": 0.015}, \"mangle\": {\"20\": 1.0, \"0\": 0.285}, \"bb\": {\"20\": 1.0, \"0\": 0.05}, \"golden\": {\"20\": 1.0, \"0\": 0.163}}}","frame":"00005-custom-night-readback.py.png"}
+{"at":"2026-09-14T23:25:38.774Z","type":"custom-night.preset","preset":"golden-freddy","steps":1}
+{"at":1789428340954,"type":"hid.execute-entered"}
+{"at":1789428340954,"type":"hid.handoff-reused","source":"menu","readyDelayMs":0}
+{"at":"2026-09-14T23:25:40.954Z","type":"hid.schedule-start","startedAt":1789428340954,"actionCount":301,"phaseOffsetMs":0}
+{"at":"2026-09-14T23:25:43.834Z","type":"observation","label":"state=night","frame":"00008-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:44.809Z","type":"observation","label":"state=intro","frame":"00009-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:46.115Z","type":"origin.anchor","status":"unavailable","reason":"onset-not-latched","aimMs":2433,"maxK":0,"latchedOnsetDeviceMs":null,"latchedOffsetMs":null,"reads":6,"failures":1,"lastError":"cue-helper clock probe timed out"}
+{"at":"2026-09-14T23:25:46.115Z","type":"origin.anchor","status":"refused","reason":"onset-not-latched","strict":true}
+{"at":"2026-09-14T23:25:46.130Z","type":"campaign.abort.restart","reason":"anchored release refused (onset-not-latched); strict anchor does not release unanchored"}
+{"at":"2026-09-14T23:25:46.357Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00010-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:46.696Z","type":"device.anr","count":0,"lines":[]}
+{"at":"2026-09-14T23:25:47.533Z","type":"observation","label":"unknown=no-signature-matched","frame":"00011-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:48.690Z","type":"observation","label":"state=intro","frame":"00012-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:50.598Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00014-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:25:52.382Z","type":"observation","label":"state=title","frame":"00015-lifecycle-observe.py.png"}
+{"at":"2026-09-14T23:26:03.593Z","type":"campaign.abort.restarted","state":"title","launcher":"com.scottgames.fnaf2/.Main","cueHelperPort":49707}

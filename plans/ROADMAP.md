@@ -47,14 +47,22 @@ fifteen days because it was written down instead of read.
 - **Closes when** `docs/evidence/graph.json` holds a promotion edge for a packed
   win, and every committed winner's run is packed.
 - **Artifact:** Pedro's `plan12-attestation.json` over a run pack (human-only,
-  and agents never write one). Also the run packs for Night 5 `contact-final`,
-  Night 6 `h` and Night 7 `k2`, from the peer machine.
-- **Stands:**
-  - 7 run packs under `docs/evidence/runs/`, 2 of them wins that pass every
-    check except the attestation.
+  and agents never write one), and his decision on whether a pack recovered
+  from its night-run log, which has lost `request.json`, can carry one.
+- **Stands** (updated later on 2026-09-25):
+  - 83 run packs under `docs/evidence/runs/`, 39 of them wins. Two wins with
+    their original directories pass every check except the attestation. The
+    other 37 were recovered from `campaign.log` and fail `manifestComplete`.
+    The recovery is byte-identical where it can be checked
+    ([custody recovery](../docs/evidence/custody-recovery-20260925.json)).
+  - Night 5 `contact-final`, Night 6 `h` and Night 7 `k2` are packed from this
+    machine; no peer machine is needed for them.
+  - k3 8/10 and k2 3/10, computed from packs, reproduce the hand records' winning
+    slots ([k3](../docs/evidence/night7-cohort-k3-computed-20260925.json),
+    [k2](../docs/evidence/night7-cohort-k2-computed-20260925.json)).
   - **0 promotion edges.**
-  - `UNTRACKED_WINNER_DEBT` 11 of 13.
-  - The k3 cohort's campaign directories and videos are gone.
+  - `UNTRACKED_WINNER_DEBT` 1 of 1 (Night 6 `a` no longer rebuilds).
+  - No k2 or k3 video exists on this machine, by name or by content hash.
   - Read with `npm run evidence -- list` and `npm run evidence -- promote <run>`.
 - **Absorbs** Plans 09 and 12.
 

@@ -1,0 +1,217 @@
+{
+  "schema": "run-pack-v1",
+  "version": 1,
+  "id": "night7-night7-k3-cohort-r04-20260918T032314Z",
+  "campaign": "campaign-2026-09-18T03-23-26.730Z",
+  "run": "night7-night7-k3-cohort-r04-20260918T032314Z",
+  "outcome": "RESULT_LOST",
+  "claimLevel": "UNKNOWN",
+  "nights": null,
+  "bundle": {
+    "path": "artifacts/night7-anchored-k3/bundle",
+    "winnerHash": "fnv1a-5c8dcb5f"
+  },
+  "files": [
+    {
+      "name": "events.jsonl",
+      "sha256": "65b0a7f8e0a3771c19a914ede62ccb9e11340709be9dcc67e742378c14bc88ba",
+      "bytes": 35838,
+      "source": {
+        "sha256": "885d8cbf35ee7c97d0e49b6a5f0d821b9b1ab8be32652f1b70cd78f11d75a5bc",
+        "bytes": 50239
+      },
+      "redactions": {
+        "paths": 1,
+        "pixelArrays": 17,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-aim.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-max-k.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/anchor-period.err",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/campaign.exit",
+      "sha256": "8fd79ff1a65b7a94b38d3a5dcfa3006fb83e8b2d2566534683b1e3c0bf2f3bb1",
+      "bytes": 16,
+      "source": {
+        "sha256": "8fd79ff1a65b7a94b38d3a5dcfa3006fb83e8b2d2566534683b1e3c0bf2f3bb1",
+        "bytes": 16
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/phase.json",
+      "sha256": "d342be4b431fe2830225837f33505c71054e32f08a022ee62e0ff252bfeb787a",
+      "bytes": 14813,
+      "source": {
+        "sha256": "c32217fcfd4522c91f10e1356c9e7cea11b5cfa3e034ccf33dd6d141ca227153",
+        "bytes": 14845
+      },
+      "redactions": {
+        "paths": 1,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/phase.log",
+      "sha256": "650dce8e9a1b385470667211d4fbc605da4854103f60322b41b0ef0d164409e7",
+      "bytes": 71,
+      "source": {
+        "sha256": "650dce8e9a1b385470667211d4fbc605da4854103f60322b41b0ef0d164409e7",
+        "bytes": 71
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/post-run-title.txt",
+      "sha256": "9900ea9ddb44f81f8e371da75452c22318a4af0849a20e2447d79fac7fe0ec23",
+      "bytes": 55,
+      "source": {
+        "sha256": "9900ea9ddb44f81f8e371da75452c22318a4af0849a20e2447d79fac7fe0ec23",
+        "bytes": 55
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/run-report.json",
+      "sha256": "35723f08aa8557d7bf25aa9cb7460121c52132890f867eff510a81b100a2467d",
+      "bytes": 1641,
+      "source": {
+        "sha256": "35723f08aa8557d7bf25aa9cb7460121c52132890f867eff510a81b100a2467d",
+        "bytes": 1641
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/timeline.json",
+      "sha256": "dc1466ab416396a21147da148e77ecfe5e85087659201c855fad4a307f5b4b29",
+      "bytes": 2852,
+      "source": {
+        "sha256": "dc1466ab416396a21147da148e77ecfe5e85087659201c855fad4a307f5b4b29",
+        "bytes": 2852
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/verdict.txt",
+      "sha256": "023c6451ac04ac2759363a899988131fdc89c20d6f2b4f678f7b8e06871d2a10",
+      "bytes": 966,
+      "source": {
+        "sha256": "dff5b96ed5047f66e21235bc8563945d36d0f6870a5ea49aa75ffda4874dc372",
+        "bytes": 1030
+      },
+      "redactions": {
+        "paths": 2,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "run/video.sha256",
+      "sha256": "39792da91e62509e91cd0c4f2c1f223f042f5e0388fbef785c9b37b49e013bbb",
+      "bytes": 124,
+      "source": {
+        "sha256": "39792da91e62509e91cd0c4f2c1f223f042f5e0388fbef785c9b37b49e013bbb",
+        "bytes": 124
+      },
+      "redactions": {
+        "paths": 0,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    }
+  ],
+  "withheld": [
+    {
+      "name": "night7-night7-k3-cohort-r04-20260918T032314Z.mp4",
+      "sha256": "154027649ce3fab81d4b60f36384e3ba90b188906625472dd28ba3cf5d80aa14",
+      "bytes": null,
+      "kind": "video"
+    },
+    {
+      "name": "run/campaign.log",
+      "sha256": "4627c05a2197ad47865eb56ca0c63f85c1fe979f87dff3d228f9d96554340546",
+      "bytes": 56111,
+      "kind": "other"
+    }
+  ],
+  "packer": "tools/evidence-pack.mjs",
+  "custody": {
+    "kind": "recovered-from-run-log",
+    "source": "run/campaign.log",
+    "sourceSha256": "4627c05a2197ad47865eb56ca0c63f85c1fe979f87dff3d228f9d96554340546",
+    "recovered": [
+      "events.jsonl"
+    ],
+    "lost": [
+      "observations.jsonl",
+      "observer frames",
+      "request.json",
+      "result.json"
+    ],
+    "validation": "docs/evidence/custody-recovery-20260925.json"
+  },
+  "graded": {
+    "run/timeline.json": "artifacts/forensics/night7-k3-cohort-20260918/grades/r04-timeline.json"
+  }
+}

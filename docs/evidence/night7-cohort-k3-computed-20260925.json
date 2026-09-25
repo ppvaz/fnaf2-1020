@@ -1,0 +1,201 @@
+{
+  "schema": "cohort-result-v2",
+  "predeclaration": "docs/evidence/night7-cohort-k3-predeclaration-20260918.json",
+  "night": 7,
+  "binding": "fnv1a-5c8dcb5f",
+  "size": 10,
+  "prefix": "night7-k3-cohort",
+  "rule": "WIN = executor terminal sixam AND video terminal clear (the predeclared rule)",
+  "counted": 10,
+  "wins": 8,
+  "deaths": 0,
+  "ungraded": 0,
+  "disputed": 0,
+  "unknown": 2,
+  "missing": 0,
+  "winRate": "8/10",
+  "wrongBinding": [],
+  "status": "INCOMPLETE",
+  "slots": [
+    {
+      "slot": "r01",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r01-20260918T030258Z",
+          "packSha256": "594ac90370fc6113d784cf01df3e25cc6eb30a20884065cd2fbe742dcc2723ad",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 453.5 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r02",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r02-20260918T031201Z",
+          "packSha256": "c83dabeb847c916c0f4973b88fa9c30d1f3f602b98cad71997c94c5575df7da6",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455.5 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r03",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r03-20260918T032107Z",
+          "packSha256": "f5fa60e346dd95555b857937d92480ad9f0921b578651c62d11853ab4b61480f",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": "nothing terminal was captured; the recording may stop before the end of the night",
+          "abort": "device: lifecycle left night state (static)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r04",
+      "status": "UNKNOWN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r04-20260918T032314Z",
+          "packSha256": "f26c40c58c8e584da6bc36873cd7167f00e928f1ed7cbe6afb4af938a282450b",
+          "reached": true,
+          "executor": "RESULT_LOST",
+          "video": "unknown",
+          "videoDetail": "nothing terminal was captured; the recording may stop before the end of the night",
+          "abort": "night terminal was not observed before the 120000ms deadline (last=unknown)",
+          "bindingMatches": true,
+          "status": "UNKNOWN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r05",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r05-20260918T032827Z",
+          "packSha256": "925713ab1c570b4e5c3162eb9d6bd35447d71af947cb3f083e1be5c60b60f217",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 453 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r06",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r06-20260918T033730Z",
+          "packSha256": "38e6903ee50c176a7d2526c7d063c49aa6a4174a6757ca8739ec11ac8326df86",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 456 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r07",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r07-20260918T034636Z",
+          "packSha256": "07ec9d587425d9e79acfd4b97f900a31aea8514fcb4c19a248e70f0b87e5ed9a",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r08",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r08-20260918T035537Z",
+          "packSha256": "1ccfaa167381159cf9ec6b4c5172ac9f68fccb2f6a4388d020682043dfbeaf1b",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r09",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r09-20260918T040438Z",
+          "packSha256": "39dd85c82e61739a64f73008378b2c60991598d1862547c7bb2e0ca021ee7d01",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 455 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    },
+    {
+      "slot": "r10",
+      "status": "WIN",
+      "runs": [
+        {
+          "run": "night7-night7-k3-cohort-r10-20260918T041340Z",
+          "packSha256": "a5d6c2de5c8f66f33cd51dd3ffb87741d77ae1e893dfbc1d65e9e2140d8556b7",
+          "reached": true,
+          "executor": "WIN",
+          "video": "clear",
+          "videoDetail": "sixam at 453 s",
+          "abort": null,
+          "bindingMatches": true,
+          "status": "WIN",
+          "role": "counted"
+        }
+      ]
+    }
+  ]
+}

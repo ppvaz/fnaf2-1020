@@ -1,0 +1,566 @@
+{
+  "video": "captures/night7-night7-k3-cohort-r07-20260918T034636Z.mp4",
+  "fps": 2.0,
+  "frames": 969,
+  "segments": [
+    {
+      "phase": "camera",
+      "from_s": 0.0,
+      "to_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "phase": "other",
+      "from_s": 8.0,
+      "to_s": 11.0,
+      "seconds": 3.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 11.0,
+      "to_s": 29.0,
+      "seconds": 18.0
+    },
+    {
+      "phase": "intro",
+      "from_s": 29.0,
+      "to_s": 31.5,
+      "seconds": 2.5
+    },
+    {
+      "phase": "dark",
+      "from_s": 31.5,
+      "to_s": 34.0,
+      "seconds": 2.5
+    },
+    {
+      "phase": "office",
+      "from_s": 34.0,
+      "to_s": 39.5,
+      "seconds": 5.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 39.5,
+      "to_s": 44.0,
+      "seconds": 4.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 44.0,
+      "to_s": 48.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 48.5,
+      "to_s": 54.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 54.0,
+      "to_s": 58.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 58.5,
+      "to_s": 64.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 64.0,
+      "to_s": 68.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 68.5,
+      "to_s": 74.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 74.0,
+      "to_s": 78.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 78.5,
+      "to_s": 84.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 84.0,
+      "to_s": 88.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 88.5,
+      "to_s": 94.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 94.0,
+      "to_s": 98.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 98.5,
+      "to_s": 104.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 104.0,
+      "to_s": 108.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 108.5,
+      "to_s": 114.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 114.0,
+      "to_s": 118.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 118.5,
+      "to_s": 124.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 124.0,
+      "to_s": 128.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 128.5,
+      "to_s": 134.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 134.0,
+      "to_s": 138.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 138.5,
+      "to_s": 144.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 144.0,
+      "to_s": 149.5,
+      "seconds": 5.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 149.5,
+      "to_s": 154.0,
+      "seconds": 4.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 154.0,
+      "to_s": 158.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 158.5,
+      "to_s": 164.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 164.0,
+      "to_s": 168.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 168.5,
+      "to_s": 174.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 174.0,
+      "to_s": 178.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 178.5,
+      "to_s": 184.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 184.0,
+      "to_s": 188.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 188.5,
+      "to_s": 194.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 194.0,
+      "to_s": 198.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 198.5,
+      "to_s": 204.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 204.0,
+      "to_s": 208.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 208.5,
+      "to_s": 214.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 214.0,
+      "to_s": 218.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 218.5,
+      "to_s": 224.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 224.0,
+      "to_s": 228.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 228.5,
+      "to_s": 234.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 234.0,
+      "to_s": 238.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 238.5,
+      "to_s": 244.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 244.0,
+      "to_s": 248.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 248.5,
+      "to_s": 254.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 254.0,
+      "to_s": 258.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 258.5,
+      "to_s": 264.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 264.0,
+      "to_s": 268.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 268.5,
+      "to_s": 274.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 274.0,
+      "to_s": 278.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 278.5,
+      "to_s": 284.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 284.0,
+      "to_s": 288.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 288.5,
+      "to_s": 294.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 294.0,
+      "to_s": 298.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 298.5,
+      "to_s": 304.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 304.0,
+      "to_s": 308.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 308.5,
+      "to_s": 314.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 314.0,
+      "to_s": 318.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 318.5,
+      "to_s": 324.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 324.0,
+      "to_s": 328.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 328.5,
+      "to_s": 334.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 334.0,
+      "to_s": 338.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 338.5,
+      "to_s": 344.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 344.0,
+      "to_s": 348.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 348.5,
+      "to_s": 354.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 354.0,
+      "to_s": 358.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 358.5,
+      "to_s": 364.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 364.0,
+      "to_s": 368.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 368.5,
+      "to_s": 374.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 374.0,
+      "to_s": 378.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 378.5,
+      "to_s": 384.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 384.0,
+      "to_s": 388.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 388.5,
+      "to_s": 394.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 394.0,
+      "to_s": 398.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 398.5,
+      "to_s": 404.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 404.0,
+      "to_s": 408.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 408.5,
+      "to_s": 414.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 414.0,
+      "to_s": 418.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 418.5,
+      "to_s": 424.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 424.0,
+      "to_s": 428.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 428.5,
+      "to_s": 434.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 434.0,
+      "to_s": 438.5,
+      "seconds": 4.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 438.5,
+      "to_s": 444.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 444.0,
+      "to_s": 449.5,
+      "seconds": 5.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 449.5,
+      "to_s": 455.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "sixam",
+      "from_s": 455.0,
+      "to_s": 462.5,
+      "seconds": 7.5
+    },
+    {
+      "phase": "dark",
+      "from_s": 462.5,
+      "to_s": 465.0,
+      "seconds": 2.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 465.0,
+      "to_s": 484.5,
+      "seconds": 19.5
+    }
+  ],
+  "terminal": {
+    "outcome": "clear",
+    "evidence": "sixam",
+    "at_s": 455.0,
+    "positive": true,
+    "note": "the 6 AM win screen is in the recording, after the night"
+  }
+}

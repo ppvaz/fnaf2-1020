@@ -1,0 +1,91 @@
+{
+ "schema": "cycle-ledger-v1",
+ "run": "night6-anchorede2-20260913T170041Z",
+ "releaseVideoS": 34.213978759765624,
+ "encountersFromAudio": [
+  {
+   "audioS": 56.86,
+   "nc": 0.42,
+   "anchorAudioS": 47.78,
+   "cycle": 4,
+   "scheduleS": 58.14
+  },
+  {
+   "audioS": 86.94,
+   "nc": 0.48,
+   "anchorAudioS": 77.76,
+   "cycle": 7,
+   "scheduleS": 88.24
+  },
+  {
+   "audioS": 88.12,
+   "nc": 0.35,
+   "anchorAudioS": 77.76,
+   "cycle": 7,
+   "scheduleS": 89.42
+  },
+  {
+   "audioS": 89.92,
+   "nc": 0.37,
+   "anchorAudioS": 77.76,
+   "cycle": 7,
+   "scheduleS": 91.22
+  },
+  {
+   "audioS": 116.84,
+   "nc": 0.43,
+   "anchorAudioS": 107.76,
+   "cycle": 10,
+   "scheduleS": 118.14
+  },
+  {
+   "audioS": 119.66,
+   "nc": 0.41,
+   "anchorAudioS": 117.79,
+   "cycle": 11,
+   "scheduleS": 120.93
+  },
+  {
+   "audioS": 144.68,
+   "nc": 1.0,
+   "anchorAudioS": 137.8,
+   "cycle": 13,
+   "scheduleS": 145.94
+  }
+ ],
+ "cycles": [
+  {
+   "cycle": 0,
+   "occupant": "empty",
+   "occupantPx": 14996,
+   "hue": null,
+   "flashDoor": 28.8,
+   "flashPreDoor": 9.4,
+   "flash": "LIT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 1,
+   "occupant": "empty",
+   "occupantPx": 15009,
+   "hue": null,
+   "flashDoor": 10.4,
+   "flashPreDoor": 9.0,
+   "flash": "FLAT",
+   "officeAfterMaskOff": 15.9,
+   "defended": false
+  },
+  {
+   "cycle": 2,
+   "occupant": "empty",
+   "occupantPx": 14943,
+   "hue": null,
+   "flashDoor": 28.9,
+   "flashPreDoor": 9.5,
+   "flash": "LIT",
+   "officeAfterMaskOff": 16.0,
+   "defended": false
+  }
+ ]
+}

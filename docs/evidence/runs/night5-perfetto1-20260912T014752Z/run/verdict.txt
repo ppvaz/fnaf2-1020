@@ -1,0 +1,17 @@
+run          night5-perfetto1-20260912T014752Z
+bundle       artifacts/night5-head
+campaign dir artifacts/campaign-2026-09-12T01-48-09.362Z
+campaign exit 2
+--- modern campaign bundle (executor-owned facts) ---
+  night reached               yes
+  arm mode                    observe-once
+  arm                         UNRESOLVED (non-fatal) on attempt 1 (0 retries, 1 samples)
+  arm verified at             UNKNOWN
+  parked prefix (plan)        UNKNOWN
+  PHASE LAG (suffix shift)    none -- observe-once never parks the stream
+  cycle gates                 28 (23 agreed, 5 corrected, 0 aborted)
+  gate lag                    UNKNOWN
+  delivered offset            UNKNOWN
+  corrections at              55200 ms, 65200 ms, 255200 ms, 265200 ms, 275200 ms
+  press acceptance            3 graded -- 3 UNKNOWN
+  stop reason                 campaign-abort (device: lifecycle left night state (static))

@@ -1,0 +1,98 @@
+{
+  "video": "captures/night7-night7-k3-cohort-r03-20260918T032107Z.mp4",
+  "fps": 2.0,
+  "frames": 161,
+  "segments": [
+    {
+      "phase": "camera",
+      "from_s": 0.0,
+      "to_s": 8.5,
+      "seconds": 8.5
+    },
+    {
+      "phase": "other",
+      "from_s": 8.5,
+      "to_s": 11.0,
+      "seconds": 2.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 11.0,
+      "to_s": 29.5,
+      "seconds": 18.5
+    },
+    {
+      "phase": "intro",
+      "from_s": 29.5,
+      "to_s": 32.5,
+      "seconds": 3.0
+    },
+    {
+      "phase": "dark",
+      "from_s": 32.5,
+      "to_s": 34.5,
+      "seconds": 2.0
+    },
+    {
+      "phase": "office",
+      "from_s": 34.5,
+      "to_s": 40.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 40.0,
+      "to_s": 45.0,
+      "seconds": 5.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 45.0,
+      "to_s": 49.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 49.0,
+      "to_s": 55.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "other",
+      "from_s": 55.0,
+      "to_s": 62.0,
+      "seconds": 7.0
+    },
+    {
+      "phase": "unknown",
+      "from_s": 62.0,
+      "to_s": 65.0,
+      "seconds": 3.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 65.0,
+      "to_s": 73.0,
+      "seconds": 8.0
+    },
+    {
+      "phase": "other",
+      "from_s": 73.0,
+      "to_s": 75.5,
+      "seconds": 2.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 75.5,
+      "to_s": 80.5,
+      "seconds": 5.0
+    }
+  ],
+  "terminal": {
+    "outcome": "unknown",
+    "evidence": null,
+    "at_s": null,
+    "positive": false,
+    "note": "nothing terminal was captured; the recording may stop before the end of the night"
+  }
+}

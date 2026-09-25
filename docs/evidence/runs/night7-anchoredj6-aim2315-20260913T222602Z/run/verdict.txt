@@ -1,0 +1,18 @@
+run          night7-anchoredj6-aim2315-20260913T222602Z
+bundle       artifacts/night7-anchored-j/bundle
+campaign dir artifacts/campaign-2026-09-13T22-26-17.053Z
+campaign exit 2
+--- attempt 1 of 1: artifacts/campaign-2026-09-13T22-26-17.053Z ---
+--- modern campaign bundle (executor-owned facts) ---
+  night reached               yes
+  arm mode                    observe-once
+  arm                         UNRESOLVED (non-fatal) on attempt 1 (0 retries, 1 samples)
+  arm verified at             UNKNOWN
+  parked prefix (plan)        UNKNOWN
+  PHASE LAG (suffix shift)    none -- observe-once never parks the stream
+  cycle gates                 29 (29 agreed, 0 corrected, 0 aborted)
+  gate lag                    UNKNOWN
+  delivered offset            UNKNOWN
+  corrections landed          0 confirmed, 0 unconfirmed, 0 unread, 0 never read back
+  press acceptance            3 graded -- 2 UNKNOWN, 1 PASS
+  stop reason                 campaign-abort (device: lifecycle left night state (static))

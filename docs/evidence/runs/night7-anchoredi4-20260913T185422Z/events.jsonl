@@ -1,0 +1,18 @@
+{"at":"2026-09-13T18:54:35.868Z","type":"evidence.started","evidenceDirectory":"artifacts/campaign-2026-09-13T18-54-35.868Z"}
+{"at":"2026-09-13T18:54:35.869Z","type":"arm.mode","mode":"observe-once"}
+{"at":"2026-09-13T18:54:37.822Z","type":"observation","label":"items=continue,customNight,newGame,sixthNight","frame":"00001-title-observe.py.png"}
+{"at":"2026-09-13T18:54:46.772Z","type":"observation","label":"state=title","frame":"00003-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:54:47.634Z","type":"observation","label":"{\"status\": \"PASS\", \"dials\": {\"withfreddy\": 20, \"withbonnie\": 20, \"withchica\": 20, \"foxy\": 20, \"toyfreddy\": 0, \"toybonnie\": 0, \"toychica\": 0, \"mangle\": 0, \"bb\": 0, \"golden\": 0}, \"puppet\": 15, \"unknown\": [], \"scores\": {\"withfreddy\": {\"20\": 1.0, \"0\": 0.062}, \"withbonnie\": {\"20\": 1.0, \"0\": 0.17}, \"withchica\": {\"20\": 1.0, \"0\": 0.083}, \"foxy\": {\"20\": 1.0, \"0\": 0.105}, \"toyfreddy\": {\"20\": -0.002, \"0\": 1.0}, \"toybonnie\": {\"20\": 0.191, \"0\": 1.0}, \"toychica\": {\"20\": 0.015, \"0\": 1.0}, \"mangle\": {\"20\": 0.285, \"0\": 1.0}, \"bb\": {\"20\": 0.05, \"0\": 1.0}, \"golden\": {\"20\": 0.163, \"0\": 1.0}}}","frame":"00004-custom-night-readback.py.png"}
+{"at":"2026-09-13T18:54:48.720Z","type":"observation","label":"{\"status\": \"PASS\", \"dials\": {\"withfreddy\": 20, \"withbonnie\": 20, \"withchica\": 20, \"foxy\": 20, \"toyfreddy\": 20, \"toybonnie\": 20, \"toychica\": 20, \"mangle\": 20, \"bb\": 20, \"golden\": 20}, \"puppet\": 15, \"unknown\": [], \"scores\": {\"withfreddy\": {\"20\": 1.0, \"0\": 0.062}, \"withbonnie\": {\"20\": 1.0, \"0\": 0.17}, \"withchica\": {\"20\": 1.0, \"0\": 0.083}, \"foxy\": {\"20\": 1.0, \"0\": 0.105}, \"toyfreddy\": {\"20\": 1.0, \"0\": -0.002}, \"toybonnie\": {\"20\": 1.0, \"0\": 0.191}, \"toychica\": {\"20\": 1.0, \"0\": 0.015}, \"mangle\": {\"20\": 1.0, \"0\": 0.285}, \"bb\": {\"20\": 1.0, \"0\": 0.05}, \"golden\": {\"20\": 1.0, \"0\": 0.163}}}","frame":"00005-custom-night-readback.py.png"}
+{"at":1789325688818,"type":"hid.execute-entered"}
+{"at":1789325688818,"type":"hid.handoff-reused","source":"menu","readyDelayMs":0}
+{"at":"2026-09-13T18:54:48.818Z","type":"hid.schedule-start","startedAt":1789325688818,"actionCount":301,"phaseOffsetMs":0}
+{"at":"2026-09-13T18:54:51.756Z","type":"observation","label":"unknown=no-signature-matched","frame":"00006-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:55:22.151Z","type":"campaign.abort.restart","reason":"night start was not observed before the 30000ms deadline (last=unknown)"}
+{"at":"2026-09-13T18:55:22.630Z","type":"device.anr","count":0,"lines":[]}
+{"at":"2026-09-13T18:55:24.657Z","type":"observation","label":"state=intro","frame":"00033-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:55:26.369Z","type":"origin.anchor","status":"unavailable","reason":"onset-not-latched","aimMs":2510,"maxK":0,"latchedOnsetDeviceMs":null,"latchedOffsetMs":null,"reads":74,"failures":48,"lastError":"cue-helper clock is closed"}
+{"at":"2026-09-13T18:55:26.370Z","type":"origin.anchor","status":"refused","reason":"onset-not-latched","strict":true}
+{"at":"2026-09-13T18:55:26.568Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00035-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:55:28.031Z","type":"observation","label":"state=title","frame":"00036-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:55:39.245Z","type":"campaign.abort.restarted","state":"title","launcher":"com.scottgames.fnaf2/.Main","cueHelperPort":49707}

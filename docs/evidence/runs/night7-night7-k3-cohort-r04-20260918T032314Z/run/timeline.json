@@ -1,0 +1,164 @@
+{
+  "video": "captures/night7-night7-k3-cohort-r04-20260918T032314Z.mp4",
+  "fps": 2.0,
+  "frames": 529,
+  "segments": [
+    {
+      "phase": "camera",
+      "from_s": 0.0,
+      "to_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "phase": "other",
+      "from_s": 8.0,
+      "to_s": 10.5,
+      "seconds": 2.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 10.5,
+      "to_s": 28.0,
+      "seconds": 17.5
+    },
+    {
+      "phase": "intro",
+      "from_s": 28.0,
+      "to_s": 30.5,
+      "seconds": 2.5
+    },
+    {
+      "phase": "dark",
+      "from_s": 30.5,
+      "to_s": 32.5,
+      "seconds": 2.0
+    },
+    {
+      "phase": "office",
+      "from_s": 32.5,
+      "to_s": 38.0,
+      "seconds": 5.5
+    },
+    {
+      "phase": "mask",
+      "from_s": 38.0,
+      "to_s": 43.0,
+      "seconds": 5.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 43.0,
+      "to_s": 47.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 47.0,
+      "to_s": 53.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 53.0,
+      "to_s": 57.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 57.0,
+      "to_s": 63.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 63.0,
+      "to_s": 67.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 67.0,
+      "to_s": 73.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 73.0,
+      "to_s": 77.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 77.0,
+      "to_s": 83.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 83.0,
+      "to_s": 87.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 87.0,
+      "to_s": 93.0,
+      "seconds": 6.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 93.0,
+      "to_s": 97.0,
+      "seconds": 4.0
+    },
+    {
+      "phase": "mask",
+      "from_s": 97.0,
+      "to_s": 102.5,
+      "seconds": 5.5
+    },
+    {
+      "phase": "other",
+      "from_s": 102.5,
+      "to_s": 120.0,
+      "seconds": 17.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 120.0,
+      "to_s": 246.5,
+      "seconds": 126.5
+    },
+    {
+      "phase": "unknown",
+      "from_s": 246.5,
+      "to_s": 249.5,
+      "seconds": 3.0
+    },
+    {
+      "phase": "camera",
+      "from_s": 249.5,
+      "to_s": 257.5,
+      "seconds": 8.0
+    },
+    {
+      "phase": "other",
+      "from_s": 257.5,
+      "to_s": 260.0,
+      "seconds": 2.5
+    },
+    {
+      "phase": "camera",
+      "from_s": 260.0,
+      "to_s": 264.5,
+      "seconds": 4.5
+    }
+  ],
+  "terminal": {
+    "outcome": "unknown",
+    "evidence": null,
+    "at_s": null,
+    "positive": false,
+    "note": "nothing terminal was captured; the recording may stop before the end of the night"
+  }
+}

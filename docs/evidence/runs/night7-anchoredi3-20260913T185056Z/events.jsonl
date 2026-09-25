@@ -1,0 +1,11 @@
+{"at":"2026-09-13T18:51:13.206Z","type":"evidence.started","evidenceDirectory":"artifacts/campaign-2026-09-13T18-51-13.205Z"}
+{"at":"2026-09-13T18:51:13.206Z","type":"arm.mode","mode":"observe-once"}
+{"at":"2026-09-13T18:51:15.314Z","type":"observation","label":"items=continue,customNight,newGame,sixthNight","frame":"00001-title-observe.py.png"}
+{"at":"2026-09-13T18:51:24.121Z","type":"observation","label":"state=title","frame":"00003-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:51:25.578Z","type":"observation","label":"{\"status\": \"UNKNOWN\", \"dials\": {}, \"puppet\": 15, \"unknown\": [\"withfreddy\", \"withbonnie\", \"withchica\", \"foxy\", \"toyfreddy\", \"toybonnie\", \"toychica\", \"mangle\", \"bb\", \"golden\"], \"scores\": {\"withfreddy\": {\"20\": -0.171, \"0\": -0.136}, \"withbonnie\": {\"20\": -0.125, \"0\": -0.071}, \"withchica\": {\"20\": -0.142, \"0\": 0.12}, \"foxy\": {\"20\": 0.026, \"0\": 0.003}, \"toyfreddy\": {\"20\": -0.059, \"0\": -0.073}, \"toybonnie\": {\"20\": -0.053, \"0\": -0.143}, \"toychica\": {\"20\": 0.127, \"0\": -0.397}, \"mangle\": {\"20\": 0.109, \"0\": 0.236}, \"bb\": {\"20\": -0.281, \"0\": 0.183}, \"golden\": {\"20\": -0.036, \"0\": 0.142}}}","frame":"00004-custom-night-readback.py.png"}
+{"at":"2026-09-13T18:51:25.580Z","type":"campaign.abort.restart","reason":"custom night initial readback is not confirmed"}
+{"at":"2026-09-13T18:51:27.006Z","type":"observation","label":"unknown=no-signature-matched","frame":"00005-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:51:28.129Z","type":"observation","label":"state=intro","frame":"00006-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:51:29.933Z","type":"observation","label":"unknown=dark-frame-no-text","frame":"00008-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:51:31.765Z","type":"observation","label":"state=title","frame":"00009-lifecycle-observe.py.png"}
+{"at":"2026-09-13T18:51:44.846Z","type":"campaign.abort.restarted","state":"title","launcher":"com.scottgames.fnaf2/.Main","cueHelperPort":49707}

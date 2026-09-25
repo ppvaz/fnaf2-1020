@@ -1536,3 +1536,56 @@ cohort's media lives; and `npm run evidence -- pack <label>` on the peer machine
 `contact-final`, Night 6 `h` and Night 7 `k2`. Also open: the artifact executor class itself
 (~1100 lines) and `modern-campaign-ports.js` under LEG-004, and Plan 27's moves, which wait for S1's
 first promotion edge and a quiet window.
+
+**2026-09-25 (night): custody recovered from the night-run logs.** The entry above left custody
+open because the k2/k3 campaign directories and the Night 5/6/7 winners' bundles were "on the peer
+machine". They were not: this machine played them. The run directories survive under
+`artifacts/runs/`, the campaign directories were deleted, and `night-run.sh` had teed the campaign
+CLI's output into each run's `campaign.log`. The CLI printed the retained result with the bytes it
+wrote to `result.json` and wrote every event row to stderr as it appended it to `events.jsonl`, the
+same code on every date from 2026-09-12 on. So `npm run evidence -- pack` now recovers a gone
+campaign from that log. Checked on the nine campaigns that still have both: 9 of 9 `events.jsonl`
+and 7 of 7 printed `result.json` come back byte-identical. The two unprinted results are the two
+campaigns that threw, whose result the CLI writes but never prints
+([custody recovery](../docs/evidence/custody-recovery-20260925.json),
+`npm run evidence -- recovery-check`). A recovered pack names its custody and what is lost:
+`request.json`, `observations.jsonl`, the observer frames, and a thrown campaign's result
+(`RESULT_LOST`).
+
+Packed from this machine: all 39 executor-proven 6 AMs whose evidence survives (Nights 1-7, among
+them the first Night 5, Night 6 `h` and Night 7 10/20 wins), all 21 k2/k3 cohort runs, the registered
+bindings' runs, and two nights whose video shows 6 AM while the executor did not (`night5-anchor4`
+DEATH, `night5-perfetto1` aborted on "lifecycle left night state (static)"). That is 83 packs and
+18 MB of text. The cohorts computed from those packs reproduce both hand records' winning slots,
+k3 8/10 and k2 3/10
+([k3](../docs/evidence/night7-cohort-k3-computed-20260925.json),
+[k2](../docs/evidence/night7-cohort-k2-computed-20260925.json)). The non-wins differ: the hand
+records call them deaths, but the executor aborted without a terminal and the video saw none, so the
+predeclared rule leaves them `UNKNOWN` with the abort reason beside them. The computation also found a
+defect of mine: `evidence-cohort.mjs` read a top-level `outcome` that run-timeline.py never writes
+(it writes `terminal.outcome`), and its test used only `grade.log`. Fixed, and the test now uses the
+real shape. Ten of the eleven winners in `UNTRACKED_WINNER_DEBT` were found under `artifacts/`
+with their registered hashes and are committed. So are four winning bindings that had never been
+committed, plus the as-run Night 1 Minus 7 winner. The debt is 1 of 1: Night 6 `a`, whose file
+was found but no longer rebuilds. 26 winners rebuild, and 38 of the 39 win packs find their winner
+committed. The 39th is the Night 7 4/20 Minus 3 win (`night7-n7-420-minimal-m3`). Its winner
+(`artifacts/night7-420-minus3/bundle/winner.json`, `fnv1a-15124c58`) stays out because
+`test-seam-slack.mjs` refuses it: its hold at +2050 ms clears the after-monitor-raise-wind floor by
+0 ms against the 33 ms the gate requires. It won with a press the phone can lose to one frame of
+jitter. Committing it means retiring that plan or re-deriving the hold, and that is Pedro's call.
+
+The event-clock gate now reads every campaign pack: 10,331 events in 82 packs. Its selection had
+skipped packs without a `result.json`. The 2026-09-12..18 executors wrote eleven timestamp fields
+that nobody had declared: the anchor latch, the timed start's taps and plans, and the gate's
+`correctedAt`. Each is now declared with the clock its writer used (`night-anchor.js`,
+`modern-campaign-ports.js`, `timed-start.js`, the executor's `Date.now()`).
+
+The k3 media question has a measured answer: of 177 run videos recorded by sha256, 15 are on this
+machine, all from 2026-09-19/20; no k2 or k3 video exists here by name or by content hash.
+
+Evidence ID: `night7-night7-k3-cohort-r01-20260918T030258Z` (pack `594ac903…`, recovered).
+Consequential: the packs and winners. Open, and Pedro's: the attestations, now over any of 39 win
+packs, and a Plan 12 decision on whether a pack recovered from its log, which has lost
+`request.json`, can be promoted. The recovered wins pass `offlineEvidence`, `terminalPass` and
+`winnerCommitted` and fail `manifestComplete` on exactly that file. 81 further non-win
+campaigns (79 recoverable from their logs, 2 still on disk) are not packed yet (`npm run evidence -- pack <run>`).

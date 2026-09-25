@@ -1,0 +1,18 @@
+run          night6-anchoredb1-20260913T022819Z
+bundle       artifacts/night6-anchored-b/bundle
+campaign dir artifacts/campaign-2026-09-13T02-28-35.109Z
+campaign exit 2
+--- attempt 1 of 1: artifacts/campaign-2026-09-13T02-28-35.109Z ---
+--- modern campaign bundle (executor-owned facts) ---
+  night reached               yes
+  arm mode                    observe-once
+  arm                         VERIFIED on attempt 1 (0 retries, 1 samples)
+  arm verified at             10122 ms
+  parked prefix (plan)        UNKNOWN
+  PHASE LAG (suffix shift)    none -- observe-once never parks the stream
+  cycle gates                 33 (32 agreed, 0 corrected, 1 aborted)
+  gate lag                    UNKNOWN
+  delivered offset            UNKNOWN
+  corrections landed          0 confirmed, 0 unconfirmed, 0 unread, 0 never read back
+  press acceptance            3 graded -- 2 UNKNOWN, 1 MISSING
+  stop reason                 gate-abort (mask-state-unavailable)

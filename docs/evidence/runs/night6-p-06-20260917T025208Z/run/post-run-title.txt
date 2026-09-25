@@ -1,0 +1,1 @@
+title    unknown=sensor-mismatch:1080x2400; this model is calibrated for screencap-2400x1080. Pass the capture method explicitly if you mean to read a frame from another sensor.
