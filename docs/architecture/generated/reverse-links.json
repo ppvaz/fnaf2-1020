@@ -31,18 +31,6 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
-      "id": "contract.adaptive-selection-v1",
-      "kind": "CONTRACT",
-      "path": "tools/adaptivecoachtest.mjs",
-      "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.adaptive-skill-model-v1",
-      "kind": "CONTRACT",
-      "path": "tools/adaptivecoachtest.mjs",
-      "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
       "id": "contract.arcade-lab-progress-v1",
       "kind": "CONTRACT",
       "path": "tools/arcadelabtest.mjs",
@@ -528,12 +516,6 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
-      "id": "contract.rhythm-highway-chart-v1",
-      "kind": "CONTRACT",
-      "path": "tools/rhythmhighwaytest.mjs",
-      "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
       "id": "contract.semantic-control-v1",
       "kind": "CONTRACT",
       "path": "packages/adapters/src/button-strokes.js",
@@ -603,12 +585,6 @@
       "id": "contract.telemetry-event-v1",
       "kind": "CONTRACT",
       "path": "tools/factlinktest.mjs",
-      "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.threat-constellation-layout-v1",
-      "kind": "CONTRACT",
-      "path": "tools/threatconstellationtest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {

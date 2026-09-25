@@ -901,24 +901,6 @@
       }
     },
     {
-      "id": "tools/adaptivecoachtest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
       "id": "tools/affected-test.js",
       "lane": "test:unit",
       "owner": "legacy migration",
@@ -3243,24 +3225,6 @@
       }
     },
     {
-      "id": "tools/rhythmhighwaytest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
       "id": "tools/rvctest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
@@ -3540,24 +3504,6 @@
         "local-http-port"
       ],
       "subprocesses": true,
-      "measurement": {
-        "status": "NOT_MEASURED",
-        "runs": 0,
-        "durationMs": null,
-        "flakiness": null
-      }
-    },
-    {
-      "id": "tools/threatconstellationtest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 180000,
-      "timeoutSource": "tools/test.mjs per-test watchdog",
-      "deterministic": true,
-      "determinismSignals": [],
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false,
       "measurement": {
         "status": "NOT_MEASURED",
         "runs": 0,

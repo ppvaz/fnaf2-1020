@@ -21,10 +21,7 @@ export const CONTRACTS = Object.freeze([
   'exercise-event-v1', 'exercise-attempt-v1',
   'activity-gate-v1', 'activity-gate-profile-v1', 'activity-gate-decision-v1',
   'microtrainer-session-v1',
-  'adaptive-skill-model-v1', 'adaptive-selection-v1',
-  'exercise-renderer-v1', 'arcade-lab-progress-v1', 'rhythm-highway-chart-v1',
-  'threat-constellation-layout-v1',
-]);
+  'exercise-renderer-v1', 'arcade-lab-progress-v1', ]);
 
 export const CLOCKS = Object.freeze([
   'game-frame', 'simulator-frame', 'device-monotonic-ms',

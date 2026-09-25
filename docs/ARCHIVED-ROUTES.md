@@ -148,6 +148,18 @@ night onset, the monitor/mask/camera and calibration-state rules, control
 exclusion, button strokes, the control anchor, and the `fixture-hid-screencap`
 profile the bundle tests compile against.
 
+## Unwired trainer modules (2026-09-25)
+
+Three Plan 24 modules the trainer never reached: `apps/trainer/src/adaptive-coach.js`
+(the adaptive skill model and selector), `rhythm-highway.js` and
+`threat-constellation.js` (two Arcade Lab renderers). The page's build bundled
+none of them -- the UI renders only the `campaign` surface -- and only their own
+tests imported them. Their contracts `adaptive-skill-model-v1`,
+`adaptive-selection-v1`, `rhythm-highway-chart-v1` and
+`threat-constellation-layout-v1` are retired with them. Plan 24 stays open; its
+next step was already "close one package outright rather than widening the
+foundation". Restore with `git checkout 903ffab -- <path>`.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

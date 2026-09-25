@@ -292,14 +292,6 @@
       ]
     },
     {
-      "file": "apps/trainer/src/adaptive-coach.js",
-      "imports": [
-        "./microtrainer.js",
-        "./validate.js",
-        "@fnaf2-1020/core/contracts"
-      ]
-    },
-    {
       "file": "apps/trainer/src/arcade-lab.js",
       "imports": [
         "./validate.js",
@@ -330,13 +322,10 @@
     {
       "file": "apps/trainer/src/index.js",
       "imports": [
-        "./adaptive-coach.js",
         "./arcade-lab.js",
         "./coach.js",
         "./microtrainer.js",
-        "./renderers.js",
-        "./rhythm-highway.js",
-        "./threat-constellation.js"
+        "./renderers.js"
       ]
     },
     {
@@ -380,22 +369,6 @@
       "file": "apps/trainer/src/report.js",
       "imports": [
         "@fnaf2-1020/core/mechanics"
-      ]
-    },
-    {
-      "file": "apps/trainer/src/rhythm-highway.js",
-      "imports": [
-        "./lane.js",
-        "./validate.js",
-        "@fnaf2-1020/core/contracts",
-        "@fnaf2-1020/core/training"
-      ]
-    },
-    {
-      "file": "apps/trainer/src/threat-constellation.js",
-      "imports": [
-        "./validate.js",
-        "@fnaf2-1020/core/training"
       ]
     },
     {
@@ -1041,14 +1014,6 @@
       "file": "tools/activitygatetest.mjs",
       "imports": [
         "@fnaf2-1020/core/training",
-        "node:assert/strict"
-      ]
-    },
-    {
-      "file": "tools/adaptivecoachtest.mjs",
-      "imports": [
-        "../apps/trainer/src/adaptive-coach.js",
-        "../apps/trainer/src/microtrainer.js",
         "node:assert/strict"
       ]
     },
@@ -2422,15 +2387,6 @@
       ]
     },
     {
-      "file": "tools/rhythmhighwaytest.mjs",
-      "imports": [
-        "../apps/trainer/src/microtrainer.js",
-        "../apps/trainer/src/rhythm-highway.js",
-        "@fnaf2-1020/core/mechanics",
-        "node:assert/strict"
-      ]
-    },
-    {
       "file": "tools/rvctest.mjs",
       "imports": [
         "@fnaf2-1020/research/strategies/right-vent-camp",
@@ -2561,14 +2517,6 @@
         "node:child_process",
         "node:path",
         "node:url"
-      ]
-    },
-    {
-      "file": "tools/threatconstellationtest.mjs",
-      "imports": [
-        "../apps/trainer/src/microtrainer.js",
-        "../apps/trainer/src/threat-constellation.js",
-        "node:assert/strict"
       ]
     },
     {

@@ -913,46 +913,6 @@
       ]
     },
     {
-      "contractId": "adaptive-skill-model-v1",
-      "id": "adaptive-skill-model-v1",
-      "version": 1,
-      "owner": "apps/trainer",
-      "kind": "artifact",
-      "purpose": "Stable adaptive-skill-model-v1 boundary for apps/trainer; its validator is apps/trainer/src/adaptive-coach.js validateSkillModel.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "apps/trainer/src/adaptive-coach.js validateSkillModel",
-      "conformanceFixtures": [
-        "tools/adaptivecoachtest.mjs"
-      ]
-    },
-    {
-      "contractId": "adaptive-selection-v1",
-      "id": "adaptive-selection-v1",
-      "version": 1,
-      "owner": "apps/trainer",
-      "kind": "data",
-      "purpose": "Stable adaptive-selection-v1 boundary for apps/trainer; its validator is apps/trainer/src/adaptive-coach.js validateAdaptiveSelection.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "apps/trainer/src/adaptive-coach.js validateAdaptiveSelection",
-      "conformanceFixtures": [
-        "tools/adaptivecoachtest.mjs"
-      ]
-    },
-    {
       "contractId": "exercise-renderer-v1",
       "id": "exercise-renderer-v1",
       "version": 1,
@@ -990,46 +950,6 @@
       "runtimeValidation": "apps/trainer/src/arcade-lab.js validateArcadeProgress",
       "conformanceFixtures": [
         "tools/arcadelabtest.mjs"
-      ]
-    },
-    {
-      "contractId": "rhythm-highway-chart-v1",
-      "id": "rhythm-highway-chart-v1",
-      "version": 1,
-      "owner": "apps/trainer",
-      "kind": "data",
-      "purpose": "Stable rhythm-highway-chart-v1 boundary for apps/trainer; its validator is apps/trainer/src/rhythm-highway.js validateRhythmChart.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "apps/trainer/src/rhythm-highway.js validateRhythmChart",
-      "conformanceFixtures": [
-        "tools/rhythmhighwaytest.mjs"
-      ]
-    },
-    {
-      "contractId": "threat-constellation-layout-v1",
-      "id": "threat-constellation-layout-v1",
-      "version": 1,
-      "owner": "apps/trainer",
-      "kind": "data",
-      "purpose": "Stable threat-constellation-layout-v1 boundary for apps/trainer; its validator is apps/trainer/src/threat-constellation.js validateThreatConstellation.",
-      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
-      "clockDomains": [
-        "declared-by-payload-or-profile"
-      ],
-      "units": "Values carry explicit units or are documented by the owning validator.",
-      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
-      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
-      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "apps/trainer/src/threat-constellation.js validateThreatConstellation",
-      "conformanceFixtures": [
-        "tools/threatconstellationtest.mjs"
       ]
     }
   ]

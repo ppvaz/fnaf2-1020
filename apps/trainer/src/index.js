@@ -32,21 +32,6 @@ export {
   replayMicrotrainerSession,
 } from './microtrainer.js';
 export {
-  ADAPTIVE_SKILL_SCHEMA,
-  ADAPTIVE_SELECTION_SCHEMA,
-  ADAPTIVE_MODEL_VERSION,
-  DEFAULT_ADAPTIVE_POLICY,
-  makeSkillModel,
-  validateSkillModel,
-  updateSkillModel,
-  reportSkill,
-  selectAdaptiveExercise,
-  validateAdaptiveSelection,
-  exportSkillModel,
-  resetSkillModel,
-  skillModelHash,
-} from './adaptive-coach.js';
-export {
   RENDERER_SCHEMA,
   RENDERER_VIEW_SCHEMA,
   RENDERER_IDS,
@@ -67,18 +52,3 @@ export {
   exportArcadeProgress,
   resetArcadeProgress,
 } from './arcade-lab.js';
-export {
-  RHYTHM_CHART_SCHEMA,
-  RHYTHM_RENDERER_ID,
-  RHYTHM_MIN_GAP_MS,
-  makeRhythmChart,
-  validateRhythmChart,
-} from './rhythm-highway.js';
-export {
-  THREAT_CONSTELLATION_SCHEMA,
-  THREAT_CONSTELLATION_RENDERER_ID,
-  THREAT_CONSTELLATION_GESTURES,
-  MIN_TOUCH_RADIUS_PX,
-  makeThreatConstellation,
-  validateThreatConstellation,
-} from './threat-constellation.js';

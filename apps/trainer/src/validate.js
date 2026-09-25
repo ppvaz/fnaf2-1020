@@ -3,7 +3,8 @@
  *
  * Six modules -- adaptive-coach, arcade-lab, microtrainer, renderers,
  * rhythm-highway and threat-constellation -- each carried their own copy of
- * this kit. Measured 2026-09-08 by hashing each function body: `freeze`,
+ * this kit (three of them, never wired into the UI, were archived 2026-09-25;
+ * arcade-lab, microtrainer and renderers use it now). Measured 2026-09-08 by hashing each function body: `freeze`,
  * `object` and `text` were byte-identical in all six, `strings` in both that
  * had it, `isRecord` in all six, `finite` in both that had it. That is 34
  * definitions of nine functions.
