@@ -10,3 +10,4 @@ __pycache__/
 /android/companion/debug.keystore
 /android/fnaf1-teach/build/
 /android/fnaf1-teach/debug.keystore
+/.agents/

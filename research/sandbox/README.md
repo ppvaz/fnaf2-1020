@@ -6,7 +6,11 @@ may import this directory. Promotion requires an owner, stable I/O contract,
 fixed seeds or retained observations, machine-readable results, and the
 appropriate evidence label.
 
-## Pending promotion: HUD-signature down/mask/up rule (2026-09-01, parked)
+## Archived: HUD-signature down/mask/up rule (parked 2026-09-01, archived 2026-09-24)
+
+The probe and its report left the tree on 2026-09-24; the tag named in
+[`docs/ARCHIVED-ROUTES.md`](../../docs/ARCHIVED-ROUTES.md) restores both. What
+they measured stays here.
 
 `hud-signature-probe.py` (self-test green) fitted the HUD-chrome hypothesis on
 `captures/n1-minustoys-calib-01-aborted.mp4`; retained report:
@@ -18,7 +22,7 @@ bottom chrome cell 167 (900,1020) reads identically in down and mask
 4–6 / up 32–48; anim refuses 32/40, 8 firm votes unaudited. No evidence ID —
 sandbox probes do not mint one; the report file is the observation.
 
-Not promotable as measured: the recording is an upscaled 1280x576 transcode
+It was not promotable as measured: the recording is an upscaled 1280x576 transcode
 (a different sensor than the helper's native 2400x1080 grid), labels come
 from grade-minus7, and the reads are in-sample. Open before any Plan 12
 promotion:
@@ -35,6 +39,6 @@ promotion:
    per-signature anchor sets vs a separate `maskOn` fact (core owns the fact
    vocabulary; Plan 12 owns promotion).
 
-Re-run the probe: `python3 research/sandbox/hud-signature-probe.py
-captures/<run>.mp4 --out <report>.json`; logic only:
-`--self-test`.
+To re-run the probe, restore it from the archive tag first; it then takes
+`python3 research/sandbox/hud-signature-probe.py captures/<run>.mp4 --out
+<report>.json`, or `--self-test` for the logic only.

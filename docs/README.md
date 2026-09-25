@@ -247,6 +247,9 @@ Fusion build 296, August 2025.
 - [`architecture/LEGIBILITY-FOLLOWUPS.md`](architecture/LEGIBILITY-FOLLOWUPS.md)
   — open architecture findings for human and agent legibility, with evidence,
   owners, priorities, and acceptance checks.
+- [`ARCHIVED-ROUTES.md`](ARCHIVED-ROUTES.md) — code that left the tree (the
+  recompile toolchain, the ESP32 bridge, the invention engine, closed searches),
+  the tag that holds it, and how to restore a path.
 - [`HANDOVER.md`](HANDOVER.md) — historical snapshot of the iteration-time work.
 - [`../UPSTREAM-LEDGER.md`](../UPSTREAM-LEDGER.md) — give-back ledger: what this
   project owes upstream, and where each item stands.

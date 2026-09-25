@@ -140,5 +140,5 @@ traffic destroys it from behind. Reproduce with `node tools/minus6test.mjs
   100/100 pinned worst-luck seeds with zero stun lapses in the current Android
   model.
 
-Reproduce with `node tools/gatesearch.mjs`; use `--quick` for a smoke sweep. The
+Reproduce with `node tools/gatesearch.mjs` (removed 2026-09-24; restore it and `gatebot.mjs` from the tag in [`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)); use `--quick` for a smoke sweep. The
 Minus 7 control is `node tools/model/reactive-pilot.mjs 200`.

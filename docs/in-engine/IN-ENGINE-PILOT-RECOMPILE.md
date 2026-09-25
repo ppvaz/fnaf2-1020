@@ -3,6 +3,10 @@
 *Investigation 2026-08-20. Extends [`TRAINER-IN-GAME.md`](TRAINER-IN-GAME.md).
 Sibling to the on-device adb work in [`ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md).*
 
+*The `tools/recompile/` toolchain this page cites was archived on 2026-09-24;
+[`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md) names the tag that restores it.
+The route is parked, not refuted.*
+
 ## The question
 
 Can the practice-bot "pilot" be moved **inside** the game — reading `viewing` /

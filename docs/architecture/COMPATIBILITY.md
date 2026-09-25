@@ -58,10 +58,11 @@ of the path that climbs. See [`ROADMAP.md`](../../plans/ROADMAP.md).
 | `tools/minus2test.mjs` | compatibility | `npm run research -- minus-two` | package artifacts and fixed-seed output are equivalent |
 | `package.json#scripts.test:legacy:engine` | compatibility | `node tools/test.mjs --engine` (canonical engine fixture lane) | bare-Node compatibility lane is no longer needed and P9 is green |
 
-The cue-model provisioner (`tools/device/provision-cue-model.sh`) and ESP32
-fallback packer (`tools/cue/pack-esp32-cues.py`) are also registered as legacy
-paths. They remain only to replay historical APK/firmware experiments; current
-models are content-addressed adapter/profile inputs.
+The cue-model provisioner (`tools/device/provision-cue-model.sh`) is also
+registered as a legacy path. It remains only to replay historical APK
+experiments; current models are content-addressed adapter/profile inputs. The
+ESP32 fallback packer (`tools/cue/pack-esp32-cues.py`) was archived with the
+firmware on 2026-09-24 — [`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md).
 
 The legacy session producer/validator pair has a similarly named but distinct
 schema (`fnaf2.session-manifest`) from the runtime `session-manifest-v1`

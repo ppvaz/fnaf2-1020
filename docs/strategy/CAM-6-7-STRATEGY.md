@@ -37,7 +37,7 @@ unique two-camera cover of the modeled route graph:
 > cams down → mask flick → flash hall → cams up → **CAM 06 → CAM 07** → CAM 11 → wind
 
 Run it on every `:X2` / `:X7` anchor. The generated frame table is reproducible with
-`node tools/strategysearch.mjs`. This report uses 06 then 07 as the canonical order;
+`node tools/strategysearch.mjs` (removed 2026-09-24; restore it from the tag in [`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)). This report uses 06 then 07 as the canonical order;
 reversing the two is effectively identical in the simulator.
 
 The graph argument is compact:

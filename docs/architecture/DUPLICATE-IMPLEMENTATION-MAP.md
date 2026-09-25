@@ -17,6 +17,7 @@ and gains its outcome in place, per the retraction convention in
 
 | § | Family | Outcome |
 |---|---|---|
+| — | Removed and archived code | **2026-09-24.** `tools/invent/`, `esp32-audio-authority.py`, `gatesearch`/`gatebot`, `strategysearch` and `knobsweep` left the tree ([`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)); rows below that name them describe the tree before that date |
 | 1 | Frame ingest | **Resolved.** `camera-` and `watch-calibrate.py` now import the loaders instead of copying them; their dead PIL guards went with them |
 | 4 | Calibration CLI | **Resolved for four of five.** `add_common_arguments()` in `monitor-calibrate.py`; `screen-calibrate.py` left alone because it has no gate |
 | 13 | Grading census | **Resolved.** The coverage gate reads all three registries and is green; 22 exclusion rows added, one gate registered |

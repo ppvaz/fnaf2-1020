@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/device/test-fnaf1-menu-probe.mjs && python3 tools/device/test-fnaf1-menus.py && node tools/device/test-fnaf1-night-run.mjs && python3 tools/device/test-fnaf1-door-light.py && python3 tools/cue/test-bt-audio-collector.py && python3 tools/device/test-fnaf1-teach-overlay.py && python3 tools/device/test-sensor.py && node tools/test-fnaf1-census.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/device/test-fnaf1-menu-probe.mjs && python3 tools/device/test-fnaf1-menus.py && node tools/device/test-fnaf1-night-run.mjs && python3 tools/device/test-fnaf1-door-light.py && python3 tools/cue/test-bt-audio-collector.py && python3 tools/device/test-fnaf1-teach-overlay.py && python3 tools/device/test-sensor.py && node tools/test-fnaf1-census.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle && node tools/test.mjs --gates",
       "lifecycle": "supported"
     },
     {
@@ -362,108 +362,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/invent/observe.mjs",
-      "invocation": "tools/invent/observe.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/test-observe.mjs",
-      "invocation": "tools/invent/test-observe.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/policy-lang.mjs",
-      "invocation": "tools/invent/policy-lang.mjs",
-      "kind": "lib",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/closed-families.mjs",
-      "invocation": "tools/invent/closed-families.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/search.mjs",
-      "invocation": "tools/invent/search.mjs",
-      "kind": "lib",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/ablate.mjs",
-      "invocation": "tools/invent/ablate.mjs",
-      "kind": "lib",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/test-ablate.mjs",
-      "invocation": "tools/invent/test-ablate.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/targets.mjs",
-      "invocation": "tools/invent/targets.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/reference-genome.mjs",
-      "invocation": "tools/invent/reference-genome.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/campaign.mjs",
-      "invocation": "tools/invent/campaign.mjs",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/read-substitution.mjs",
-      "invocation": "tools/invent/read-substitution.mjs",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/foxy-ceiling.mjs",
-      "invocation": "tools/invent/foxy-ceiling.mjs",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/death-anatomy.mjs",
-      "invocation": "tools/invent/death-anatomy.mjs",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/box-anatomy.mjs",
-      "invocation": "tools/invent/box-anatomy.mjs",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/wind-seeds.mjs",
-      "invocation": "tools/invent/wind-seeds.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/test-wind-seeds.mjs",
-      "invocation": "tools/invent/test-wind-seeds.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/invent/test-policy-lang.mjs",
-      "invocation": "tools/invent/test-policy-lang.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/model/reactive-pilot.mjs",
       "invocation": "tools/model/reactive-pilot.mjs [n]",
       "kind": "report/check",
@@ -605,12 +503,6 @@
       "id": "tools/device/monitorraise-watch.py",
       "invocation": "tools/device/monitorraise-watch.py [--observe-only --seconds N]",
       "kind": "read-only telemetry",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/knobsweep.mjs",
-      "invocation": "tools/knobsweep.mjs",
-      "kind": "report",
       "lifecycle": "supported"
     },
     {
@@ -758,18 +650,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/strategysearch.mjs",
-      "invocation": "tools/strategysearch.mjs",
-      "kind": "search/report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/gatesearch.mjs",
-      "invocation": "tools/gatesearch.mjs",
-      "kind": "search/report",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/minus7/paramsearch.mjs",
       "invocation": "tools/minus7/paramsearch.mjs --nights=N,N --shape=correlated [--runs --admit --beam --rounds --geom=slot:dev:con] [--winner-out PATH]",
       "kind": "search/report",
@@ -833,12 +713,6 @@
       "id": "tools/minus7/test-search.mjs",
       "invocation": "tools/minus7/test-search.mjs",
       "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/gatebot.mjs",
-      "invocation": "tools/gatebot.mjs",
-      "kind": "internal module",
       "lifecycle": "supported"
     },
     {
@@ -2414,18 +2288,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/cue/esp32-audio-authority.py",
-      "invocation": "tools/cue/esp32-audio-authority.py [--bind HOST] [--port PORT] [--raw-output PATH]",
-      "kind": "external-device authority",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/pack-esp32-cues.py",
-      "invocation": "tools/cue/pack-esp32-cues.py MODEL OUTPUT_H OUTPUT_C",
-      "kind": "legacy generator",
-      "lifecycle": "legacy"
-    },
-    {
       "id": "tools/cue/latency-experiment.py",
       "invocation": "tools/cue/latency-experiment.py preflight|run|analyze",
       "kind": "external-device action/report",
@@ -2452,12 +2314,6 @@
     {
       "id": "tools/cue/test-audio-authority.py",
       "invocation": "tools/cue/test-audio-authority.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-esp32-audio-authority.py",
-      "invocation": "tools/cue/test-esp32-audio-authority.py",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -2663,24 +2519,6 @@
       "id": "tools/dump/test-aimap.py",
       "invocation": "tools/dump/test-aimap.py",
       "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/recompile/fnaf2-config.py",
-      "invocation": "tools/recompile/fnaf2-config.py",
-      "kind": "Chowdren config",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/recompile/probe-unknown-params.py",
-      "invocation": "tools/recompile/probe-unknown-params.py",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/recompile/probe-onloop.py",
-      "invocation": "tools/recompile/probe-onloop.py",
-      "kind": "report",
       "lifecycle": "supported"
     },
     {

@@ -2,6 +2,7 @@
 //
 //   node tools/test.mjs             # every check that can run here
 //   node tools/test.mjs --engine    # fast headless checks for edit feedback
+//   node tools/test.mjs --gates     # --engine minus BACKLOG; test:unit runs it
 //   node tools/test.mjs --engine --extended # include exhaustive model sweeps
 //   node tools/test.mjs --browser   # Chrome checks only (minutes)
 //   node tools/test.mjs --reports   # also print the diagnostic tools
@@ -270,9 +271,9 @@ const ENGINE = [
   ['BT audio route', ['cue/test-capture-bt-audio.sh']],
   ['BT audio link', ['cue/test-bt-audio-link.sh']],
   // The external authority owns rendered audio and publishes the same bounded
-  // fact contract regardless of whether its receiver is BlueALSA or an ESP32.
+  // fact contract regardless of its receiver. The ESP32 receiver and its
+  // firmware are archived (docs/ARCHIVED-ROUTES.md); BlueALSA is the one left.
   ['audio authority', ['cue/test-audio-authority.py']],
-  ['ESP32 audio authority', ['cue/test-esp32-audio-authority.py']],
   ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,
@@ -419,10 +420,6 @@ const ENGINE = [
   // Plan 18 Package 4: bounded dependency-free properties for Sim state,
   // event determinism, and sourced Night-1 reachability.
   ['engine properties', ['propertytest.mjs']],
-  // Plan 05 package 6a: the Custom Night observation surface has exactly
-  // eleven characters, a closed Plan 17 tuple boundary, complete provenance,
-  // and current-frame event wake flags.
-  ['invent observe', ['invent/test-observe.mjs']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
@@ -467,9 +464,45 @@ const ENGINE = [
 // rather than a local engine invariant. Keep them in the default full suite
 // and CI, but let `--engine` remain a practical edit-time command.
 const EXTENDED_ENGINE = new Set([
+  // Green, but four minutes on its own (2026-09-24): too slow for --gates.
+  'minus toys plan',
   'minus toys margin',
   'minus toys jitter',
   'night matrix',
+]);
+
+// The engine checks that are red on purpose or red pending work, each with the
+// reason. `--gates` runs every other engine check, and `npm run test:unit`
+// runs `--gates`, so a green check here is a CI gate rather than something a
+// session has to remember to run. A backlog entry that turns green belongs out
+// of this map in the same commit that fixes it.
+const BACKLOG = new Map([
+  // Minus 7 is parked, not retired: Pedro means to bring it back as a second
+  // device-bot strategy (2026-09-24). These are the recovery list -- the route
+  // predates the sourced Golden Freddy, Foxy and office-attack rules and the
+  // model now kills it.
+  ['simtest', 'Minus 7: the canonical cycle sweep dies 200/200'],
+  ['minus7 search', 'Minus 7: the 803feb3 ladder and the item-10 oracle no longer reproduce'],
+  ['reactive pilot', 'Minus 7: the BB-aware bot dies 200/200 to Golden Freddy'],
+  ['reactive pilot --worst', 'Minus 7: as reactive pilot'],
+  ['reactive pilot jitter 60', 'Minus 7: as reactive pilot'],
+  ['hidpilot sparse-left', 'Minus 7: HID pilot, Night 7 0/500'],
+  ['hidpilot sparse worst', 'Minus 7: as hidpilot sparse-left'],
+  ['hidpilot n6 target', 'Minus 7: HID pilot, Night 6 below its floor (Golden Freddy)'],
+  ['hidpilot n6 target worst', 'Minus 7: as hidpilot n6 target'],
+  ['runner plan', 'Minus 7: the restored Golden Freddy plan clears 0/300'],
+  ['device input gaps', 'Minus 7: the Night 6 recipe sweeps 226 ms after the raise, under 233'],
+  ['device actuator', 'Minus 7: Night 6 loop-debt exemption is now stale'],
+  ['human gate', 'Minus 7: the shipped Night 6 plan is 123/1200 under human slack'],
+  ['plan interpreter', 'Minus 7: mask-already-off recovery presses before the compound raise'],
+  // Red on code the live route uses. Open defects, not controls.
+  ['reactivetest', 'observer: a dropped VIDEO read is not UNKNOWN(read-dropped) on every video fact'],
+  ['reduced model', 'vent press with the monitor up diverges from the Sim (true vs false)'],
+  // Scientific controls that stay red until Plans 20-21 price the rescue cost.
+  ['vent reactive', 'control: the reactive layer still pays a monitor-down/box cost'],
+  // Not red: CI runs test-docs.mjs in its own step, and here it would also
+  // read untracked files a concurrent session has not indexed yet.
+  ['docs', 'run by the CI documentation step'],
 ]);
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],
@@ -577,6 +610,7 @@ async function runGroup(group, judge, { progress = false, concurrent = true, con
       : name === 'vent reactive' ? 900_000
       : name === 'reactivetest' ? 300_000
         : name === 'human gate' ? 240_000
+      : name === 'minus toys plan' ? 360_000
           : name.startsWith('browser') || name === 'caltest' || name === 'lessontest'
             ? 360_000 : 180_000;
     const r = await runTool(argv, {
@@ -637,15 +671,22 @@ async function serve() {
   throw new Error(`tools/serve.py never answered on ${PORT}`);
 }
 
-const only = process.argv.includes('--engine') ? 'engine'
+const gates = process.argv.includes('--gates');
+const only = process.argv.includes('--engine') || gates ? 'engine'
   : process.argv.includes('--browser') ? 'browser' : 'all';
 const extended = process.argv.includes('--extended') || only === 'all';
 let failed = 0;
 
+for (const name of BACKLOG.keys())
+  if (!ENGINE.some(([entry]) => entry === name))
+    throw new Error(`BACKLOG names ${name}, which is not an engine check`);
+
 if (only !== 'browser') {
-  const engine = extended ? ENGINE : ENGINE.filter(([name]) => !EXTENDED_ENGINE.has(name));
-  console.log(extended ? 'engine checks (including extended model sweeps)' : 'engine checks');
-  failed += await runGroup(engine, true, { progress: true, concurrent: true });
+  let engine = extended ? ENGINE : ENGINE.filter(([name]) => !EXTENDED_ENGINE.has(name));
+  if (gates) engine = engine.filter(([name]) => !BACKLOG.has(name));
+  console.log(gates ? `engine gates (${BACKLOG.size} backlog checks left out)`
+    : extended ? 'engine checks (including extended model sweeps)' : 'engine checks');
+  failed += await runGroup(engine, true, { progress: !gates, concurrent: true });
 }
 
 if (only !== 'engine') {

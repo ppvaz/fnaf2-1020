@@ -32,23 +32,6 @@ if (changed.some(path => path.startsWith('packages/core/'))) {
   // decisions, which is what makes a retained stream evidence rather than a log.
   add('fact-replay', 'node', ['tools/factreplay.mjs', '--assert']);
 }
-if (changed.some(path => path.startsWith('tools/invent/'))) {
-  // Plan 05 package 6b's expressiveness gate: the language must contain the
-  // known reactive policy before any search is allowed to run.
-  add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
-  add('observation-surface', 'node', ['tools/invent/test-observe.mjs']);
-  add('difficulty-probe', 'node', ['tools/invent/targets.mjs', '--assert']);
-  add('read-substitution-syntax', 'node', ['--check', 'tools/invent/read-substitution.mjs']);
-  add('rule-ablation', 'node', ['tools/invent/test-ablate.mjs']);
-  // The RAISE->WIND chain is one refused cam press away from silently
-  // regressing to a frozen office; pin that the seeds really wind.
-  add('wind-seeds', 'node', ['tools/invent/test-wind-seeds.mjs']);
-}
-// The closed-family register is shared by both policy surfaces, so a change to
-// it must run the privileged gate as well as the observable one below. That is
-// what stops a family being added to the register and honoured on one surface.
-if (changed.some(path => path.startsWith('tools/device/closed-families')))
-  add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
   add('device-service', 'node', ['apps/device/test/service.test.js']);

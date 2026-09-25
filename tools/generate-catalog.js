@@ -374,13 +374,6 @@ const legacyPaths = [
     notes: 'Historical APK model installer; current visual-only helper does not consume it.',
   },
   {
-    id: 'cue.esp32-model-packer', path: 'tools/cue/pack-esp32-cues.py', category: 'firmware',
-    lifecycle: 'legacy', owner: '@fnaf2-1020/adapters',
-    replacement: 'transport-neutral cue authority and versioned firmware profile',
-    removalGate: 'Semantic-DSP fallback is archived with reproducible model artifacts',
-    notes: 'Retained fallback generator; production bridge does not link its generated assets.',
-  },
-  {
     id: 'research.minus-toys-alias', path: 'tools/minustoystest.mjs', category: 'research-alias',
     lifecycle: 'compatibility', owner: '@fnaf2-1020/research',
     replacement: 'npm run research -- minus-toys',
