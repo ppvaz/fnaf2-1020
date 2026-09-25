@@ -112,6 +112,14 @@ try {
   attest('0'.repeat(64));
   assert.equal(packPromotionChecks(readPack(dir), winners).plan12Attestation, false, 'an attestation binds one exact pack');
   assert.equal(packPromotionChecks(loaded, new Map()).winnerCommitted, false, 'an uncommitted winner cannot be re-run elsewhere');
+  // A bundle records the winner as compiled, which compileBundle normalises: the committed
+  // Night 6 winner's file hashes to fnv1a-de095950 and compiles to fnv1a-59908edd. A pack from
+  // that bundle must still find its winner.
+  const night6 = readFileSync(new URL('./device/campaign-night6-winner.json', import.meta.url), 'utf8');
+  put('tools/device/campaign-night6-winner.json', night6);
+  const withNight6 = trackedWinners(root);
+  assert.equal(withNight6.get(stableHash(JSON.parse(night6))), 'campaign-night6-winner.json');
+  assert.equal(withNight6.get('fnv1a-59908edd'), 'campaign-night6-winner.json', 'the compiled hash maps to the file too');
 
   put(`artifacts/${campaign}/observations.jsonl`, '{"label":"changed"}\n');
   assert.throws(() => writePack(dir, buildPack({ root, home, ...target })), /different pack/, 'evidence is not edited in place');

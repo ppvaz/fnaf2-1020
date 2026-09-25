@@ -19,10 +19,12 @@
 // Packing is deterministic -- no timestamps, sorted entries -- so re-packing an unchanged run is
 // a no-op and the pack's sha256 can carry a human's Plan 12 attestation.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
 import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
+import { compileBundle } from './device/bundle.mjs';
 
 export const RUN_PACK_SCHEMA = 'run-pack-v1';
 export const ATTESTATION_SCHEMA = 'plan12-attestation-v1';
@@ -306,14 +308,26 @@ export function readPack(dir) {
 }
 
 /**
- * Committed winners by stableHash, the identity bundle manifests record as `winnerHash`.
+ * Committed winners by the hash a bundle compiled from them records as `winnerHash`. That is
+ * not always the file's own stableHash: compileBundle normalises a winner (it stamps the gate
+ * with the replay hash), so night1-minimal, night1-minus7 and night6 compile to a different
+ * hash than the file has. Both are mapped, and a winner that no longer compiles keeps only its
+ * file hash.
  * @param {string} root
  * @returns {Map<string, string>}
  */
 export function trackedWinners(root) {
   const dir = join(root, 'tools', 'device');
-  return new Map(readdirSync(dir).filter(name => name.endsWith('-winner.json'))
-    .map(name => [stableHash(readJson(join(dir, name))), name]));
+  const winners = new Map();
+  for (const name of readdirSync(dir).filter(file => file.endsWith('-winner.json')).sort()) {
+    const winner = readJson(join(dir, name));
+    winners.set(stableHash(winner), name);
+    const scratch = mkdtempSync(join(tmpdir(), 'winner-compile-'));
+    try { winners.set(compileBundle(winner, join(scratch, 'bundle')).manifest.winnerHash, name); }
+    catch { /* not compilable under this engine: only its file hash identifies it */ }
+    finally { rmSync(scratch, { recursive: true, force: true }); }
+  }
+  return winners;
 }
 
 /**

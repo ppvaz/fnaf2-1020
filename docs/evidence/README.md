@@ -79,8 +79,9 @@ array, a long hex or base64 run, or a NUL byte instead of publishing it.
 
 `list`, `show` and `promote` read packs on any checkout. For a pack, `promote`
 adds a fifth check, `winnerCommitted`: the bundle's `winnerHash` must match a
-committed `tools/device/*-winner.json`, or the night cannot be re-run from the
-tree. The attestation is a person's file beside the pack,
+committed `tools/device/*-winner.json`, as filed or as `compileBundle`
+normalises it, or the night cannot be re-run from the tree;
+`test-winners-rebuild.mjs` keeps every committed winner compiling. The attestation is a person's file beside the pack,
 `plan12-attestation.json`:
 
 ```json

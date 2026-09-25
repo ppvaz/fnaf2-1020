@@ -2096,6 +2096,18 @@
       ]
     },
     {
+      "file": "tools/device/test-winners-rebuild.mjs",
+      "imports": [
+        "../../apps/device/src/campaign-bundle.js",
+        "../../apps/device/src/campaign.js",
+        "./bundle.mjs",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/windtrace.mjs",
       "imports": [
         "./human-gate.mjs",
@@ -2120,10 +2132,12 @@
     {
       "file": "tools/evidence-pack.mjs",
       "imports": [
+        "./device/bundle.mjs",
         "./evidence-campaign.mjs",
         "@fnaf2-1020/core/contracts",
         "node:crypto",
         "node:fs",
+        "node:os",
         "node:path"
       ]
     },
