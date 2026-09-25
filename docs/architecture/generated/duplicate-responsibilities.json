@@ -17,15 +17,13 @@
       "responsibility": "physical actuation",
       "owner": "@fnaf2-1020/adapters",
       "legacy": [
-        "tools/device/actuator.mjs",
-        "tools/device/legacy-trial.sh"
+        "tools/device/actuator.mjs"
       ]
     },
     {
       "responsibility": "device composition",
       "owner": "@fnaf2-1020/device",
       "legacy": [
-        "tools/device/legacy-trial.sh",
         "tools/device/recipe.mjs"
       ]
     },

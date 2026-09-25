@@ -61,6 +61,46 @@ library the live intersection gate and `test-screen-map.mjs` import.
 `gate-worker.mjs` and `minus-toys-jitter.mjs` stay too — the `night matrix`
 and `vent reactive` checks load them.
 
+## The legacy `trial.sh` lane (2026-09-25, Plan 22 P9)
+
+The open-loop shell runner that played the Minus 7-era nights: a host script
+that piped a mksh driver to the phone. Deprecated on 2026-09-02, behind
+`FNAF2_LEGACY_TRIAL=1` since, with no invocation in agent history from
+2026-09-03 to 2026-09-25. Plan 22's P5 closed on 2026-09-14 with the campaign
+executor qualified, and `night-run.sh` has driven every night since, Nights 5-7
+included. Every file below is unchanged at the same tag
+(`git checkout archive/2026-09-24 -- <path>`).
+
+| Paths | What it was |
+|---|---|
+| `tools/device/legacy-trial.sh`, `tools/device/trial/` (12 driver parts and `assemble.sh`) | The runner and the program it sent to the phone |
+| `tools/device/trial-maskcamp.sh`, `tools/device/run-batch.sh` | The mask-camp experiment runner and its batch launcher |
+| `tools/device/preflight.sh` | The shell preflight that printed a `trial.sh` invocation |
+| `tools/cue/pilot-supervisor.py` | The external audio authority's supervisor, hard-wired to that runner |
+| `tools/device/cam11lit.py` and its four crop fixtures | The runner's screencap CAM 11 arm verifier |
+| `tools/device/drifttrace.mjs`, `tools/device/desync-scan.py`, `tools/device/elegance.py` | Graders of that runner's own artifacts: its HID trace against the plan and the video, and its driver log |
+
+With them went their tests (`test-runner-plan`, `test-plan-interpreter`,
+`test-trial-assembly`, `test-hid-walltime`, `test-human-floor`,
+`test-cue-trace-loop`, `test-screenrecord-capability`, `test-trial-reactive`,
+`test-preflight`, `test-pilot-supervisor`, `test-drifttrace`, `test-elegance`,
+`test-cam11lit`). Tests of shared modules kept their module half:
+`test-human-gate.mjs` still gates `human-gate.mjs`, `test-session-manifest.sh`
+now reads `collect-cue-audio.sh` as the producer, `policyartifacttest.mjs` keeps
+the artifact checks.
+
+`grade-run.sh` lost the channels only that runner produced -- the HID trace,
+session manifest, driver log, cue trace, receiver PCM and external-authority
+facts -- and graded a retained night (`night6-n6-bbfix-20260920T010859Z`) to the
+same output in every live instrument before and after. `scan-night.sh` and
+`validate-session.py` stay, run by hand and by the session producers.
+
+**What a restore would be for.** Minus 7's "heard" Balloon Boy -- the live
+audio cue (`CUE_HELPER=1`, `CUE_SHADOW`, `REACTIVE=observe`) -- was wired into
+this runner only; the campaign executor has no audio port. If Minus 7 comes back
+as a device bot that listens, restore the runner from the tag or give the
+executor an audio port.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

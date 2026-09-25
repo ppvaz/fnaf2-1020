@@ -524,6 +524,12 @@
     {
       "id": "contract.hid-executor-v1",
       "kind": "CONTRACT",
+      "path": "apps/device/test/adb-device-local-executor.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
       "path": "packages/adapters/src/transports/hid.js",
       "line": 6,
       "relation": "REFERENCES"
@@ -531,7 +537,7 @@
     {
       "id": "contract.hid-executor-v1",
       "kind": "CONTRACT",
-      "path": "tools/device/test-runner-plan.mjs",
+      "path": "packages/adapters/test/conformance.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -754,8 +760,15 @@
     {
       "id": "contract.supervisor-v1",
       "kind": "CONTRACT",
-      "path": "tools/cue/test-pilot-supervisor.py",
+      "path": "packages/runtime/test/supervisor.test.js",
       "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.supervisor-v1",
+      "kind": "CONTRACT",
+      "path": "packages/runtime/test/supervisor.test.js",
+      "line": 1,
+      "relation": "REFERENCES"
     },
     {
       "id": "contract.telemetry-event-v1",

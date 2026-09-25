@@ -224,7 +224,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "Supervisor",
       "conformanceFixtures": [
-        "tools/cue/test-pilot-supervisor.py"
+        "packages/runtime/test/supervisor.test.js"
       ]
     },
     {
@@ -605,7 +605,8 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "trajectory JSONL",
       "conformanceFixtures": [
-        "tools/device/test-runner-plan.mjs"
+        "packages/adapters/test/conformance.test.js",
+        "apps/device/test/adb-device-local-executor.test.js"
       ]
     },
     {

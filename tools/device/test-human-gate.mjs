@@ -7,19 +7,12 @@
 // fail; and the shipped Night 6 plan
 // PASSES under measured human slack -- the 2026-08-25 grounding after the
 // Golden Freddy mask-off + raise became one measured-safe compound row.
-// Plus the precondition: the runner gates BEFORE its first adb command and has
-// no inline schedule fallback around the gated artifact.
-import { spawnSync, execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// (The legacy shell runner's own gate-before-adb checks left with it on
+// 2026-09-25; docs/ARCHIVED-ROUTES.md.)
 import { parsePlanText, jitterPlan, modelGate, HUMAN_SLACK_MS, GATE_MIN_SURVIVAL }
   from './human-gate.mjs';
 import { build, devicePlan } from './recipe.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const TRIAL = join(HERE, 'legacy-trial.sh');
 let failed = 0;
 const check = (name, cond, detail = '') => {
   if (!cond) { failed++; console.error(`FAIL ${name}${detail ? ` -- ${detail}` : ''}`); }
@@ -106,186 +99,12 @@ check('a large sample whose interval misses the bar fails',
 // the unchanged 480/1200 gate.
 //
 // Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
-// full sample before `trial.sh` reaches its first adb command.
+// full sample.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
   `${real.survived}/${real.runs} ${real.verdict} -- the route must clear the unchanged 40% bar`);
 check('the broad Night 6 result stays pinned', real.survived === 648,
   `${real.survived}/${real.runs}`);
-
-// ---------------------------------- the precondition, exercised end-to-end
-// The priced invocation passes the gate, then reaches a mock adb and stops;
-// this proves the ordering without touching a phone.
-{
-  const tmp = mkdtempSync(join(tmpdir(), 'fnaf2-gate-test-'));
-  try {
-    const bin = join(tmp, 'bin');
-    mkdirSync(bin);
-    const mockAdb = join(bin, 'adb');
-    writeFileSync(mockAdb, '#!/bin/sh\necho MOCK_ADB_REACHED >&2\nexit 1\n');
-    chmodSync(mockAdb, 0o755);
-    const n6 = spawnSync('bash', [TRIAL, `gate-test-${process.pid}`, '90'],
-      { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
-        TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
-    // The repaired route clears the gate, so execution reaches the first adb
-    // command. The fake adb fails there; reaching its marker proves the model
-    // gate no longer blocks the route without touching a phone.
-    const out = n6.stderr + n6.stdout;
-    check('an accepted plan reaches adb only after the gate',
-      n6.status !== 44 && !/refusing to run this plan/.test(out) &&
-      /MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
-    check('and it reports the accepted Night 6 sample',
-      /model gate: 648\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
-      out.split('\n').filter(l => l.includes('model gate')).join(' | '));
-
-    const n1 = spawnSync('bash', [TRIAL,
-      `gate-test-n1-${process.pid}`, '1'], { encoding: 'utf8', env: {
-        ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
-        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
-        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0',
-      } });
-    const n1out = n1.stderr + n1.stdout;
-    // 1193, not 1185, since `2a4c872` sourced the music box drain per night
-    // (g653-660) instead of applying the night 6/7 rate to all seven. Night
-    // 1's box does not drain at all during 12 AM and 1 AM, which changes how
-    // much wind the plan needs and reshuffles the shared LCG stream.
-    //
-    // Pinned exactly rather than as a floor, because this is a deterministic
-    // replay: the number is a property of the plan and the engine, and a
-    // drifting one should fail here and be re-read, not be absorbed by a
-    // tolerance.
-    //
-    // 1200/1200 as of 2026-08-27, from 1193. Every one of the seven losses was
-    // the Puppet, and all seven were the same defect: the cycle's CAM 11 park
-    // cleared the monitor-raise animation by 33 ms, sized for the phone's
-    // lateness rather than for this gate's own +/-60 ms jitter. On those seeds
-    // the park landed inside MON_RAISING every cycle, the camera stayed where
-    // the sweep left it, and the pilot held the wind button on CAM 07 for the
-    // whole night -- windtrace.mjs credited 12% of its wind frames. The box
-    // drained from full to empty in a straight line and the Puppet walked in.
-    // RAISE_JITTER_MARGIN_MS moves the park clear; the hold pays for it.
-    check('bounded Night 1 calibration emits and gates a Night 1 plan',
-      /model gate: 1200\/1200 night-1 runs/.test(n1out) &&
-      /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
-
-    // A story-night run longer than one cycle is a real attempt at that night,
-    // so it must name the save cursor the operator read under Continue.
-    //
-    // Corrected 2026-08-26. This used to assert the one-cycle bound
-    // ("bounded to exactly one cycle"), which existed because nothing
-    // established WHICH night Continue would resume. The bound is gone -- a
-    // night cannot be cleared one cycle at a time -- but the property it
-    // protected is not, so it is asserted in its new form: an unnamed cursor
-    // still stops the run before adb. Nothing here machine-verifies the
-    // cursor; the point is that a human must have looked and said so, and that
-    // the claim lands in the manifest.
-    const storyRun = (name, extraEnv) => spawnSync('bash',
-      [TRIAL, `${name}-${process.pid}`, '2'],
-      { encoding: 'utf8', env: {
-        ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
-        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
-        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0', ...extraEnv,
-      } });
-
-    const unnamed = storyRun('gate-test-n1-unnamed', {});
-    check('a multi-cycle story night refuses without a named save cursor',
-      unnamed.status === 2 && /must name the save cursor/.test(unnamed.stderr) &&
-      !/MOCK_ADB_REACHED/.test(unnamed.stderr + unnamed.stdout),
-      `status=${unnamed.status}`);
-
-    const mismatched = storyRun('gate-test-n1-mismatch', { STORY_CURSOR_OBSERVED: '3' });
-    check('a cursor that disagrees with the requested night refuses',
-      mismatched.status === 2 && /must name the save cursor/.test(mismatched.stderr) &&
-      !/MOCK_ADB_REACHED/.test(mismatched.stderr + mismatched.stdout),
-      `status=${mismatched.status}`);
-
-    const named = storyRun('gate-test-n1-named', { STORY_CURSOR_OBSERVED: '1' });
-    check('a named, matching cursor reaches adb after its gate',
-      /MOCK_ADB_REACHED/.test(named.stderr + named.stdout) &&
-      /save cursor reported as Night 1/.test(named.stderr + named.stdout),
-      `status=${named.status}`);
-
-    // The left-opening read is required on every night, and the REASON is read
-    // off the sourced AI table rather than quoted from Night 6 at all six.
-    //
-    // The refusal used to be one line -- "the Night 6 route is 0/3000 blind" --
-    // printed for a Night 1 run, where canAct(1,'bb') is false and no group can
-    // arm Balloon Boy at all. That is the same conflation the engine already
-    // fixed (see test-night-matrix.mjs) and the shell never learned.
-    //
-    // What did not survive checking is the idea that the model is therefore
-    // optional on Night 1: the same capture feeds the desync checkpoint and the
-    // blind/nolight health guards, and with no model every read is `unknown`
-    // and the run exits 45 on its fifth cycle. So both nights refuse; only the
-    // reason differs, and both must name the night they are refusing for.
-    const blind = (night, cycles, extraEnv) => {
-      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`,
-        TMPDIR: tmp, GRADE_RUN: '0', ...extraEnv };
-      delete env.BB_LEFT_MODEL;
-      return spawnSync('bash', [TRIAL,
-        `gate-test-blind-n${night}-${process.pid}`, String(cycles)],
-        { encoding: 'utf8', env });
-    };
-
-    const blind6 = blind(6, 90, {});
-    const b6 = blind6.stderr + blind6.stdout;
-    check('a blind Night 6 refuses, names its night, and cites 0/3000',
-      blind6.status === 2 && /refusing to run night 6 blind/.test(b6) &&
-      /can act on night 6/.test(b6) && /0\/3000/.test(b6) &&
-      !/MOCK_ADB_REACHED/.test(b6), `status=${blind6.status}: ${b6}`);
-
-    const blind1 = blind(1, 2, { NIGHT: 'continue', CALIBRATION_STORY_NIGHT: '1',
-      STORY_CURSOR_OBSERVED: '1' });
-    const b1 = blind1.stderr + blind1.stdout;
-    check('a blind Night 1 refuses for the reason that is true on Night 1',
-      blind1.status === 2 && /refusing to run night 1 blind/.test(b1) &&
-      /cannot act on night 1/.test(b1) &&
-      /0\/3000 BB->Foxy figure is not the reason/.test(b1) &&
-      /desync checkpoint/.test(b1) && !/MOCK_ADB_REACHED/.test(b1),
-      `status=${blind1.status}: ${b1}`);
-  } finally { rmSync(tmp, { recursive: true, force: true }); }
-}
-
-// ------------------------------------------------------- runner precondition
-//
-// Two texts, and they are not interchangeable. `runner` is the HOST script;
-// `driver` is the program it sends to the phone, assembled from the named
-// parts under trial/. They were one file until 2026-08-26, so an assertion
-// about a device-side constant could be written against the host and pass by
-// accident. The live floor below is device-side.
-const runner = readFileSync(TRIAL, 'utf8');
-const driver = execFileSync('bash', [join(HERE, 'trial', 'assemble.sh')], { encoding: 'utf8' });
-const gateAt = runner.indexOf('human-gate.mjs');
-const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
-check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
-check('runner emits the plan from recipe.mjs and has no inline schedule fallback',
-  /node "\$HERE\/recipe\.mjs" --device-plan \$recipe_args/.test(runner) &&
-  !/cannot be priced by the model gate/.test(runner));
-// The ONE bypass -- EXPERIMENT_UNGATED, minus7-perfect-experiment branch --
-// must still emit the plan through the engine, still compute the gate verdict,
-// and say loudly that the run is a machine measurement. It may not silently
-// skip the gate.
-check('EXPERIMENT_UNGATED still prices the plan and announces itself',
-  !runner.includes('EXPERIMENT_UNGATED') || (
-    /if \[ "\$\{EXPERIMENT_UNGATED:-0\}" = 1 \]/.test(runner) &&
-    /human gate NOT enforced/.test(runner) &&
-    /gate verdict \(for reference\)/.test(runner)));
-// The default path is unchanged: gate, then `|| exit 44`, no branch.
-check('the default path still hard-refuses on a failed gate',
-  /node "\$HERE\/human-gate\.mjs" "\$RUN_TMP\/device-plan\.txt" \|\| exit 44/.test(runner));
-// The refusal must ask the engine, not a hard-coded night. A literal night
-// number here is exactly the conflation this replaced.
-check('the blind-run refusal reads the sourced AI table',
-  /canAct\(\$STORY_NIGHT, 'bb'\)/.test(runner) &&
-  !/the Night 6 route is 0\/3000 blind/.test(runner));
-// The scalar live floor must stand down for EVERY model-gated plan path, or it
-// contradicts the gate it is supposed to back up: Minus 7 (NIGHT6_LEFT=1,
-// priced by human-gate.mjs) and Minus Toys (NIGHT6_LEFT=2, priced by
-// minus-toys-plan.mjs --gate, whose arming geometry lands two presses 50 ms
-// apart on purpose). Only the dormant unpriced route (0) keeps the scalar.
-check('legacy live floor does not contradict either model-gated route',
-  /^HUMAN_FLOOR_MS=\d+$/m.test(driver) &&
-  /case "\$NIGHT6_LEFT" in 1\|2\) return 0 ;; esac/.test(driver));
 
 if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
 console.log(`model gate: verified; shipped plan passes at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

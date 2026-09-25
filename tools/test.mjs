@@ -184,47 +184,21 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
-  // A calibration is not stable because one gap landed once. This pools only
-  // independent structured grades, refuses invalid/desynchronised samples,
-  // and exposes the statistical floor before a timing can become a rule.
   // The device pilot's cycle recipes and their budgets: contact lengths above
   // the phone's floor, camera spacing it has actually landed, a hall flash per
   // cycle, wind above break-even, the flashlight inside night 6's 3000 frames,
   // and the monitor/mask polarity invariants.
   ['recipe', ['device/test-recipe.mjs']],
-  // The runner's sweep primitives must be wall-timed. A hid_delay inside them
-  // elapses in the hid process instead of adding to the shell's wait, which
-  // silently shortened the camera spacing below what the phone accepts.
-  ['hid walltime', ['device/test-hid-walltime.mjs']],
   // The microroutine oracle: the runner can record every report it sends, and
   // this audits that artifact for contact length, released time between two
   // buttons, and the trap-2 release discipline. Its self-test runs here; point
   // it at a captured trace to audit a real run.
   ['hid trace', ['device/test-hid-trace.mjs']],
-  // Joins the emitted plan and the phone on one clock: per-anchor residual
-  // (planned vs delivered), whether it re-anchors or compounds, and the
-  // intra-macro sweep spacing against what the plan emitted. The number the
-  // perfect-experiment run (plans/17) reads. Self-test only here.
-  ['drift trace', ['device/test-drifttrace.mjs']],
-  // The other half of that oracle: the trace says what the phone was sent, and
-  // this says whether the game acted on it. A monitor press the port drops
-  // inverts every later cycle silently, so the run keeps producing schedule
-  // output that reads like a working night. Self-test only here; point the
-  // tool at a run name to grade one.
-  ['desync scan', ['device/desync-scan.py', '--self-test']],
-  // The runner must schedule the plan the simulator emits. The table lived in
-  // two places and a fix to one silently missed the other.
-  ['runner plan', ['device/test-runner-plan.mjs']],
   // The Minus Toys device plan (plan 02 pkg 2a, device half): the ported
   // glitch loop still clears nights 2 and 7 in the exact model with the split
   // armed, the no-split control still loses, and every instruction kind and
   // control it emits is one the on-phone interpreter implements.
   ['minus toys plan', ['device/test-minus-toys-plan.mjs']],
-  // The --minimal arm verifier's fixtures: lit/unlit from the 2026-08-29 r2/r3
-  // recordings, plus the office and menu never-lit controls. Pins the crop
-  // fractions, the thresholds and the rotation convention the live verify in
-  // trial.sh leans on to re-arm or abort.
-  ['cam11lit fixtures', ['device/test-cam11lit.sh']],
   // The per-instruction timing margin map for that plan: how far each press can
   // move before a seed dies. Pins the two facts the 2026-08-28 device-run
   // writeup rests on -- the split-arming pair has ~one Fusion poll of slack, and
@@ -272,18 +246,12 @@ const ENGINE = [
   // fact contract regardless of its receiver. The ESP32 receiver and its
   // firmware are archived (docs/ARCHIVED-ROUTES.md); BlueALSA is the one left.
   ['audio authority', ['cue/test-audio-authority.py']],
-  ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,
   // replay and receive a verdict priced against ITS OWN AI table. Nights 1 and
   // 3 used to crash the builder on one shared message that covered two
   // opposite facts -- Balloon Boy is impossible on 1 and merely rare on 3.
   ['night matrix', ['device/test-night-matrix.mjs']],
-  // The interpreter is the only part of the runner that decides *what*
-  // happens. This runs the shipped functions against the real plan with the
-  // device primitives stubbed, so a branch window off by one fails here
-  // instead of on the phone.
-  ['plan interpreter', ['device/test-plan-interpreter.sh']],
   // Nothing is pressed on the title screen that was not seen there, and New
   // Game -- which erases a save that cannot be restored -- needs a capability
   // the caller sets for one run. The structural half proves no second title
@@ -326,10 +294,6 @@ const ENGINE = [
   // lit names the camera, zero and several are distinct refusals (a camera
   // transition and the Android double-camera glitch must stay separable).
   ['camera calibration', ['device/test-camera-calibrate.py']],
-  // The cue-trace loop's kill switch must be a file the loop never writes:
-  // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
-  // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
-  ['cue trace loop', ['device/test-cue-trace-loop.sh']],
   // The trainer's per-step lateness census -- the raw material for a future
   // HumanActuator's measured bands (plans/04). Checks the Coach's trace rows
   // against known lateness and the /save-trace endpoint against a temp dir,
@@ -354,11 +318,6 @@ const ENGINE = [
   // in this repository is computed against.
   ['aimap', ['dump/test-aimap.py']],
   ['observation index', ['device/test-index-observations.py']],
-  // elegance.py's SERVES table, which has been wrong four times in the same
-  // way -- one multi-purpose route action attributed to one animatronic, and
-  // then graded as pure waste on the night that animatronic sits out. The pins
-  // are on the table and on the compound-macro split, not on a headline figure.
-  ['elegance', ['device/test-elegance.py']],
   // Plan 09's v1 session contract: the manifest/event schemas, and the proof
   // that each way of being malformed fails with its own reason rather than one
   // generic rejection. A validator that refuses everything identically is
@@ -375,11 +334,6 @@ const ENGINE = [
   // Plan 23's device observer must retain enough paired telemetry to calculate
   // detector delta and render cadence, without inventing a qualified HUD run.
   ['overlay observation', ['device/test-overlay-qualification-observe.sh']],
-  // A 420-second night must not be represented by screenrecord's legacy
-  // 180-second default, and an abort must not suppress the grader that explains
-  // it. The runner negotiates unlimited mode from captured device help and
-  // fails closed on old recorders rather than stitching over evidence gaps.
-  ['screenrecord capability', ['device/test-screenrecord-capability.sh']],
   // The cue helper's detector, compiled and exercised on the host. CueDetector
   // imports nothing from android.*, so this needs no phone and no Android SDK
   // -- only a JDK, which test.sh probes for and fails loudly without.
@@ -393,20 +347,10 @@ const ENGINE = [
   ['cue detector (java)', ['../android/companion/test.sh']],
   ['fnaf1 teach presenter (java)', ['../android/fnaf1-teach/test.sh']],
   ['fnaf1 teach overlay clearance', ['device/test-fnaf1-teach-overlay.py']],
-  // The device driver is assembled from named parts and piped to the phone.
-  // `sh` executes a script before it has read all of it, so a truncated or
-  // misordered driver does not fail at launch -- it presses real buttons and
-  // dies mid-night. This gates the assembly instead.
-  ['trial assembly', ['device/test-trial-assembly.sh']],
-  // Plan 19 P4: native watchlist observe-only wiring is explicit, while live
-  // reactive action refuses until that evidence has promoted.
-  ['trial reactive', ['device/test-trial-reactive.sh']],
-  // One screen->raw transform written in shell, Python and JS, held to the
-  // same answer over the real tap table. They disagreed on 24 of 39
-  // coordinates: the probe measuring what the phone accepts was sending
-  // coordinates the runner never sends, and the auditor deciding what the game
-  // did was keyed to a third set. Shell cannot import JS, so a control test is
-  // the answer -- the same shape as sourcetest.mjs's second Fusion LCG.
+  // One screen->raw transform, held to one answer over the real tap table
+  // wherever it is written: the HID transport (the authority) and the
+  // Companion's Java copy. Its shell and Python copies once disagreed on 24 of
+  // 39 coordinates; they left with the legacy lane.
   ['screen map', ['device/test-screen-map.mjs']],
   // Plan 18 Package 5: parse source-side InputDispatcher evidence without a
   // phone or a trace-processor dependency in the normal checkout.
@@ -422,12 +366,6 @@ const ENGINE = [
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
   // rather than being remembered.
   ['docs', ['test-docs.mjs']],
-  // The pre-run refusal check. n1-full-1640 was launched with CUE_HELPER=0,
-  // so its cue port was "-", the resync verification branch never executed,
-  // and a later session read the failed recovery as evidence the luma
-  // threshold was blind. It was not; nothing had run. A run's configuration
-  // is not a detail to reconstruct afterwards.
-  ['preflight', ['device/test-preflight.sh']],
   // The on-phone classifier's host-side checks: frame framing, model refusal
   // bands, and the streaming protocol. It ran NOWHERE before 2026-08-26 --
   // not here, not in ci.yml -- while four grade-run coverage exclusions named
@@ -452,7 +390,6 @@ const ENGINE = [
   ['cue shadow window builder', ['cue/test-build-shadow-windows.py']],
   ['cue model promotion', ['cue/test-export-model.py']],
   ['latency experiment', ['cue/test-latency-experiment.py']],
-  ['pilot supervisor', ['cue/test-pilot-supervisor.py']],
   ['audio fact bridge', ['cue/test-bridge-audio-authority.py']],
 ];
 
@@ -486,11 +423,9 @@ const BACKLOG = new Map([
   ['hidpilot sparse worst', 'Minus 7: as hidpilot sparse-left'],
   ['hidpilot n6 target', 'Minus 7: HID pilot, Night 6 below its floor (Golden Freddy)'],
   ['hidpilot n6 target worst', 'Minus 7: as hidpilot n6 target'],
-  ['runner plan', 'Minus 7: the restored Golden Freddy plan clears 0/300'],
   ['device input gaps', 'Minus 7: the Night 6 recipe sweeps 226 ms after the raise, under 233'],
   ['device actuator', 'Minus 7: Night 6 loop-debt exemption is now stale'],
   ['human gate', 'Minus 7: the shipped Night 6 plan is 123/1200 under human slack'],
-  ['plan interpreter', 'Minus 7: mask-already-off recovery presses before the compound raise'],
   // Red on code the live route uses. Open defects, not controls.
   ['reactivetest', 'observer: a dropped VIDEO read is not UNKNOWN(read-dropped) on every video fact'],
   ['reduced model', 'vent press with the monitor up diverges from the Sim (true vs false)'],

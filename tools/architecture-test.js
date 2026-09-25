@@ -107,7 +107,7 @@ for (const [name, select] of Object.entries(catalogPaths)) {
     `${name} names ${foreign.length} path(s) outside this repository, starting ` +
     `with ${foreign[0]}; regenerate with npm run catalog`);
 }
-for (const shim of ['tools/device/trial.sh', 'tools/device/legacy-trial.sh']) {
+for (const shim of ['tools/device/trial.sh']) {
   assert.match(compatibility, new RegExp(shim.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')), `${shim} is missing from the compatibility inventory`);
 }
 try {

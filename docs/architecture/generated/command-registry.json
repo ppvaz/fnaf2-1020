@@ -42,7 +42,7 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/core/test/route-forks.test.js && node packages/core/test/drop-light-order.test.js && node packages/core/test/foxy-chain.test.js && node packages/core/test/unconditional-draws.test.js && node packages/core/test/event-draws.test.js && node packages/core/test/blackout-draws.test.js && node packages/core/test/view-draws.test.js && node packages/core/test/roll-draws.test.js && node packages/core/test/monitor-down-draw.test.js && node packages/core/test/second-pass.test.js && node packages/core/test/puppet-glitch-draws.test.js && node packages/core/test/sheet-order.test.js && node packages/core/test/frame-time-hook.test.js && node packages/core/test/last-view-pause.test.js && node packages/core/test/footstep-draws.test.js && node packages/core/test/vent-cam-draws.test.js && node packages/core/test/random-image-draw.test.js && node packages/core/test/monitor-raise-gate.test.js && node packages/core/test/mangle-return.test.js &&node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/adapters/test/night-onset.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/modern-campaign-terminal.test.js && node apps/device/test/campaign-signal.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node apps/device/test/night-anchor.test.js && node apps/device/test/cycle-lesson.test.js && node apps/device/test/timed-start.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/device/test-phase-reconstruct.mjs && node tools/device/test-tap-stall-audit.mjs && python3 tools/device/test-framesource.py && python3 tools/device/test-decode-once.py && python3 tools/device/test-grade-night.py && python3 tools/device/test-cycle-ledger.py && python3 tools/device/test-office-seed-bracket.py && node tools/device/test-minus3-frame-light.mjs && node tools/device/test-artifact-animation-gates.mjs && node tools/vaulttest.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && python3 tools/device/test-teach-panel-clearance.py && python3 tools/device/test-death-cause.py && tools/device/test-overlay-qualification-observe.sh && tools/device/test-game-teardown.sh && tools/cue/test-bt-audio-link.sh && android/companion/test.sh && npm run test:device:calibration",
+      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/core/test/route-forks.test.js && node packages/core/test/drop-light-order.test.js && node packages/core/test/foxy-chain.test.js && node packages/core/test/unconditional-draws.test.js && node packages/core/test/event-draws.test.js && node packages/core/test/blackout-draws.test.js && node packages/core/test/view-draws.test.js && node packages/core/test/roll-draws.test.js && node packages/core/test/monitor-down-draw.test.js && node packages/core/test/second-pass.test.js && node packages/core/test/puppet-glitch-draws.test.js && node packages/core/test/sheet-order.test.js && node packages/core/test/frame-time-hook.test.js && node packages/core/test/last-view-pause.test.js && node packages/core/test/footstep-draws.test.js && node packages/core/test/vent-cam-draws.test.js && node packages/core/test/random-image-draw.test.js && node packages/core/test/monitor-raise-gate.test.js && node packages/core/test/mangle-return.test.js &&node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/adapters/test/night-onset.test.js && node packages/runtime/test/scheduler.test.js && node packages/runtime/test/supervisor.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/modern-campaign-terminal.test.js && node apps/device/test/campaign-signal.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node apps/device/test/night-anchor.test.js && node apps/device/test/cycle-lesson.test.js && node apps/device/test/timed-start.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/device/test-phase-reconstruct.mjs && node tools/device/test-tap-stall-audit.mjs && python3 tools/device/test-framesource.py && python3 tools/device/test-decode-once.py && python3 tools/device/test-grade-night.py && python3 tools/device/test-cycle-ledger.py && python3 tools/device/test-office-seed-bracket.py && node tools/device/test-minus3-frame-light.mjs && node tools/device/test-artifact-animation-gates.mjs && node tools/vaulttest.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && python3 tools/device/test-teach-panel-clearance.py && python3 tools/device/test-death-cause.py && tools/device/test-overlay-qualification-observe.sh && tools/device/test-game-teardown.sh && tools/cue/test-bt-audio-link.sh && android/companion/test.sh && npm run test:device:calibration",
       "lifecycle": "supported"
     },
     {
@@ -866,12 +866,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/legacy-trial.sh",
-      "invocation": "tools/device/legacy-trial.sh",
-      "kind": "legacy device action",
-      "lifecycle": "legacy"
-    },
-    {
       "id": "tools/device/select-adb.sh",
       "invocation": "tools/device/select-adb.sh",
       "kind": "sourced transport guard",
@@ -1028,12 +1022,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/test-runner-plan.mjs",
-      "invocation": "tools/device/test-runner-plan.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/minus-toys-plan.mjs",
       "invocation": "tools/device/minus-toys-plan.mjs --night=N [--gate] [--knobs=k=v,...]",
       "kind": "generator/check",
@@ -1184,12 +1172,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/test-trial-reactive.sh",
-      "invocation": "tools/device/test-trial-reactive.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/test-night7-presets.mjs",
       "invocation": "tools/device/test-night7-presets.mjs",
       "kind": "check",
@@ -1238,18 +1220,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/cam11lit.py",
-      "invocation": "tools/device/cam11lit.py",
-      "kind": "device action",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-cam11lit.sh",
-      "invocation": "tools/device/test-cam11lit.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/minus-toys-margin.mjs",
       "invocation": "tools/device/minus-toys-margin.mjs [--night=N] [--seeds=N] [--max=MS]",
       "kind": "report",
@@ -1286,38 +1256,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/test-human-floor.sh",
-      "invocation": "tools/device/test-human-floor.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-plan-interpreter.sh",
-      "invocation": "tools/device/test-plan-interpreter.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/test-hid-trace.mjs",
       "invocation": "tools/device/test-hid-trace.mjs [trace]",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-hid-walltime.mjs",
-      "invocation": "tools/device/test-hid-walltime.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/drifttrace.mjs",
-      "invocation": "tools/device/drifttrace.mjs RUN [--plan FILE]",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-drifttrace.mjs",
-      "invocation": "tools/device/test-drifttrace.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -1475,30 +1415,6 @@
       "id": "tools/model/hid-device-pilot.mjs",
       "invocation": "tools/model/hid-device-pilot.mjs [runs] [--night=6]",
       "kind": "report/check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial-maskcamp.sh",
-      "invocation": "tools/device/trial-maskcamp.sh [name] [seconds] [night] [protocol]",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/run-batch.sh",
-      "invocation": "tools/device/run-batch.sh COUNT [night] [prefix] [protocol]",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/preflight.sh",
-      "invocation": "tools/device/preflight.sh NIGHT",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-preflight.sh",
-      "invocation": "tools/device/test-preflight.sh",
-      "kind": "check",
       "lifecycle": "supported"
     },
     {
@@ -1730,12 +1646,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/test-screenrecord-capability.sh",
-      "invocation": "tools/device/test-screenrecord-capability.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/test-device-input-gaps.mjs",
       "invocation": "tools/device/test-device-input-gaps.mjs",
       "kind": "check",
@@ -1757,96 +1667,6 @@
       "id": "tools/device/pan-shift.py",
       "invocation": "tools/device/pan-shift.py before.png after.png",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-cue-trace-loop.sh",
-      "invocation": "tools/device/test-cue-trace-loop.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/assemble.sh",
-      "invocation": "tools/device/trial/assemble.sh",
-      "kind": "build",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-trial-assembly.sh",
-      "invocation": "tools/device/test-trial-assembly.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/01-arguments.sh",
-      "invocation": "tools/device/trial/01-arguments.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/02-hid-wire.sh",
-      "invocation": "tools/device/trial/02-hid-wire.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/03-clock.sh",
-      "invocation": "tools/device/trial/03-clock.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/04-session.sh",
-      "invocation": "tools/device/trial/04-session.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/05-press.sh",
-      "invocation": "tools/device/trial/05-press.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/06-cams-up-anchor.sh",
-      "invocation": "tools/device/trial/06-cams-up-anchor.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/07-light-and-capture.sh",
-      "invocation": "tools/device/trial/07-light-and-capture.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/08-bb-threat-response.sh",
-      "invocation": "tools/device/trial/08-bb-threat-response.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/09-constants.sh",
-      "invocation": "tools/device/trial/09-constants.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/10-minus7-sweep.sh",
-      "invocation": "tools/device/trial/10-minus7-sweep.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/11-plan-interpreter.sh",
-      "invocation": "tools/device/trial/11-plan-interpreter.sh",
-      "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/trial/12-night-loop.sh",
-      "invocation": "tools/device/trial/12-night-loop.sh",
-      "kind": "driver part",
       "lifecycle": "supported"
     },
     {
@@ -1958,12 +1778,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/desync-scan.py",
-      "invocation": "tools/device/desync-scan.py RUN_NAME [--strips] [--all-intervals]",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/windtrace.mjs",
       "invocation": "tools/device/windtrace.mjs --night=N [--seeds=A..B]",
       "kind": "report",
@@ -1991,18 +1805,6 @@
       "id": "tools/device/run-timeline.py",
       "invocation": "tools/device/run-timeline.py VIDEO [--cause-fps 12] [--cause-model MODEL ...] [--exclude-rect X0,Y0,X1,Y1]",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/elegance.py",
-      "invocation": "tools/device/elegance.py RUN_LOG --night N",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-elegance.py",
-      "invocation": "tools/device/test-elegance.py",
-      "kind": "check",
       "lifecycle": "supported"
     },
     {
@@ -2198,12 +2000,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/cue/pilot-supervisor.py",
-      "invocation": "tools/cue/pilot-supervisor.py",
-      "kind": "external-device action",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/cue/bridge-audio-authority.py",
       "invocation": "tools/cue/bridge-audio-authority.py --socket PATH",
       "kind": "external-device action",
@@ -2218,12 +2014,6 @@
     {
       "id": "tools/cue/test-audio-authority.py",
       "invocation": "tools/cue/test-audio-authority.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-pilot-supervisor.py",
-      "invocation": "tools/cue/test-pilot-supervisor.py",
       "kind": "check",
       "lifecycle": "supported"
     },

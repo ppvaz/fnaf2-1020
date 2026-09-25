@@ -13,24 +13,16 @@
 // Usage: node hid-sweep-probe.mjs [spacingMs ...]   (default 240 160 120 100)
 import { pathToFileURL } from 'node:url';
 
-// docs/device/HID-MULTITOUCH.md: the virtual descriptor is 2400x1080 but
-// InputReader exposes it through the portrait-natural display.
-//
-// FLOOR, not round. This used Math.round until 2026-08-26 while the two other
-// implementations of the same transform -- trial.sh's shell arithmetic
-// and desync-scan.py's `//` -- both truncate. Over the real tap table they
-// disagreed on four coordinates: cam11 (878 vs 877), mute (2227 vs 2226),
-// newGame (778 vs 777) and continue (978 vs 977).
-//
-// cam11 is the one that matters: this probe sweeps it. So the probe measuring
-// what the phone accepts was sending a coordinate the runner never sends, and
-// the auditor deciding what the game did was keyed to a third. Nothing
-// compared them -- test-hid-sweep-probe.mjs tested only this copy.
-//
-// The runner wins the tie because it is what actually presses the phone; the
-// auditor must match the runner or it attributes presses to the wrong control.
-// test-screen-map.mjs now holds all three to the same answer.
-export const toRaw = ([x, y]) => [Math.floor((1080 - y) * 20 / 9), Math.floor(x * 9 / 20)];
+// The screen->HID transform is the transport's own (packages/adapters, the one
+// the campaign executor presses with): 2400x1080 landscape onto the
+// portrait-natural HID axes, truncated. It was written here a second time until
+// 2026-09-25, beside a shell copy in the legacy runner and a Python one in
+// desync-scan.py; the three disagreed on four real taps once (a Math.round
+// here). Both other copies are archived and this one re-exports the
+// transport's, so test-screen-map.mjs is left comparing the transport with the
+// Companion's Java copy.
+export { toRaw } from '@fnaf2-1020/adapters/transports/hid';
+import { toRaw } from '@fnaf2-1020/adapters/transports/hid';
 
 // No title coordinate lives here. Selecting a night is menu.sh's job, and it
 // is the only place that looks at the screen before pressing: it refuses when

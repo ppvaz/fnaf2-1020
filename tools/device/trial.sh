@@ -1,23 +1,12 @@
 #!/usr/bin/env bash
-# Compatibility launcher. New runs go through the validated device service;
-# the historical shell runner is retained under an explicit legacy name only
-# while command/trace equivalence is being characterized.
+# Compatibility launcher for a validated device bundle (artifact-runner.mjs);
+# with no bundle it runs the fixture dry-run. The historical shell runner it
+# used to hand FNAF2_LEGACY_TRIAL=1 to was archived on 2026-09-25 (Plan 22 P9,
+# docs/ARCHIVED-ROUTES.md). Live nights go through night-run.sh.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-ORIGINAL_ARGS=("$@")
-
-# Preserve the explicitly opt-in historical interface byte-for-byte.  Artifact
-# arguments are handled by this facade even when the legacy switch is present,
-# so a dry-run cannot accidentally enter the old schedule builder.
-if [[ "${FNAF2_LEGACY_TRIAL:-0}" == 1 ]]; then
-  has_artifact=0
-  for original_arg in "${ORIGINAL_ARGS[@]}"; do
-    [ "$original_arg" = --artifact ] && has_artifact=1
-  done
-  [ "$has_artifact" -eq 1 ] || exec "$HERE/legacy-trial.sh" "${ORIGINAL_ARGS[@]}"
-fi
 
 ARTIFACT=""
 DRY_RUN=0

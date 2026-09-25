@@ -70,23 +70,4 @@ try {
   rmSync(work, { recursive: true, force: true });
 }
 
-const runner = readFileSync(join(HERE, 'device/legacy-trial.sh'), 'utf8');
-const minimalStart = runner.indexOf('if [ "$MINUS_TOYS_VARIANT" = minimal ]; then');
-const legacyStart = runner.indexOf('node "$HERE/minus-toys-plan.mjs"', minimalStart);
-check(minimalStart >= 0 && legacyStart > minimalStart,
-  'runner has no distinct compiled Minimal branch');
-const minimalBranch = runner.slice(minimalStart, legacyStart);
-check(minimalBranch.includes('policy-artifact.mjs') &&
-      minimalBranch.includes('--artifact "$RUN_TMP/policy-artifact.json"') &&
-      minimalBranch.includes('--metadata "$RUN_TMP/policy-meta.env"'),
-  'Minimal runner branch does not emit the policy artifact and metadata');
-check(!minimalBranch.includes('minus-toys-plan.mjs'),
-  'Minimal runner branch still has a second schedule writer');
-check(runner.includes('fnaf_session_artifact "$LOCAL_POLICY_ARTIFACT"') &&
-      runner.includes('if [ "$GRADE_RUN" = 1 ]; then'),
-  'the session does not retain the artifact or keep grading opt-in');
-check(runner.includes('adb shell "sha256sum') &&
-      runner.includes('[ "$DEVICE_PLAN_SHA256" = "$PLAN_SHA256" ]'),
-  'the runner does not verify the plan bytes after adb push');
-
-console.log('policy artifact: canonical IR, compiled plan, runner binding, and analysis boundary are gated');
+console.log('policy artifact: canonical IR, compiled plan, and analysis boundary are gated');

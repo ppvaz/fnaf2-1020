@@ -41,7 +41,7 @@ const EXCLUDED = new Map([
   ['hid-intersection-probe.mjs', 'device probe generator -- emits an intersection stream to a phone rather than grading a night run'],
   ['hid-intersection-probe.sh', 'device probe runner for hid-intersection-probe.mjs; it acts on a phone rather than grading a run'],
   ['intersection-state-gate.mjs', 'pure control-intersection state gate consumed by the executor, gated by test-intersection-state-gate.mjs; it decides a press rather than grading a run'],
-  ['screenstate.py', 'the live alive/dead authority; grade-night.py and desync-scan.py apply its predicate to recordings'],
+  ['screenstate.py', 'the live alive/dead authority; grade-night.py applies its predicate to recordings'],
   ['death-prediction.mjs', 'runs BEFORE a run, not after it: writes the model\'s death prediction (killer shares, time quantiles over phases) that night-run.sh retains as prediction.json; grading reads that file, it does not regenerate it -- gated by test-bundle.mjs through the DEATH_TARGETED gate it produces'],
   ['tickphase.py', 'reads the retained Bluetooth audio (night-run.sh --bt-audio) after a run: roll-witness onsets and WinD folds. Run by hand while its thresholds and the clock-rate correction are being calibrated (2026-09-13); it joins grade-run.sh once a fold-based phase read survives a second run'],
   ['epoch-scan.mjs', 'runs BEFORE a run: a model census over release epochs (the bands an anchor aim is priced on); never reads a recording'],
@@ -61,7 +61,7 @@ const EXCLUDED = new Map([
   ['gate-worker.mjs', 'pure worker for test-night-matrix.mjs; it simulates gate chunks and has no run artifacts to grade'],
   ['windtrace.mjs', 'grades a MODEL, not a run: it replays the plan and reports what fraction of its wind frames the engine credited. There is no device counterpart -- the box level is not observable on the phone beyond the CAM 11 pie that windpct.py reads -- so grade-run.sh has nothing to hand it'],
   ['recipe.mjs', 'library, gated by test-recipe.mjs'],
-  ['minus-toys-plan.mjs', 'device plan emitter + model gate for Minus Toys, gated by test-minus-toys-plan.mjs; trial.sh runs its --gate, it has no run to grade'],
+  ['minus-toys-plan.mjs', 'device plan emitter + model gate for Minus Toys, gated by test-minus-toys-plan.mjs; bundle.mjs compiles it and it has no run to grade'],
   ['arm-verification.mjs', 'shared camera-pair constants for strategy arming headers and host verification; not a run grader, covered by test-minus-toys-plan.mjs'],
   ['policy-ir.mjs', 'finite policy artifact builder, gated by test-policy-ir.mjs; it creates a program rather than grading a run'],
   ['policy-interpreter.mjs', 'finite semantic compiler and exact-engine adapter, gated by test-policy-interpreter.mjs; it consumes policy data rather than a device run'],
@@ -85,7 +85,6 @@ const EXCLUDED = new Map([
   ['human-gate.mjs', 'pre-flight gate on plan files, gated by test-human-gate.mjs'],
   ['pan-shift.py', 'measuring stick for pan-probe.sh; the scroll is better read from the dump'],
   ['nightpredicate.py', 'the one definition of the alive/dead rule that screenstate.py and grade-night.py both evaluate; a library, gated by test-screenstate.py'],
-  ['cam11lit.py', 'live runner-side arm verifier for the Minus Toys --minimal opening (trial.sh reads its verdict mid-run to re-arm or abort); not a run grader, gated by test-cam11lit.sh'],
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
   ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
   ['intro_card.py', 'fractional generic intro-card predicate used by lifecycle-observe.py/run-timeline.py; gated by test-intro-card.py'],
@@ -108,13 +107,7 @@ const EXCLUDED = new Map([
   ['provision-cue-model.sh', 'installs a generated model into the helper\'s private storage on a phone; a provisioner, not a grader -- it has no run to read'],
   ['soak-cue-helper.sh', 'live helper, mock-gated by test-soak-cue-helper.sh'],
   ['select-adb.sh', 'transport helper, gated by test-select-adb.sh'],
-  ['preflight.sh', 'pre-run refusal check -- says whether a night CAN be run and prints the invocation; it launches nothing and has no run to grade, mock-gated by test-preflight.sh'],
-  ['run-batch.sh', 'run launcher'],
   ['trial.sh', 'run launcher'],
-  ['legacy-trial.sh', 'legacy implementation is characterized by dedicated runner tests and is not a current grader input'],
-  ['trial/assemble.sh', 'builds the program that runs on the phone from the named parts beside it; gated by test-trial-assembly.sh'],
-  ['trial-maskcamp.sh', 'run launcher'],
-  ['preflight.sh', 'pre-run gate on the phone and the helper -- it decides whether a run can observe anything, and has no run to grade; mock-gated by test-preflight.sh'],
 
   // Added 2026-09-08. These nineteen accumulated after the list was last
   // extended, and the registry bug above hid them behind twelve false
@@ -125,7 +118,7 @@ const EXCLUDED = new Map([
   ['artifact-commands.mjs', 'plan-row -> semantic block compiler, gated by test-bundle.mjs and test-artifact-animation-gates.mjs'],
   ['emit.mjs', 'the device:emit entry point over bundle.mjs, gated by test-bundle.mjs'],
   ['closed-families.mjs', 'closed-family duplicate control imported by policy-search.mjs, gated by tools/observationlanguagetest.mjs'],
-  ['minus-3-plan.mjs', 'device plan emitter + model gate for the Minus 3 route, gated by test-minus3-frame-light.mjs; trial.sh runs its --gate and it has no run to grade'],
+  ['minus-3-plan.mjs', 'device plan emitter + model gate for the Minus 3 route, gated by test-minus3-frame-light.mjs; bundle.mjs compiles it and it has no run to grade'],
   ['minus3-frame-light.mjs', 'the device-proven Minus 3 frame-light recipe and its edge-hash checks, gated by test-minus3-frame-light.mjs'],
   ['mask-calibrate.py', 'maskOn grid-anchor fitter, gated by test-mask-calibrate.py; calibration frames are inputs, not a night-run artifact'],
   ['cue-helper-setup.py', 'helper setup and target-menu check, gated by test-cue-helper-setup.py; it prepares a session rather than grading one'],
@@ -141,7 +134,8 @@ const EXCLUDED = new Map([
   // docs/architecture/DUPLICATE-IMPLEMENTATION-MAP.md rather than left to
   // read as covered. Do not extend this block without a reason this specific.
   ['screen-calibrate.py', 'GAP: screen-class anchor fitter with no gate of its own -- the only one of the five calibrate fitters without one. test-screencheck.py drives build-screen-model.py and replay-screen-model.py, not this. Fits a rule adapters consume on device, so it wants a synthetic-frame gate of its own, modelled on the maskOn fitter\'s'],
-  ['artifact-runner.mjs', 'GAP: host-side artifact consumer with no gate. Its only invoker is trial.sh:56, which is a compatibility-lifecycle launcher in legacy-paths.json -- a legacy caller is not coverage, so this is unexercised by the modern path'],
+  ['validate-session.py', 'Plan 09 session-manifest validator, run by session-manifest.py when a session producer (collect-cue-audio.sh, capture-screen-sample.sh) finalizes; night-run.sh writes no session manifest, so no night has one to grade; gated by test-validate-session.py'],
+  ['artifact-runner.mjs', 'GAP: host-side artifact consumer with no gate. Its only invoker is trial.sh, which is a compatibility-lifecycle launcher in legacy-paths.json -- a legacy caller is not coverage, so this is unexercised by the modern path'],
 ]);
 
 // tools/cue and tools/dump, under the same rule. The audit that widened this
@@ -150,10 +144,10 @@ const EXCLUDED = new Map([
 const SIBLING_EXCLUDED = new Map([
   ['audio-authority.py', 'live rendered-audio authority and run input, not a grader; gated by test-audio-authority.py'],
   ['bridge-audio-authority.py', 'live transport bridge into Cue Helper, not a run artifact grader; gated by test-bridge-audio-authority.py'],
-  ['collect-facts.py', 'fact sidecar producer invoked by trial.sh, whose output is consumed by later analysis'],
+  ['collect-facts.py', 'fact sidecar producer for the external audio authority (latency-experiment.py); it produces facts rather than grading a run'],
   ['latency-experiment.py', 'paired calibration experiment harness that creates evidence rather than grading a night; gated by test-latency-experiment.py'],
-  ['pilot-supervisor.py', 'run/experiment process supervisor rather than an artifact grader; gated by test-pilot-supervisor.py'],
-  ['detect.py', 'the bang detector scan-night.sh drives; grade-run.sh reaches it through that'],
+  ['detect.py', 'the bang detector scan-night.sh drives'],
+  ['scan-night.sh', 'the Balloon Boy bang scan over a receiver PCM capture. grade-run.sh called it only for the legacy trial.sh lane, the one that kept such a capture; night-run.sh keeps the A2DP mix instead, which it has never been pointed at, so it runs by hand (2026-09-25)'],
   ['features.py', 'feature extraction library for detect.py/evaluate.py, gated by test-cue.py'],
   ['correlate.py', 'offline waveform cross-correlation -- the control that refuted the 22 thuds, run by hand against a chosen pair'],
   ['build-shadow-windows.py', 'joins raw helper results to independently established labels and anchored PCM, gated by test-build-shadow-windows.py; it prepares a corpus rather than grading one run'],

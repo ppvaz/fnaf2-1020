@@ -21,7 +21,13 @@
 # because it looks like coverage.
 #
 # Usage: grade-run.sh RUN_NAME [--require-seconds N]
-#   RUN_NAME is the OUT name a trial was launched with, e.g. n6-night-39.
+#   RUN_NAME is night-run.sh's run id, e.g. night7-k3-cohort-r01-20260918T030258Z.
+#
+# It grades what a night-run.sh attempt retains: the recording, the campaign
+# directory, and the Perfetto input and Cue Helper frame traces when the run
+# asked for them. The legacy trial.sh lane's inputs -- its HID trace, session
+# manifest, driver log, cue trace and receiver PCM -- left with that lane on
+# 2026-09-25 (docs/ARCHIVED-ROUTES.md).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -57,23 +63,14 @@ VIDEO=""
 for candidate in "$CAPTURES/$RUN.mp4" "$CAPTURES/$RUN-aborted.mp4"; do
   [ -f "$candidate" ] && VIDEO="$candidate"
 done
-TRACE="$CAPTURES/$RUN-hid.jsonl"
 # Optional Perfetto trace produced by atrace-input.sh around the same run.
-# Unlike the HID trace, this is a device-side record of dispatch and is only
-# parsed when the capture exists; old runs remain gradeable but visibly lack it.
+# This is a device-side record of dispatch and is only parsed when the capture
+# exists; runs without one remain gradeable but visibly lack it.
 INPUT_TRACE="$CAPTURES/$RUN-input.pftrace"
 SF_LATENCY="$CAPTURES/$RUN-surfaceflinger-latency.txt"
-# The external authority's fact sidecar, if the trial subscribed to one. Raw
-# PCM remains owned by the receiver and is not copied through the APK.
-AUDIO_FACTS="$CAPTURES/$RUN-audio-facts.jsonl"
-AUDIO=""
-for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
-  [ -f "$candidate" ] && AUDIO="$candidate"
-done
-CUE="$CAPTURES/$RUN-cue.txt"
-# The modern campaign bundle for this run, when one exists. A device run driven
-# by night-run.sh writes the pointer; GRADE_CAMPAIGN_DIR overrides it. The
-# legacy trial.sh lane has no bundle and every modern step below says so.
+# The campaign directory for this run. night-run.sh writes the pointer;
+# GRADE_CAMPAIGN_DIR overrides it, and every campaign step below says when it
+# is absent.
 CAMPAIGN_DIR="${GRADE_CAMPAIGN_DIR:-}"
 if [ -z "$CAMPAIGN_DIR" ] && [ -f "$CAPTURES/$RUN-campaign-dir.txt" ]; then
   CAMPAIGN_DIR="$(cat "$CAPTURES/$RUN-campaign-dir.txt")"
@@ -89,27 +86,15 @@ for candidate in "$CAPTURES/frame-traces/$RUN".* "$CAPTURES/frame-traces/$RUN"-*
                  "$CAPTURES/frame-traces/$RUN"; do
   [ -f "$candidate" ] && FRAME_TRACE="$candidate"
 done
-KEEP="$CAPTURES/screencheck-keep/$RUN"
-MANIFEST="$CAPTURES/$RUN-session.json"
 
 echo "=============================================================="
 echo "run: $RUN"
 echo "=============================================================="
-missing=0
-for artefact in "$VIDEO" "$TRACE"; do
-  [ -n "$artefact" ] && [ -f "$artefact" ] || missing=1
-done
 [ -n "$VIDEO" ] || { echo "no capture found for $RUN (looked for $RUN.mp4 and $RUN-aborted.mp4)"; exit 2; }
 echo "capture: ${VIDEO##*/}"
-[ -f "$TRACE" ] && echo "hid trace: ${TRACE##*/}" || echo "hid trace: MISSING (run with HID_TRACE_RUN=1)"
 [ -f "$INPUT_TRACE" ] && echo "input trace: ${INPUT_TRACE##*/}" || echo "input trace: none (run atrace-input.sh around the command)"
 [ -f "$SF_LATENCY" ] && echo "SurfaceFlinger latency: ${SF_LATENCY##*/}" || echo "SurfaceFlinger latency: none (set SF_LAYER for capture)"
-[ -f "$CUE" ] && echo "cue trace: ${CUE##*/}" || echo "cue trace: none (run with CUE_HELPER=1)"
-[ -n "$AUDIO" ] && echo "legacy night audio: ${AUDIO##*/}" || echo "legacy night PCM: none (receiver owns live audio)"
-[ -f "$AUDIO_FACTS" ] && echo "audio facts: ${AUDIO_FACTS##*/}" || echo "audio facts: none (run with external authority socket)"
-[ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
-[ -f "$MANIFEST" ] && echo "session manifest: ${MANIFEST##*/}" || echo "session manifest: none (unmanifested run)"
-[ -n "$CAMPAIGN_DIR" ] && echo "campaign bundle: $CAMPAIGN_DIR" || echo "campaign bundle: none (legacy trial lane, or pointer not written)"
+[ -n "$CAMPAIGN_DIR" ] && echo "campaign bundle: $CAMPAIGN_DIR" || echo "campaign bundle: none (no pointer written)"
 [ -n "$FRAME_TRACE" ] && echo "frame trace: ${FRAME_TRACE##*/}" || echo "frame trace: none (run query-cue-helper.sh trace start/stop around the run)"
 
 fail=0
@@ -274,38 +259,6 @@ step_shared() {
     "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label" "$elapsed" "$total_elapsed"
 }
 
-# 0. Does the run describe itself? A manifest is what turns a pile of
-#    same-basename files into one session: which game build, which model
-#    hashes, which clocks, which terminal outcome and on what evidence. The
-#    v1 contract lives in tools/device/schema/ and is enforced here.
-#
-#    trial.sh writes one on every exit path, so an absent manifest now
-#    means either a run from before 2026-08-26 or a producer that has not been
-#    wired up. Either way the absent case says so in as many words rather than
-#    passing quietly -- a step that grades a file that is not there is the
-#    exact failure grade-run.sh was written for.
-#
-#    A leftover *-session.spool.jsonl is not clutter: finalize deletes the
-#    spool only once the manifest validates, so its presence is the record of
-#    a session that could not describe itself.
-if [ -f "$MANIFEST" ]; then
-  step "session manifest (v1 provenance contract)" \
-    python3 "$HERE/validate-session.py" "$MANIFEST"
-else
-  echo
-  echo "--- session manifest (v1 provenance contract) ---"
-  echo "  no ${RUN}-session.json: this run is unmanifested, so nothing below can"
-  echo "  name its game build, model hashes, clock alignment or win evidence."
-  echo "  Nothing was validated."
-  if [ -f "$CAPTURES/$RUN-session.spool.jsonl" ]; then
-    echo "  A spool IS present ($RUN-session.spool.jsonl): the session was started"
-    echo "  and its manifest was refused or never finalized. Read the spool."
-    fail=1
-  else
-    echo "  Run under tools/device/trial.sh, which emits one."
-  fi
-fi
-
 # 1. Was it alive, and for how long? This one decides what the run *means*, so
 #    it goes first: every other number below is only interesting for the
 #    interval the game was actually running.
@@ -340,31 +293,6 @@ limited node "$HERE/clocktrace.mjs" "$VIDEO" --fps="$GRADE_FPS" || {
   status=$?
   [ "$status" -eq 3 ] || { echo "  ^ FAILED"; fail=1; }
 }
-
-# 2. What did the phone actually receive? The trace auditor is the only oracle
-#    that reads a real artefact rather than a model of one.
-if [ -f "$TRACE" ]; then
-  step "input defects (contact lengths, released time, latched contacts, zero delays)" \
-    node "$HERE/test-hid-trace.mjs" "$TRACE"
-
-  # 2a. How far is DELIVERED from PLANNED for every wall-timed press, and does
-  #     that gap re-anchor each boundary or compound across the night? The
-  #     auditor above says the stream is legal; this says how close it landed
-  #     to the plan. Reads the emitted plan when the run saved one, so an
-  #     experiment at --device-spacing-ms=113 is graded against 113.
-  DRIFT_PLAN=""
-  [ -f "$CAPTURES/$RUN-device-plan.txt" ] && DRIFT_PLAN="--plan $CAPTURES/$RUN-device-plan.txt"
-  step "plan-vs-phone drift (per-anchor residual, accumulation, sweep spacing)" \
-    node "$HERE/drifttrace.mjs" "$TRACE" $DRIFT_PLAN
-
-  # 2b. Did the game act on the presses? The auditor above reads the stream the
-  #     phone was sent; this reads the stream against what the screen then did.
-  #     A monitor press the game drops inverts every later cycle and nothing in
-  #     the run notices, so a desynced run keeps producing plausible-looking
-  #     schedule output for as long as the pilot keeps pressing.
-  step "monitor desync (does the game agree with the pilot about the cams?)" \
-    python3 "$HERE/desync-scan.py" "$RUN" --fps "$GRADE_FPS" --strips
-fi
 
 # 3. Did the sweeps select, and did they flash? Two independent signals that
 #    fail differently -- camtrace at the recording's real 60 fps, because its
@@ -487,58 +415,6 @@ else
   echo "--- native-frame state coverage for the actuation ---"
   echo "  no frame trace for $RUN: frame-level state coverage and input/frame"
   echo "  alignment are UNKNOWN. Nothing was measured."
-fi
-
-# 5c. Elegance: how many inputs the run sent against how many that night needed.
-# The night comes from the session manifest, never guessed -- a route qualified
-# for Night 6 and replayed on Night 1 spends most of its inputs on animatronics
-# whose AI is 0, and nothing else here reports that.
-RUN_LOG="$CAPTURES/$RUN-run.log"
-RUN_NIGHT=""
-if [ -f "$MANIFEST" ]; then
-  RUN_NIGHT=$(python3 -c "
-import json,sys
-try:
-    d=json.load(open(sys.argv[1]))
-    n=d.get('target',{}).get('night')
-    print(n if isinstance(n,int) and n>0 else '')
-except Exception:
-    print('')
-" "$MANIFEST" 2>/dev/null)
-fi
-if [ -n "$RUN_NIGHT" ] && [ -f "$RUN_LOG" ]; then
-  step "elegance (inputs sent vs needed)" \
-    python3 "$HERE/elegance.py" "$RUN_LOG" --night "$RUN_NIGHT"
-else
-  printf '\n--- elegance (inputs sent vs needed) ---\n'
-  if [ ! -f "$RUN_LOG" ]; then
-    echo "  no driver log for $RUN; nothing to count. Runs before 2026-08-26 have none."
-  else
-    echo "  the manifest names no story night (target.night is 0 or absent), so"
-    echo "  'needed' cannot be decided against the AI table. UNKNOWN(night not named)."
-  fi
-fi
-
-# 6. Did Balloon Boy's vent bang reach the capture at all?
-#
-#    This is the instrument the drawer was missing. tools/cue/ has had a working
-#    detector the whole time and grade-run.sh never called it, which is the
-#    "instrument nobody runs is a comment" failure in its purest form: the
-#    question "how many bangs were in that night" had never once been answered
-#    with a measurement, because no run recorded any audio to answer it from.
-#
-#    Read the zero carefully. scan-night.sh denoises first because that takes
-#    recall from 6% to 52% on injected controls, and its floor is about -12 dB
-#    relative to background -- so "0 confirmed" means no bang above that, not no
-#    bang. It is a bound, not a verdict.
-if [ -n "$AUDIO" ]; then
-  step "Balloon Boy's vent bang (sample 17; 52% recall, floor about -12 dB)" \
-    bash "$HERE/../cue/scan-night.sh" "$AUDIO"
-else
-  echo
-  echo "--- Balloon Boy's vent bang ---"
-  echo "  no raw audio kept for $RUN; scan-night requires a receiver PCM capture."
-  [ -f "$AUDIO_FACTS" ] || echo "  external authority facts are also absent; run with CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH."
 fi
 
 echo

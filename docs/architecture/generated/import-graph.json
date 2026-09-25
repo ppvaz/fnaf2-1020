@@ -1233,6 +1233,13 @@
       ]
     },
     {
+      "file": "packages/runtime/test/supervisor.test.js",
+      "imports": [
+        "../src/safety/supervisor.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/activitygatetest.mjs",
       "imports": [
         "@fnaf2-1020/core/training",
@@ -1474,13 +1481,6 @@
       ]
     },
     {
-      "file": "tools/device/drifttrace.mjs",
-      "imports": [
-        "node:fs",
-        "node:path"
-      ]
-    },
-    {
       "file": "tools/device/emit.mjs",
       "imports": [
         "./bundle.mjs",
@@ -1590,6 +1590,7 @@
     {
       "file": "tools/device/hid-sweep-probe.mjs",
       "imports": [
+        "@fnaf2-1020/adapters/transports/hid",
         "node:url"
       ]
     },
@@ -1874,15 +1875,6 @@
       ]
     },
     {
-      "file": "tools/device/test-drifttrace.mjs",
-      "imports": [
-        "node:child_process",
-        "node:fs",
-        "node:os",
-        "node:path"
-      ]
-    },
-    {
       "file": "tools/device/test-fact-register.mjs",
       "imports": [
         "./bundle.mjs",
@@ -1943,25 +1935,10 @@
       ]
     },
     {
-      "file": "tools/device/test-hid-walltime.mjs",
-      "imports": [
-        "./recipe.mjs",
-        "./test-hid-trace.mjs",
-        "node:child_process",
-        "node:path",
-        "node:url"
-      ]
-    },
-    {
       "file": "tools/device/test-human-gate.mjs",
       "imports": [
         "./human-gate.mjs",
-        "./recipe.mjs",
-        "node:child_process",
-        "node:fs",
-        "node:os",
-        "node:path",
-        "node:url"
+        "./recipe.mjs"
       ]
     },
     {
@@ -2073,17 +2050,6 @@
       ]
     },
     {
-      "file": "tools/device/test-runner-plan.mjs",
-      "imports": [
-        "./recipe.mjs",
-        "@fnaf2-1020/core/mechanics",
-        "node:child_process",
-        "node:fs",
-        "node:path",
-        "node:url"
-      ]
-    },
-    {
       "file": "tools/device/test-schedule-economy.mjs",
       "imports": [
         "./bundle.mjs",
@@ -2098,7 +2064,7 @@
       "file": "tools/device/test-screen-map.mjs",
       "imports": [
         "./hid-sweep-probe.mjs",
-        "node:child_process",
+        "@fnaf2-1020/adapters/transports/hid",
         "node:fs",
         "node:path",
         "node:url"
