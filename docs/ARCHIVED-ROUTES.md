@@ -160,6 +160,17 @@ tests imported them. Their contracts `adaptive-skill-model-v1`,
 next step was already "close one package outright rather than widening the
 foundation". Restore with `git checkout 903ffab -- <path>`.
 
+## The machine executor (2026-09-25)
+
+`AdbDeviceLocalMachineExecutor`, the compatibility executor that pushed an
+assembled device program, a plan, a checker and a model to the phone and ran
+them there, and its `runAdbProgram`. Its only composition root was the fixture
+service path retired above; after that nothing constructed it, not even a test.
+The artifact executor it sat beside is the one the campaign runs. It left when
+the executor was split into `hid-schedule.js`, `device-shell.js` and
+`control-effect.js`. Restore with
+`git show 18684d8:apps/device/src/adb-device-local-executor.js`.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

@@ -317,7 +317,7 @@
       "id": "contract.device-executor-v1",
       "kind": "CONTRACT",
       "path": "apps/device/src/adb-device-local-executor.js",
-      "line": 9,
+      "line": 12,
       "relation": "REFERENCES"
     },
     {
@@ -405,7 +405,14 @@
       "id": "contract.hid-executor-v1",
       "kind": "CONTRACT",
       "path": "apps/device/src/adb-device-local-executor.js",
-      "line": 9,
+      "line": 12,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/hid-schedule.js",
+      "line": 6,
       "relation": "REFERENCES"
     },
     {

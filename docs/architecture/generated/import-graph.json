@@ -14,12 +14,11 @@
       "file": "apps/device/src/adb-device-local-executor.js",
       "imports": [
         "./artifact-executor.js",
-        "./device-local-executor.js",
+        "./control-effect.js",
+        "./device-shell.js",
+        "./hid-schedule.js",
         "@fnaf2-1020/adapters",
-        "@fnaf2-1020/core/control",
         "node:child_process",
-        "node:crypto",
-        "node:fs/promises",
         "node:util"
       ]
     },
@@ -122,6 +121,15 @@
       ]
     },
     {
+      "file": "apps/device/src/hid-schedule.js",
+      "imports": [
+        "./artifact-executor.js",
+        "./device-local-executor.js",
+        "@fnaf2-1020/adapters",
+        "@fnaf2-1020/core/control"
+      ]
+    },
+    {
       "file": "apps/device/src/mcp.js",
       "imports": [
         "node:child_process",
@@ -179,6 +187,8 @@
       "imports": [
         "../src/adb-device-local-executor.js",
         "../src/device-local-executor.js",
+        "../src/device-shell.js",
+        "../src/hid-schedule.js",
         "@fnaf2-1020/core/contracts",
         "node:assert/strict",
         "node:fs",

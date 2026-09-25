@@ -82,9 +82,16 @@ the affected runner from one machine-readable test manifest.
 
 ### LEG-004 — Split device orchestration by responsibility (P1)
 
-**Status:** OPEN
+**Status:** PARTIAL (2026-09-25) -- the service is gone with the fixture path; the executor's
+schedule compiler, shell renderer and effect grading are their own modules
+([`hid-schedule.js`](../../apps/device/src/hid-schedule.js),
+[`device-shell.js`](../../apps/device/src/device-shell.js),
+[`control-effect.js`](../../apps/device/src/control-effect.js)), moved verbatim: the compiled
+schedule, body and script of every committed winner night hash the same before and after (24
+characterizations); the uncalled machine compatibility executor was removed. Open: the artifact
+executor class (~1100 lines: adb lifecycle, gates, arm, origin) and `modern-campaign-ports.js`.
 **Owner:** `apps/device`
-**Evidence:** [`adb-device-local-executor.js` (line 401)](../../apps/device/src/adb-device-local-executor.js), [`modern-campaign-ports.js` (line 172)](../../apps/device/src/modern-campaign-ports.js), `service.js` line 1 (removed 2026-09-25)
+**Evidence:** [`adb-device-local-executor.js`](../../apps/device/src/adb-device-local-executor.js), [`modern-campaign-ports.js` (line 172)](../../apps/device/src/modern-campaign-ports.js), `service.js` line 1 (removed 2026-09-25)
 
 The local executor combines artifact compilation, shell rendering, ADB process
 lifecycle, HID execution, observation, cleanup, and a machine compatibility

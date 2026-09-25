@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { stableHash } from '@fnaf2-1020/core/contracts';
-import { AdbDeviceLocalArtifactExecutor, compileDeviceLocalHidSchedule, renderDeviceLocalScript, sharedScheduleBody } from '../src/adb-device-local-executor.js';
+import { AdbDeviceLocalArtifactExecutor } from '../src/adb-device-local-executor.js';
+import { compileDeviceLocalHidSchedule, sharedScheduleBody } from '../src/hid-schedule.js';
+import { renderDeviceLocalScript } from '../src/device-shell.js';
 import { expandNightBlocks } from '../src/device-local-executor.js';
 
 const profile = JSON.parse(await readFile(new URL('../profiles/hid-mediaprojection.json', import.meta.url), 'utf8'));
