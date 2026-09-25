@@ -1,0 +1,51 @@
+{
+  "schema": "run-pack-v1",
+  "version": 1,
+  "kind": "fnaf1-run",
+  "id": "fnaf1-custom-grid420-420-a-20260925T024452598Z",
+  "campaign": null,
+  "run": "fnaf1-custom-grid420-420-a-20260925T024452598Z",
+  "outcome": {
+    "ended": "STOP_AFTER",
+    "atNightMs": 538014.0237685009
+  },
+  "status": "COMPLETE",
+  "claimLevel": "DEVICE_MEASURED",
+  "target": {
+    "package": "com.scottgames.fivenightsatfreddys",
+    "build": "2.0.7+40"
+  },
+  "titleAfter": "items=continue,customNight,newGame,sixthNight",
+  "files": [
+    {
+      "name": "events.jsonl",
+      "sha256": "24b01570dccbe7626e6a9d7fbff280573548b349e7d921b1c785ff2d15dc5194",
+      "bytes": 1557563,
+      "source": {
+        "sha256": "ca19bfd250def676af98d202a0cdeced70c561dac23a0f34c0b38ed4f8925d0d",
+        "bytes": 1558173
+      },
+      "redactions": {
+        "paths": 61,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    },
+    {
+      "name": "probe.json",
+      "sha256": "0c22f18704eaf450d14a94a2f6af43cd1c0b9a736da79c88de96a2c057bcb4cf",
+      "bytes": 2167129,
+      "source": {
+        "sha256": "8c8f3d0314389bf2c94ce8c197a1c1f98204310e3d7fc187b279018ff72ab59d",
+        "bytes": 2168089
+      },
+      "redactions": {
+        "paths": 96,
+        "pixelArrays": 0,
+        "frameRefs": 0
+      }
+    }
+  ],
+  "withheld": [],
+  "packer": "tools/evidence-pack.mjs"
+}
