@@ -1570,3 +1570,19 @@ Open: Pedro's attestations for the two packed wins; packing Night 5 `contact-fin
 Night 7 `k2` on the peer machine, and `k3` wherever its campaigns still exist; the FNaF 1 runner,
 which does not write campaign directories and so is not packed; the legacy `trial.sh` lane (Plan 22
 P9). Evidence IDs: `night5-n5-armblock-20260920T004056Z`, `night6-n6h2-01-20260920T024030Z`.
+
+**2026-09-25 (later): the legacy `trial.sh` lane is archived and every committed winner is held to
+rebuilding.** Plan 22 P9. The open-loop shell runner, its driver parts, the mask-camp runners, the shell
+preflight, the pilot supervisor, the screencap CAM 11 verifier with its game-crop fixtures, and the
+three graders that read only that runner's artifacts left the tree (~9,600 lines;
+[`ARCHIVED-ROUTES.md`](../docs/ARCHIVED-ROUTES.md)). `grade-run.sh` now reads what `night-run.sh` retains;
+graded before and after on `night6-n6-bbfix-20260920T010859Z`, every live instrument printed the same
+lines. `test-winners-rebuild.mjs` (in `test:unit`) compiles all eleven `winner-v1` files and puts each
+through the campaign's bundle acceptance -- the chain `night-run.sh` drives, which no CI lane ran
+before. It exposed that three winners compile to a normalised hash (`night1-minimal`, `night1-minus7`,
+`night6`), which the run packs' `winnerCommitted` check now resolves.
+
+Open: retiring the fixture service path (`DeviceControlService`, `composeDevice`, the runtime
+scheduler and supervisor) that `npm run device:dry-run` and CI's dry-run lane exercise -- it plays no
+nights, and `device:run` throws -- needs Pedro's decision because CLAUDE.md and `ci.yml` name it.
+Evidence ID: `night6-n6-bbfix-20260920T010859Z` (the regrade).
