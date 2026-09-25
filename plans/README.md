@@ -84,7 +84,11 @@ Ownership and dependencies (2026-09-17):
   the native-resolution visual watchlist; BB cross-sensor calibration remains
   open.
 
-1. [01-research-pass.md](01-research-pass.md) — sourced docs for the 10/20 meta.
+Plans that are done or resolved live in [`archive/`](archive/), unchanged and
+still numbered here: 01, 06 and 16 since 2026-09-24. So does the part of the
+progress log written before 2026-09-09.
+
+1. [01-research-pass.md](archive/01-research-pass.md) — sourced docs for the 10/20 meta.
    Prerequisite for 02, 03 and the novelty check in 05.
 2. [02-minus-3-mode.md](02-minus-3-mode.md) — Minus 3 as a second trainer mode.
 3. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
@@ -95,7 +99,7 @@ Ownership and dependencies (2026-09-17):
    produced **Six-Seven**, then the sourced route graph refuted it; reopened for a
    broader stateful/event-driven policy invention campaign that excludes the closed
    grids.
-6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — first gate-aware
+6. [06-hybrid-strategy-search.md](archive/06-hybrid-strategy-search.md) — first gate-aware
    pass complete: Minus Right, monitor denial and 125 clock-phased combinations all
    fail after the sourced per-unit Withered endgames are modeled. See
    [`GATE-SEARCH.md`](../docs/strategy/GATE-SEARCH.md).
@@ -128,7 +132,7 @@ Ownership and dependencies (2026-09-17):
 15. [15-sensor-independent-observations.md](15-sensor-independent-observations.md)
     — one definition per game fact, one calibrated adapter per capture method,
     and a refusal for every pairing that has not been calibrated.
-16. [16-constrained-policy-search.md](16-constrained-policy-search.md) —
+16. [16-constrained-policy-search.md](archive/16-constrained-policy-search.md) —
     dominance-pruned beam search over the device plan's timing geometry
     (evaluated through `human-gate.mjs` at 1200 seeds), targeting the item 10/11
     Foxy-reset decoupling and the Night 7 opener, with machine-readable

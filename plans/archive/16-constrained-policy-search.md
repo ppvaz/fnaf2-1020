@@ -304,7 +304,7 @@ route is out (item 10 is closed on latency, 2026-08-27).
 
 ## Why this is not a reopening of Plan 06
 
-[`GATE-SEARCH.md`](../docs/strategy/GATE-SEARCH.md) closed the **observable,
+[`GATE-SEARCH.md`](../../docs/strategy/GATE-SEARCH.md) closed the **observable,
 fixed-or-clock-phased, reactive-threshold** policy family at 0/150: monitor
 denial, Minus Right, Minus Two, CAM 06+07, all 125 three-phase clock schedules,
 and the "tolerate the seventh route" Minus 6 variant. That closure is scoped but
@@ -360,11 +360,11 @@ gate that actually rejects it.
 
 ## Design rules
 
-- [`packages/core/src/mechanics/plant-model.js`](../packages/core/src/mechanics/plant-model.js) remains the sole mechanics authority.
+- [`packages/core/src/mechanics/plant-model.js`](../../packages/core/src/mechanics/plant-model.js) remains the sole mechanics authority.
   **No second simulator and no event-driven variant** — a frame-skipping engine
   risks silent divergence, and sweeps are already fast enough (`policytest` is
   ~1.4 s). If search proves too slow, profile first.
-- The search rides [`tools/policy.mjs`](../tools/policy.mjs) (abstract layer) and
+- The search rides [`tools/policy.mjs`](../../tools/policy.mjs) (abstract layer) and
   `replay()` + `modelGate()` (device layer). It adds a harness, not a fork.
 - Every reported number states the slack **shape** (`iid` / `correlated` /
   `common`) and says "in the simulator". A win under `iid` alone is not a win —

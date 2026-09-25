@@ -891,13 +891,15 @@ event path moves them apart. The original text is kept in place, struck through.
 A retained on-device classifier frame from the cleared Night 1 shows **two
 camera buttons highlighted lime at once**.
 
-![Night 1 1 AM: CAM 04 and CAM 07 both highlighted](../img/n1-full-1640-092879-double-camera.png)
+(Night 1, 1 AM: CAM 04 and CAM 07 both highlighted. The frame itself left the
+repository on 2026-09-24 with the other game frames; it is the retained `.raw`
+named below.)
 
 | | |
 | --- | --- |
 | Run / session | `n1-full-1640` / `n1-full-1640-20260826T191856Z-aab8b590`, 2026-08-26 |
 | Device / build | moto g56 5G, `com.scottgames.fnaf2` **2.0.7+26** |
-| Sensor | `screencap-raw`, 2400x1080 RGBA_8888 (the retained `.raw`, rendered losslessly to the PNG above) |
+| Sensor | `screencap-raw`, 2400x1080 RGBA_8888 (the retained `.raw`) |
 | Clock / offset | `runner_monotonic_ms` **92879 ms**, Night 1, in-game **1 AM** |
 | On screen | picture and room label = **Party Room 4 (CAM 04)**; **CAM 04 and CAM 07 both lit** |
 
