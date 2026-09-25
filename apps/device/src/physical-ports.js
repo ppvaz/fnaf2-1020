@@ -34,7 +34,7 @@ export function parseCueHelperEndpoint(text) {
   return Object.freeze({ port: numericPort, token });
 }
 
-/** @param {string} adb @param {string[]} args @param {{timeout?: number, input?: string, encoding?: any}} options */
+/** @param {string} adb @param {string[]} args @param {{timeout?: number, input?: string, encoding?: any, maxBuffer?: number}} options */
 function runSync(adb, args, { timeout = 5000, input, encoding = 'utf8', maxBuffer = 1024 * 1024 } = {}) {
   const output = execFileSync(adb, args, { encoding, input, timeout, maxBuffer });
   return encoding === null ? output : output.replace(/\r/g, '');

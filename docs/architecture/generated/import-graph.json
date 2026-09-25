@@ -222,6 +222,7 @@
       "imports": [
         "@fnaf2-1020/adapters/transports/cue-helper",
         "node:child_process",
+        "node:fs",
         "node:net"
       ]
     },
@@ -1503,6 +1504,42 @@
       ]
     },
     {
+      "file": "tools/device/fnaf1-calibration-analyze.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
+        "node:zlib"
+      ]
+    },
+    {
+      "file": "tools/device/fnaf1-custom-run.mjs",
+      "imports": [
+        "../../apps/device/src/adb-bridge.js",
+        "../../apps/device/src/physical-ports.js",
+        "../../packages/adapters/src/transports/hid.js",
+        "../fnaf1-device-lane.mjs",
+        "./fnaf1-detectors.mjs",
+        "./fnaf1-menu-probe.mjs",
+        "./native-regions.mjs",
+        "node:crypto",
+        "node:fs",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:perf_hooks",
+        "node:url",
+        "node:zlib"
+      ]
+    },
+    {
+      "file": "tools/device/fnaf1-detectors.mjs",
+      "imports": [
+        "./fnaf1-calibration-analyze.mjs",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
       "file": "tools/device/fnaf1-menu-probe.mjs",
       "imports": [
         "../../apps/device/src/adb-bridge.js",
@@ -1649,6 +1686,21 @@
         "@fnaf2-1020/research/seeds",
         "node:crypto",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/native-frame.mjs",
+      "imports": [
+        "../../apps/device/src/physical-ports.js"
+      ]
+    },
+    {
+      "file": "tools/device/native-regions.mjs",
+      "imports": [
+        "../../apps/device/src/physical-ports.js",
+        "node:fs",
+        "node:path",
+        "node:zlib"
       ]
     },
     {
@@ -2023,6 +2075,15 @@
       ]
     },
     {
+      "file": "tools/device/test-native-regions.mjs",
+      "imports": [
+        "../../packages/adapters/src/transports/cue-helper.js",
+        "./fnaf1-custom-run.mjs",
+        "./fnaf1-detectors.mjs",
+        "./native-regions.mjs"
+      ]
+    },
+    {
       "file": "tools/device/test-night-matrix.mjs",
       "imports": [
         "../pool.mjs",
@@ -2195,6 +2256,14 @@
       "imports": [
         "./model/stock-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/fnaf1-device-lane.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/sim-fnaf1.js",
+        "node:fs",
+        "node:url"
       ]
     },
     {
@@ -2715,6 +2784,13 @@
         "../packages/core/src/mechanics/games/fnaf1.js",
         "../packages/core/src/mechanics/games/policy-fnaf1.js",
         "../packages/core/src/mechanics/games/sim-fnaf1.js"
+      ]
+    },
+    {
+      "file": "tools/test-fnaf1-device-lane.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/sim-fnaf1.js",
+        "./fnaf1-device-lane.mjs"
       ]
     },
     {

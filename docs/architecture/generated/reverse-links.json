@@ -260,6 +260,20 @@
     {
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 68,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 85,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
       "path": "tools/cue/test-cue.py",
       "relation": "CONFORMANCE_FIXTURE"
     },
