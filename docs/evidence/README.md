@@ -96,6 +96,13 @@ fnaf1-...`): its `probe.json` and `events.jsonl`, whose captures are already
 cited by sha256. It lists as `fnaf1-run`; the Plan 12 gate reads only the FNaF 2
 campaign, so `promote` refuses it by name.
 
+Every timestamp in a pack's `events.jsonl` has a declared clock: host wall,
+host monotonic, phone monotonic, phone wall, plan time, duration or offset
+(`packages/core/src/telemetry/event-clocks.js`, gated by
+`tools/device/test-event-clocks.mjs`). Read a time through that table, never
+by its magnitude; two wall clocks once stood 1374.8 ms apart. `run-report.mjs`
+and `phase-reconstruct.mjs` run over a pack directory as over a campaign.
+
 A cohort's result is computed from its packs rather than copied into a record:
 `npm run evidence -- cohort docs/evidence/<cohort>-predeclaration-<date>.json`
 applies the predeclared rule (executor sixam AND video clear) slot by slot and
