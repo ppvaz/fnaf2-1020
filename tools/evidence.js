@@ -9,8 +9,9 @@ import { validateManifest } from '@fnaf2-1020/core/contracts';
 import { replayModelResult } from '@fnaf2-1020/research';
 import { BUNDLE_SCHEMA, validateBundle } from './device/bundle.mjs';
 import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
-import { PACKS_DIR, resolvePackTargets, buildPack, writePack, readPack, packPromotionChecks,
+import { PACKS_DIR, resolvePackTargets, buildPack, buildFnaf1Pack, writePack, readPack, packPromotionChecks,
   trackedWinners } from './evidence-pack.mjs';
+import { computeCohort } from './evidence-cohort.mjs';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const ARTIFACTS = join(ROOT, 'artifacts');
@@ -18,7 +19,8 @@ const PACKS = join(ROOT, PACKS_DIR);
 const SESSION_RESULT_SCHEMAS = new Set(['device-run-result-v1', 'experiment-result-v1']);
 const CLAIM_LEVELS = new Set(['MODEL_ONLY', 'FIXTURE', 'DEVICE_MEASURED']);
 const help = () => console.log('Usage: npm run evidence -- <list|show|diff|replay|why|promote> [RUN_ID]\n'
-  + '       npm run evidence -- pack <CAMPAIGN_ID|NIGHT_RUN_LABEL> [--replace]');
+  + '       npm run evidence -- pack <CAMPAIGN_ID|NIGHT_RUN_LABEL> [--replace]\n'
+  + '       npm run evidence -- cohort <PREDECLARATION.json> [--prefix LABEL_PREFIX]');
 
 async function readVerifiedArtifact(base, ref) {
   const artifact = validateArtifactRef(ref);
@@ -91,6 +93,9 @@ async function loadCampaign(run) {
 function loadPack(run) {
   if (!run || !/^[\w.-]+$/.test(run)) throw new Error('a safe RUN_ID is required');
   const packed = readPack(join(PACKS, run));
+  if (packed.pack.kind === 'fnaf1-run')
+    return { kind: 'fnaf1-run', entry: { id: run, kind: 'fnaf1-run', outcome: packed.pack.outcome?.ended ?? null,
+      claimLevel: packed.pack.claimLevel, status: packed.pack.status }, files: packed.files, packed };
   return { kind: 'device-campaign', entry: campaignEntry(run, packed.wrapper), wrapper: packed.wrapper,
     files: packed.files, packed };
 }
@@ -179,7 +184,8 @@ async function list() {
 // Build a frame-free run pack for every campaign the id names and write it under PACKS_DIR.
 function pack(id, replace) {
   const results = resolvePackTargets(ROOT, id).map(target => {
-    const built = buildPack({ root: ROOT, home: homedir(), ...target });
+    const built = target.fnaf1RunDir ? buildFnaf1Pack({ root: ROOT, home: homedir(), ...target })
+      : buildPack({ root: ROOT, home: homedir(), ...target });
     const status = writePack(join(PACKS, target.packId), built, { replace });
     const { pack: made } = built;
     const redactions = made.files.reduce((sum, file) => ({
@@ -200,6 +206,13 @@ async function main([operation = 'help', first, second]) {
   if (operation === 'help' || operation === '--help') return help();
   if (operation === 'list') return list();
   if (operation === 'pack') return pack(first, second === '--replace');
+  if (operation === 'cohort') {
+    if (!first) throw new Error('cohort needs a cohort-predeclaration-v1 file');
+    const prefixAt = process.argv.indexOf('--prefix');
+    const predeclaration = JSON.parse(await readFile(resolve(first), 'utf8'));
+    return console.log(JSON.stringify(computeCohort(predeclaration, PACKS, {
+      source: first, ...(prefixAt > 0 ? { prefix: process.argv[prefixAt + 1] } : {}) }), null, 2));
+  }
   if (operation === 'show') {
     const loaded = await loadAny(first);
     if (loaded.kind === 'device-campaign')
@@ -236,6 +249,10 @@ async function main([operation = 'help', first, second]) {
   }
   if (operation === 'promote') {
     const loaded = await loadAny(first);
+    if (loaded.kind === 'fnaf1-run')
+      return console.log(JSON.stringify({ schema: 'plan12-promotion-gate-v1', evidenceId: first, kind: 'fnaf1-run',
+        source: 'pack', packSha256: loaded.packed.digest, accepted: false, status: 'REFUSED',
+        reason: 'Plan 12 gates the FNaF 2 campaign; no promotion gate reads FNaF 1 runs yet' }, null, 2));
     if (loaded.kind === 'device-campaign') {
       const checks = loaded.packed
         ? packPromotionChecks(loaded.packed, trackedWinners(ROOT))

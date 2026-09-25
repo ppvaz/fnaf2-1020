@@ -182,6 +182,9 @@ export function resolvePackTargets(root, id) {
       packId: !label ? id : run.attempt > 1 ? `${label}-attempt${run.attempt}` : label }];
   }
   const runDir = join(root, 'artifacts', 'runs', id);
+  if (!existsSync(join(runDir, 'verdict.txt')) && existsSync(join(runDir, 'events.jsonl')) &&
+      (existsSync(join(runDir, 'probe.json')) || existsSync(join(runDir, 'run.json'))))
+    return [{ fnaf1RunDir: runDir, packId: id }];
   if (!existsSync(join(runDir, 'verdict.txt'))) throw new Error(`no campaign or night-run directory named ${id}`);
   const text = readFileSync(join(runDir, 'verdict.txt'), 'utf8');
   const named = [...text.matchAll(/^--- attempt (\d+) of \d+: (\S+)$/gm)].map(m => [Number(m[1]), m[2]]);
@@ -194,6 +197,41 @@ export function resolvePackTargets(root, id) {
       throw new Error(`${id}: campaign ${basename(path)} is not on this machine; pack it where it was played`);
     return { campaignDir, runDir, packId: attempt > 1 ? `${id}-attempt${attempt}` : id };
   });
+}
+
+/**
+ * A FNaF 1 runner's night (tools/device/fnaf1-*-run.mjs): its `probe.json` or `run.json` record
+ * and its `events.jsonl`, whose captures already live outside the repository and are cited
+ * there by sha256. There is no campaign result, so the outcome is the runner's own
+ * `night-ended` event and record status; the Plan 12 gate does not read these packs.
+ * @param {{root: string, home?: string, fnaf1RunDir: string, packId: string}} options
+ */
+export function buildFnaf1Pack({ root, home = '', fnaf1RunDir, packId }) {
+  const files = [];
+  const texts = new Map();
+  const withheld = [];
+  for (const name of readdirSync(fnaf1RunDir).sort()) {
+    const file = join(fnaf1RunDir, name);
+    if (!statSync(file).isFile()) continue;
+    if (['probe.json', 'run.json', 'events.jsonl'].includes(name) || /\.(txt|err)$/.test(name)) {
+      const { entry, text } = packText(name, readFileSync(file), { root, home });
+      files.push(entry);
+      texts.set(name, text);
+    } else withheld.push(withheldEntry(name, file));
+  }
+  const record = texts.has('probe.json') ? JSON.parse(texts.get('probe.json'))
+    : texts.has('run.json') ? JSON.parse(texts.get('run.json')) : {};
+  const ended = (texts.get('events.jsonl') ?? '').split('\n').filter(Boolean).map(line => JSON.parse(line))
+    .find(event => event.type === 'night-ended') ?? null;
+  const pack = {
+    schema: RUN_PACK_SCHEMA, version: 1, kind: 'fnaf1-run', id: packId, campaign: null, run: basename(fnaf1RunDir),
+    outcome: ended ? { ended: ended.ended, atNightMs: ended.atNightMs } : null,
+    status: record.status ?? null, claimLevel: String(record.claimLevel ?? '').split(' ')[0] || null,
+    target: record.target ?? null, titleAfter: record.titleAfter ?? null,
+    files: files.sort((a, b) => a.name.localeCompare(b.name)), withheld: withheld.sort((a, b) => a.name.localeCompare(b.name)),
+    packer: 'tools/evidence-pack.mjs',
+  };
+  return { pack, texts };
 }
 
 /**
@@ -300,6 +338,8 @@ export function readPack(dir) {
     if (sha256(data) !== file.sha256 || data.length !== file.bytes) throw new Error(`pack integrity mismatch: ${file.name}`);
     refuseFrames(file.name, data.toString('utf8'));
   }
+  if (pack.kind === 'fnaf1-run')
+    return { pack, digest: packDigest(pack), wrapper: null, files: pack.files.map(file => file.name), attestation: null };
   const wrapper = readJson(join(dir, 'result.json'));
   if (!isCampaignResult(wrapper)) throw new Error('pack result.json is not a device campaign');
   const attestationFile = join(dir, ATTESTATION_FILE);

@@ -91,6 +91,16 @@ normalises it, or the night cannot be re-run from the tree;
 It binds one exact pack: re-packing a run that changed, or editing any packed
 file, changes the sha256 and voids it. Agents never write it.
 
+A FNaF 1 runner's night packs the same way (`npm run evidence -- pack
+fnaf1-...`): its `probe.json` and `events.jsonl`, whose captures are already
+cited by sha256. It lists as `fnaf1-run`; the Plan 12 gate reads only the FNaF 2
+campaign, so `promote` refuses it by name.
+
+A cohort's result is computed from its packs rather than copied into a record:
+`npm run evidence -- cohort docs/evidence/<cohort>-predeclaration-<date>.json`
+applies the predeclared rule (executor sixam AND video clear) slot by slot and
+reports excluded, superseded, ungraded and missing runs.
+
 The architecture generator also emits
 `docs/architecture/generated/reverse-links.json`. It is a navigational index
 from stable IDs to source, test, fixture, and evidence references; it does not

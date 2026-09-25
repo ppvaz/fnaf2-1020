@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { CAMPAIGN_RESULT_SCHEMA } from './evidence-campaign.mjs';
-import { ATTESTATION_FILE, ATTESTATION_SCHEMA, buildPack, packDigest, packPromotionChecks, readPack,
+import { ATTESTATION_FILE, ATTESTATION_SCHEMA, buildFnaf1Pack, buildPack, packDigest, packPromotionChecks, readPack,
   refuseFrames, resolvePackTargets, trackedWinners, writePack } from './evidence-pack.mjs';
 
 const sha256 = data => createHash('sha256').update(data).digest('hex');
@@ -125,6 +125,30 @@ try {
   assert.throws(() => writePack(dir, buildPack({ root, home, ...target })), /different pack/, 'evidence is not edited in place');
   writeFileSync(join(dir, 'events.jsonl'), `${readFileSync(join(dir, 'events.jsonl'), 'utf8')} `);
   assert.throws(() => readPack(dir), /integrity mismatch: events\.jsonl/);
+
+  // A FNaF 1 runner's night: no campaign result, its own record and event log,
+  // captures already outside the repository and cited by sha256.
+  const fnaf1 = 'fnaf1-custom-grid420-420-a-20260925T024452598Z';
+  put(`artifacts/runs/${fnaf1}/probe.json`, JSON.stringify({ status: 'COMPLETE',
+    claimLevel: 'DEVICE_MEASURED helper native frames', titleAfter: 'items=continue,customNight' }));
+  put(`artifacts/runs/${fnaf1}/events.jsonl`, [
+    { type: 'capture', path: `${home}/fnaf-apks/runs/0000-wait.png`, sha256: 'b'.repeat(64) },
+    { type: 'night-ended', ended: 'STOP_AFTER', atNightMs: 538014 },
+  ].map(line => JSON.stringify(line)).join('\n') + '\n');
+  put(`artifacts/runs/${fnaf1}/0000-frame.png`, Buffer.from([0x89, 0x50]));
+  const [fnaf1Target] = resolvePackTargets(root, fnaf1);
+  assert.ok(fnaf1Target.fnaf1RunDir, 'a FNaF 1 run directory resolves as its own kind');
+  const fnaf1Built = buildFnaf1Pack({ root, home, ...fnaf1Target });
+  assert.equal(fnaf1Built.pack.kind, 'fnaf1-run');
+  assert.deepEqual(fnaf1Built.pack.outcome, { ended: 'STOP_AFTER', atNightMs: 538014 });
+  assert.equal(fnaf1Built.pack.claimLevel, 'DEVICE_MEASURED');
+  assert.deepEqual(fnaf1Built.pack.files.map(file => file.name), ['events.jsonl', 'probe.json']);
+  assert.deepEqual(fnaf1Built.pack.withheld.map(item => item.name), ['0000-frame.png']);
+  assert.ok(fnaf1Built.texts.get('events.jsonl').includes('~/fnaf-apks/'), 'machine paths are portable here too');
+  const fnaf1Dir = join(root, 'docs/evidence/runs', fnaf1);
+  writePack(fnaf1Dir, fnaf1Built);
+  const fnaf1Loaded = readPack(fnaf1Dir);
+  assert.equal(fnaf1Loaded.wrapper, null, 'a FNaF 1 pack carries no campaign result for the Plan 12 gate');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

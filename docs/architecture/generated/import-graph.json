@@ -1881,6 +1881,15 @@
       ]
     },
     {
+      "file": "tools/evidence-cohort.mjs",
+      "imports": [
+        "./evidence-campaign.mjs",
+        "./evidence-pack.mjs",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
       "file": "tools/evidence-pack.mjs",
       "imports": [
         "./device/bundle.mjs",
@@ -1897,6 +1906,7 @@
       "imports": [
         "./device/bundle.mjs",
         "./evidence-campaign.mjs",
+        "./evidence-cohort.mjs",
         "./evidence-pack.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/research",
@@ -2446,6 +2456,18 @@
       "imports": [
         "./evidence-campaign.mjs",
         "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/test-evidence-cohort.mjs",
+      "imports": [
+        "./evidence-campaign.mjs",
+        "./evidence-cohort.mjs",
+        "./evidence-pack.mjs",
+        "node:assert/strict",
+        "node:fs",
+        "node:os",
+        "node:path"
       ]
     },
     {
