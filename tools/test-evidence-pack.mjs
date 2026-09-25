@@ -9,8 +9,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { CAMPAIGN_RESULT_SCHEMA } from './evidence-campaign.mjs';
-import { ATTESTATION_FILE, ATTESTATION_SCHEMA, buildFnaf1Pack, buildPack, packDigest, packPromotionChecks, readPack,
-  refuseFrames, resolvePackTargets, trackedWinners, writePack } from './evidence-pack.mjs';
+import { ATTESTATION_FILE, ATTESTATION_SCHEMA, buildFnaf1Pack, buildPack, packDigest, packEntry, packPromotionChecks, readPack,
+  recoverFromRunLog, recoveryCheck, refuseFrames, resolvePackTargets, trackedWinners, writePack } from './evidence-pack.mjs';
 
 const sha256 = data => createHash('sha256').update(data).digest('hex');
 const root = mkdtempSync(join(tmpdir(), 'evidence-pack-test-'));
@@ -149,7 +149,101 @@ try {
   writePack(fnaf1Dir, fnaf1Built);
   const fnaf1Loaded = readPack(fnaf1Dir);
   assert.equal(fnaf1Loaded.wrapper, null, 'a FNaF 1 pack carries no campaign result for the Plan 12 gate');
+
+  // A campaign directory that is gone, recovered from the night-run log that captured the CLI.
+  // The log is what night-run.sh tees: event rows as the executor appended them, the preflight
+  // the CLI printed first, and the retained result printed with the bytes it wrote.
+  const lost = 'campaign-2026-09-18T03-03-11.442Z';
+  const lostDir = `${root}/artifacts/${lost}`;
+  const retained = { status: 'COMPLETE', mode: 'live', result: {
+    schema: CAMPAIGN_RESULT_SCHEMA, version: 1, state: 'COMPLETE', specHash: 'fnv1a-spec', completedNights: [7],
+    attempts: [{ attempt: 1, mode: 'live', night: 7, status: 'WIN', proofHash: 'fnv1a-proof',
+      terminal: { night: 7, outcome: 'sixam', sixAm: true } }], events: [] } };
+  const rows = [{ at: '2026-09-18T03:03:11.444Z', type: 'evidence.started', evidenceDirectory: lostDir },
+    { at: 1789872055212, type: 'hid.execute-entered' },
+    { at: '2026-09-18T03:04:00.000Z', type: 'control.effect.sample', sample: { maskOn: true, maskCells: grid } }]
+    .map(row => JSON.stringify(row));
+  const eventsText = `${rows.join('\n')}\n`;
+  const resultText = JSON.stringify(retained, null, 2);
+  const other = JSON.stringify({ at: '2026-09-18T03:12:17.080Z', type: 'evidence.started', evidenceDirectory: `${root}/artifacts/other` });
+  const logText = [rows[0], JSON.stringify({ status: 'READY', mode: 'live', preflight: { status: 'READY' } }, null, 2),
+    rows[1], 'python3 stderr: a line that is not an event', rows[2], resultText, other,
+    JSON.stringify({ at: 1, type: 'hid.execute-entered' })].join('\n') + '\n';
+  const recovered = recoverFromRunLog(logText, lostDir);
+  assert.equal(recovered.events, eventsText, 'the event rows come back byte for byte, numeric stamps included, and stop at the next campaign');
+  assert.equal(recovered.result, resultText, 'the printed result is the one the CLI wrote, not the preflight before it');
+  assert.equal(recoverFromRunLog(logText, `${root}/artifacts/never`), null);
+  assert.equal(recoverFromRunLog(logText, `artifacts/${lost}`)?.events, eventsText,
+    'a verdict that names the directory relative to the repository still finds it');
+  const lostRun = 'night7-night7-k3-cohort-r01-20260918T030258Z';
+  put(`artifacts/runs/${lostRun}/verdict.txt`, `run          ${lostRun}\nbundle       artifacts/b1\ncampaign dir ${lostDir}\ncampaign exit 0\n`);
+  put(`artifacts/runs/${lostRun}/video.sha256`, `${'c'.repeat(64)}  captures/${lostRun}.mp4\n`);
+  put(`artifacts/runs/${lostRun}/run-report.json`, JSON.stringify({ night: { reached: true } }));
+  put(`artifacts/runs/${lostRun}/campaign.log`, logText);
+  const [recoveredTarget] = resolvePackTargets(root, lostRun);
+  assert.equal(recoveredTarget.recoverFromLog, true, 'a campaign that is gone resolves to its night-run log');
+  const timeline = join(root, 'artifacts/forensics/r01-timeline.json');
+  put('artifacts/forensics/r01-timeline.json', JSON.stringify({ video: `captures/${lostRun}.mp4`,
+    terminal: { outcome: 'clear', evidence: 'sixam', at_s: 453.5 } }));
+  const rebuilt = buildPack({ root, home, ...recoveredTarget, timeline });
+  assert.deepEqual(rebuilt.pack.files.map(file => file.name),
+    ['events.jsonl', 'result.json', 'run/run-report.json', 'run/timeline.json', 'run/verdict.txt', 'run/video.sha256']);
+  assert.equal(rebuilt.pack.files.find(file => file.name === 'result.json').source.sha256, sha256(resultText));
+  assert.ok(!rebuilt.texts.get('events.jsonl').includes(String(grid[179])), 'recovered events are redacted like any other');
+  assert.deepEqual(rebuilt.pack.custody, { kind: 'recovered-from-run-log', source: 'run/campaign.log',
+    sourceSha256: sha256(logText), recovered: ['events.jsonl', 'result.json'],
+    lost: ['observations.jsonl', 'observer frames', 'request.json'], validation: 'docs/evidence/custody-recovery-20260925.json' });
+  assert.deepEqual(rebuilt.pack.graded, { 'run/timeline.json': 'artifacts/forensics/r01-timeline.json' });
+  assert.equal(rebuilt.pack.outcome, 'WIN');
+  const recoveredDir = join(root, 'docs/evidence/runs', lostRun);
+  writePack(recoveredDir, rebuilt);
+  assert.deepEqual(packPromotionChecks(readPack(recoveredDir), winners), { offlineEvidence: true, terminalPass: true,
+    manifestComplete: false, plan12Attestation: false, winnerCommitted: true },
+  'a recovered win is refused on its lost request.json, not waved through');
+  put('artifacts/forensics/wrong-timeline.json', JSON.stringify({ video: 'captures/another-run.mp4', terminal: { outcome: 'clear' } }));
+  assert.throws(() => buildPack({ root, home, ...recoveredTarget, timeline: join(root, 'artifacts/forensics/wrong-timeline.json') }),
+    /not this run's/, 'a grade of another recording is refused');
+
+  // A campaign that threw: the CLI wrote its result but never printed it, so the pack says lost.
+  const threw = 'night7-night7-k3-cohort-r03-20260918T032107Z';
+  const threwDir = `${root}/artifacts/campaign-2026-09-18T03-21-22.194Z`;
+  put(`artifacts/runs/${threw}/verdict.txt`, `run          ${threw}\nbundle       artifacts/b1\ncampaign dir ${threwDir}\n`);
+  put(`artifacts/runs/${threw}/campaign.log`, [
+    JSON.stringify({ at: '2026-09-18T03:21:22.200Z', type: 'evidence.started', evidenceDirectory: threwDir }),
+    JSON.stringify({ at: '2026-09-18T03:22:08.286Z', type: 'campaign.abort.restart', reason: 'device: lifecycle left night state (static)' }),
+    'error: device: lifecycle left night state (static)'].join('\n') + '\n');
+  const threwBuilt = buildPack({ root, home, ...resolvePackTargets(root, threw)[0] });
+  assert.equal(threwBuilt.pack.outcome, 'RESULT_LOST');
+  assert.equal(threwBuilt.pack.claimLevel, 'UNKNOWN');
+  assert.deepEqual(threwBuilt.pack.custody.lost, ['observations.jsonl', 'observer frames', 'request.json', 'result.json']);
+  const threwDirPack = join(root, 'docs/evidence/runs', threw);
+  writePack(threwDirPack, threwBuilt);
+  const threwLoaded = readPack(threwDirPack);
+  assert.equal(threwLoaded.wrapper, null);
+  assert.equal(packEntry(threw, threwLoaded).outcome, 'RESULT_LOST', 'the index reads a result-lost pack without inventing one');
+  assert.equal(packPromotionChecks(threwLoaded, winners).terminalPass, false);
+
+  // The check a recovered pack cites: a campaign still on disk, recovered from its own log.
+  put(`artifacts/runs/${label}/campaign.log`, [
+    readFileSync(join(root, 'artifacts', campaign, 'events.jsonl'), 'utf8').trimEnd()
+      .split('\n').map(line => JSON.stringify({ at: '2026-09-20T00:41:12.166Z', ...JSON.parse(line) })).join('\n'),
+    readFileSync(join(root, 'artifacts', campaign, 'result.json'), 'utf8')].join('\n') + '\n');
+  const kept = 'campaign-2026-09-20T02-40-43.128Z';
+  const keptRun = 'night6-kept-20260920T024030Z';
+  const keptRows = [{ at: '2026-09-20T02:40:43.130Z', type: 'evidence.started', evidenceDirectory: `${root}/artifacts/${kept}` },
+    { at: 1789872062293, type: 'hid.night-go', source: 'intro-handoff' }].map(row => JSON.stringify(row));
+  put(`artifacts/${kept}/events.jsonl`, `${keptRows.join('\n')}\n`);
+  put(`artifacts/${kept}/result.json`, resultText);
+  put(`artifacts/runs/${keptRun}/verdict.txt`, `run          ${keptRun}\ncampaign dir ${root}/artifacts/${kept}\n`);
+  put(`artifacts/runs/${keptRun}/campaign.log`, [keptRows[0], 'stderr noise', keptRows[1], resultText].join('\n') + '\n');
+  const check = recoveryCheck(root);
+  assert.deepEqual(check.campaigns.map(item => [item.campaign, item.events.identical, item.result.identical]), [
+    [campaign, false, false],
+    [kept, true, true],
+  ], 'a campaign the CLI logged comes back identical; one whose log does not carry it verbatim is reported, not passed');
+  assert.deepEqual(check.summary, { campaigns: 2, eventsIdentical: 1, resultsPrinted: 1, resultsIdentical: 1,
+    resultsNotPrinted: [`${campaign} (COMPLETE)`] }, 'a result logged in another shape is counted as not printed, not as recovered');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
-console.log('evidence pack: text crosses, frames and pixel grids stay behind by hash, paths are portable, tampering and unknown pixel fields are refused, the gate reads the pack');
+console.log('evidence pack: text crosses, frames and pixel grids stay behind by hash, paths are portable, tampering and unknown pixel fields are refused, the gate reads the pack, and a lost campaign recovered from its run log says what is lost');

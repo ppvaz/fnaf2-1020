@@ -10,7 +10,7 @@ import { replayModelResult } from '@fnaf2-1020/research';
 import { BUNDLE_SCHEMA, validateBundle } from './device/bundle.mjs';
 import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
 import { PACKS_DIR, resolvePackTargets, buildPack, buildFnaf1Pack, writePack, readPack, packPromotionChecks,
-  trackedWinners } from './evidence-pack.mjs';
+  trackedWinners, packEntry, recoveryCheck } from './evidence-pack.mjs';
 import { computeCohort } from './evidence-cohort.mjs';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
@@ -19,7 +19,8 @@ const PACKS = join(ROOT, PACKS_DIR);
 const SESSION_RESULT_SCHEMAS = new Set(['device-run-result-v1', 'experiment-result-v1']);
 const CLAIM_LEVELS = new Set(['MODEL_ONLY', 'FIXTURE', 'DEVICE_MEASURED']);
 const help = () => console.log('Usage: npm run evidence -- <list|show|diff|replay|why|promote> [RUN_ID]\n'
-  + '       npm run evidence -- pack <CAMPAIGN_ID|NIGHT_RUN_LABEL> [--replace]\n'
+  + '       npm run evidence -- pack <CAMPAIGN_ID|NIGHT_RUN_LABEL> [--replace] [--timeline GRADED_TIMELINE.json]\n'
+  + '       npm run evidence -- recovery-check    (does run/campaign.log reproduce the campaigns still on disk?)\n'
   + '       npm run evidence -- cohort <PREDECLARATION.json> [--prefix LABEL_PREFIX]');
 
 async function readVerifiedArtifact(base, ref) {
@@ -96,7 +97,7 @@ function loadPack(run) {
   if (packed.pack.kind === 'fnaf1-run')
     return { kind: 'fnaf1-run', entry: { id: run, kind: 'fnaf1-run', outcome: packed.pack.outcome?.ended ?? null,
       claimLevel: packed.pack.claimLevel, status: packed.pack.status }, files: packed.files, packed };
-  return { kind: 'device-campaign', entry: campaignEntry(run, packed.wrapper), wrapper: packed.wrapper,
+  return { kind: 'device-campaign', entry: packEntry(run, packed), wrapper: packed.wrapper,
     files: packed.files, packed };
 }
 
@@ -182,10 +183,12 @@ async function list() {
 }
 
 // Build a frame-free run pack for every campaign the id names and write it under PACKS_DIR.
-function pack(id, replace) {
-  const results = resolvePackTargets(ROOT, id).map(target => {
+function pack(id, { replace = false, timeline = null } = {}) {
+  const targets = resolvePackTargets(ROOT, id);
+  if (timeline && targets.length !== 1) throw new Error('--timeline names one run; this id packs several campaigns');
+  const results = targets.map(target => {
     const built = target.fnaf1RunDir ? buildFnaf1Pack({ root: ROOT, home: homedir(), ...target })
-      : buildPack({ root: ROOT, home: homedir(), ...target });
+      : buildPack({ root: ROOT, home: homedir(), ...target, timeline });
     const status = writePack(join(PACKS, target.packId), built, { replace });
     const { pack: made } = built;
     const redactions = made.files.reduce((sum, file) => ({
@@ -194,7 +197,7 @@ function pack(id, replace) {
     return { id: made.id, status, dir: `${PACKS_DIR}/${made.id}`, outcome: made.outcome, claimLevel: made.claimLevel,
       nights: made.nights, files: made.files.length, bytes: made.files.reduce((sum, file) => sum + file.bytes, 0),
       withheld: made.withheld.length, withheldBytes: made.withheld.reduce((sum, item) => sum + (item.bytes ?? 0), 0),
-      redactions, winnerHash: made.bundle?.winnerHash ?? null,
+      redactions, winnerHash: made.bundle?.winnerHash ?? null, ...(made.custody ? { custody: made.custody } : {}),
       winnerCommitted: Boolean(made.bundle?.winnerHash && trackedWinners(ROOT).has(made.bundle.winnerHash)) };
   });
   console.log(JSON.stringify({ schema: 'run-pack-result-v1', packs: results }, null, 2));
@@ -205,7 +208,14 @@ const stable = value => canonicalJson(value);
 async function main([operation = 'help', first, second]) {
   if (operation === 'help' || operation === '--help') return help();
   if (operation === 'list') return list();
-  if (operation === 'pack') return pack(first, second === '--replace');
+  if (operation === 'pack') {
+    const flags = process.argv.slice(process.argv.indexOf('pack') + 2);
+    const timelineAt = flags.indexOf('--timeline');
+    if (timelineAt >= 0 && !flags[timelineAt + 1]) throw new Error('--timeline needs a file');
+    return pack(first, { replace: flags.includes('--replace'),
+      timeline: timelineAt >= 0 ? resolve(flags[timelineAt + 1]) : null });
+  }
+  if (operation === 'recovery-check') return console.log(JSON.stringify(recoveryCheck(ROOT), null, 2));
   if (operation === 'cohort') {
     if (!first) throw new Error('cohort needs a cohort-predeclaration-v1 file');
     const prefixAt = process.argv.indexOf('--prefix');
@@ -262,6 +272,7 @@ async function main([operation = 'help', first, second]) {
         schema: 'plan12-promotion-gate-v1', evidenceId: first, kind: 'device-campaign',
         source: loaded.packed ? 'pack' : 'artifacts', ...(loaded.packed ? { packSha256: loaded.packed.digest } : {}),
         nights: loaded.entry.nights, outcome: loaded.entry.outcome,
+        ...(loaded.packed?.pack.custody ? { custody: loaded.packed.pack.custody } : {}),
         authority: 'plans/12-end-to-end-evidence-campaign.md', accepted, checks,
         status: accepted ? 'READY_FOR_REVIEW' : 'REFUSED',
         reason: accepted ? null : loaded.packed

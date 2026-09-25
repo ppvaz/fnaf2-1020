@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CAMPAIGN_RESULT_SCHEMA } from './evidence-campaign.mjs';
-import { buildPack, writePack } from './evidence-pack.mjs';
+import { buildPack, resolvePackTargets, writePack } from './evidence-pack.mjs';
 import { COHORT_RESULT_SCHEMA, computeCohort, labelPrefix } from './evidence-cohort.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'evidence-cohort-test-'));
@@ -15,12 +15,27 @@ const packs = join(root, 'docs/evidence/runs');
 const put = (path, content) => { mkdirSync(join(root, path, '..'), { recursive: true }); writeFileSync(join(root, path), content); };
 let serial = 0;
 const night = 7;
-function run(label, { outcome, reached = true, video = null, winnerHash = 'fnv1a-bound' }) {
+function run(label, { outcome, reached = true, video = null, timeline = null, lostResult = false, winnerHash = 'fnv1a-bound' }) {
   serial += 1;
   const campaign = `campaign-2026-09-18T0${serial}-00-00.000Z`;
   const stamp = `20260918T0${serial}0000Z`;
   const id = `night${night}-${label}-${stamp}`;
   const win = outcome === 'sixam';
+  put(`artifacts/runs/${id}/run-report.json`, JSON.stringify({ night: { reached } }));
+  put('artifacts/b/manifest.json', JSON.stringify({ winnerHash }));
+  if (timeline) put(`artifacts/runs/${id}/timeline.json`, JSON.stringify({ video: `captures/${id}.mp4`, terminal: timeline }));
+  if (lostResult) {
+    // The campaign directory is gone and its result was never printed: only the log is left.
+    const dir = `${root}/artifacts/${campaign}`;
+    put(`artifacts/runs/${id}/verdict.txt`, `run          ${id}\nbundle       artifacts/b\ncampaign dir ${dir}\n`);
+    put(`artifacts/runs/${id}/campaign.log`, [
+      { at: '2026-09-18T03:21:22.200Z', type: 'evidence.started', evidenceDirectory: dir },
+      { at: '2026-09-18T03:22:08.286Z', type: 'campaign.abort.restart', reason: 'device: lifecycle left night state (static)' },
+    ].map(row => JSON.stringify(row)).join('\n') + '\n');
+    const [target] = resolvePackTargets(root, id);
+    writePack(join(packs, id), buildPack({ root, ...target }));
+    return id;
+  }
   put(`artifacts/${campaign}/result.json`, JSON.stringify({ mode: 'live', status: 'COMPLETE', result: {
     schema: CAMPAIGN_RESULT_SCHEMA, version: 1, state: win ? 'COMPLETE' : 'ABORTED', specHash: 'fnv1a-spec',
     completedNights: win ? [night] : [], events: [],
@@ -29,9 +44,7 @@ function run(label, { outcome, reached = true, video = null, winnerHash = 'fnv1a
   put(`artifacts/${campaign}/events.jsonl`, '{"type":"evidence.started"}\n');
   put(`artifacts/${campaign}/request.json`, '{}');
   put(`artifacts/runs/${id}/verdict.txt`, `run          ${id}\nbundle       artifacts/b\ncampaign dir ${root}/artifacts/${campaign}\n`);
-  put(`artifacts/runs/${id}/run-report.json`, JSON.stringify({ night: { reached } }));
   if (video) put(`artifacts/runs/${id}/grade.log`, `--- run timeline ---\n  TERMINAL: ${video}\n`);
-  put('artifacts/b/manifest.json', JSON.stringify({ winnerHash }));
   const built = buildPack({ root, campaignDir: join(root, 'artifacts', campaign),
     runDir: join(root, 'artifacts/runs', id), packId: id });
   writePack(join(packs, id), built);
@@ -67,6 +80,19 @@ try {
   assert.deepEqual(rerun.slots[2].runs.map(entry => entry.role), ['superseded', 'counted']);
   assert.equal(rerun.wrongBinding.length, 1, 'a run on another binding is named, not silently counted');
   assert.throws(() => computeCohort({ ...predeclaration, schema: 'x' }, packs), /cohort-predeclaration-v1/);
+
+  // run-timeline.py's own output shape, and a slot whose result was lost with its campaign.
+  const wider = { ...predeclaration, size: 6, labels: 'night7-k9-cohort-r01 .. night7-k9-cohort-r06' };
+  run('night7-k9-cohort-r05', { outcome: 'sixam', timeline: { outcome: 'clear', evidence: 'sixam', at_s: 453.5 } });
+  run('night7-k9-cohort-r06', { outcome: 'death', lostResult: true,
+    timeline: { outcome: 'unknown', evidence: null, at_s: null, note: 'nothing terminal was captured' } });
+  const six = computeCohort(wider, packs);
+  assert.equal(six.slots[4].status, 'WIN', 'a timeline.json grade is read from terminal.outcome');
+  assert.equal(six.slots[4].runs[0].videoDetail, 'sixam at 453.5 s');
+  const lostSlot = six.slots[5].runs[0];
+  assert.equal(lostSlot.executor, 'RESULT_LOST');
+  assert.equal(six.slots[5].status, 'UNKNOWN', 'an abort with no terminal and an unknown video is not promoted to a death');
+  assert.equal(lostSlot.abort, 'device: lifecycle left night state (static)', 'the executor\'s own abort reason is reported beside it');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

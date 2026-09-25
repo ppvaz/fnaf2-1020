@@ -41,7 +41,9 @@ let packs = 0;
 const problems = [];
 for (const id of existsSync(PACKS) ? readdirSync(PACKS).sort() : []) {
   const dir = join(PACKS, id);
-  if (!existsSync(join(dir, 'events.jsonl')) || !existsSync(join(dir, 'result.json'))) continue; // campaign packs only
+  // Campaign packs only, including those recovered from a run log whose result was lost.
+  if (!existsSync(join(dir, 'events.jsonl')) || !existsSync(join(dir, 'pack.json'))) continue;
+  if (JSON.parse(readFileSync(join(dir, 'pack.json'), 'utf8')).kind === 'fnaf1-run') continue;
   packs += 1;
   for (const [index, line] of readFileSync(join(dir, 'events.jsonl'), 'utf8').split('\n').entries()) {
     if (!line.trim()) continue;

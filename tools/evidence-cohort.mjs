@@ -14,11 +14,14 @@
 // is the one that counts (the rules re-run an invalid slot as rNNb, rNNc) and
 // the others are reported as superseded. A video terminal comes from the pack's
 // grade.log (`TERMINAL: clear -- ...`, the line run-timeline.py prints) or its
-// timeline.json; without either, a sixam run is UNGRADED, not a win.
+// timeline.json (run-timeline.py's `terminal.outcome`); without either, a sixam run is
+// UNGRADED, not a win. A pack whose result was never printed (recovered from its night-run
+// log, tools/evidence-pack.mjs) has no executor terminal: its slot is decided by the video if
+// the video saw a death, and is otherwise UNKNOWN with the executor's own abort reason beside
+// it -- this does not promote an abort to a death on the rule's behalf.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { campaignEntry } from './evidence-campaign.mjs';
-import { readPack } from './evidence-pack.mjs';
+import { packEntry, readPack } from './evidence-pack.mjs';
 
 export const COHORT_RESULT_SCHEMA = 'cohort-result-v2';
 
@@ -32,14 +35,30 @@ export function labelPrefix(predeclaration) {
 /** The video's terminal from a pack's own files, or null when the pack carries no grade. */
 export function videoTerminal(dir, files) {
   if (files.includes('run/timeline.json')) {
-    const outcome = JSON.parse(readFileSync(join(dir, 'run/timeline.json'), 'utf8')).outcome;
-    if (typeof outcome === 'string') return { outcome, source: 'run/timeline.json' };
+    const terminal = JSON.parse(readFileSync(join(dir, 'run/timeline.json'), 'utf8')).terminal;
+    if (typeof terminal?.outcome === 'string') {
+      const detail = terminal.evidence ? `${terminal.evidence}${terminal.at_s === null || terminal.at_s === undefined ? '' : ` at ${terminal.at_s} s`}`
+        : terminal.note ?? null;
+      return { outcome: terminal.outcome, detail, source: 'run/timeline.json' };
+    }
   }
   if (files.includes('run/grade.log')) {
     const line = readFileSync(join(dir, 'run/grade.log'), 'utf8').match(/^\s*TERMINAL: (\w+)(?: -- (.*))?$/m);
     if (line) return { outcome: line[1], detail: line[2] ?? null, source: 'run/grade.log' };
   }
   return null;
+}
+
+/** The executor's last abort reason, from the pack's events, or null. */
+function lastAbort(dir, files) {
+  if (!files.includes('events.jsonl')) return null;
+  let reason = null;
+  for (const line of readFileSync(join(dir, 'events.jsonl'), 'utf8').split('\n')) {
+    if (!line.includes('"type":"campaign.abort')) continue;
+    const row = JSON.parse(line);
+    if (typeof row.reason === 'string') reason = row.reason;
+  }
+  return reason;
 }
 
 function slotStatus(entry, video) {
@@ -78,13 +97,13 @@ export function computeCohort(predeclaration, packsDir, { prefix = labelPrefix(p
     const runs = (bySlot.get(slot) ?? []).sort((a, b) => a.retry.localeCompare(b.retry)).map(({ id }) => {
       const dir = join(packsDir, id);
       const loaded = readPack(dir);
-      const entry = campaignEntry(id, loaded.wrapper);
+      const entry = packEntry(id, loaded);
       const report = loaded.files.includes('run/run-report.json')
         ? JSON.parse(readFileSync(join(dir, 'run/run-report.json'), 'utf8')) : null;
       const reached = report?.night?.reached === true;
       const video = videoTerminal(dir, loaded.files);
       return { run: id, packSha256: loaded.digest, reached, executor: entry.outcome, video: video?.outcome ?? null,
-        videoDetail: video?.detail ?? null, bindingMatches: binding === null || loaded.pack.bundle?.winnerHash === binding,
+        videoDetail: video?.detail ?? null, abort: lastAbort(dir, loaded.files), bindingMatches: binding === null || loaded.pack.bundle?.winnerHash === binding,
         status: reached ? slotStatus(entry, video) : 'EXCLUDED' };
     });
     const counted = [...runs].reverse().find(run => run.reached) ?? null;

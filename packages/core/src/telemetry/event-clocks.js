@@ -37,15 +37,23 @@ const BY_LEAF = Object.freeze({
   resultAt: C.HOST_WALL, originAt: C.HOST_WALL, readStartedAt: C.HOST_WALL, readFinishedAt: C.HOST_WALL,
   startedAt: C.HOST_WALL, finishedAt: C.HOST_WALL, firstWriteAt: C.HOST_WALL, requestedAt: C.HOST_WALL,
   sampleStartedAt: C.HOST_WALL, authorizedAt: C.HOST_WALL, armGoAt: C.HOST_WALL, firedWallMs: C.HOST_WALL,
+  correctedAt: C.HOST_WALL, // a gate's corrective contact, Date.now() (control.gate, control.gate.verify)
   // the night-origin refinement (adb-device-local-executor.js, origin.refined): Date.now() reads
   authorityAtMs: C.HOST_WALL, authorityBracketFromMs: C.HOST_WALL, nativeBracketFromMs: C.HOST_WALL, nativeAtMs: C.HOST_WALL,
   // host monotonic clock: performance.now() in night-anchor.js and the timed start
   onsetHostMs: C.HOST_MONOTONIC, releaseHostMs: C.HOST_MONOTONIC, firedHostMs: C.HOST_MONOTONIC,
   authorizedAtHostMs: C.HOST_MONOTONIC,
+  // the last candidate a late authorization missed (night-anchor.js), and the timed start's tap
+  // (modern-campaign-ports.js, menu.start / custom-night.start)
+  lastCandidateHostMs: C.HOST_MONOTONIC, tapHostMs: C.HOST_MONOTONIC,
   // phone monotonic clock: the helper's capture and onset stamps
   visualCaptureAt: C.DEVICE_MONOTONIC, onsetDeviceMs: C.DEVICE_MONOTONIC,
+  latchedOnsetDeviceMs: C.DEVICE_MONOTONIC, // the onset the latch last read (night-anchor.js)
   // phone wall clock: onsetDeviceMs + (wallMs - snapshotNs / 1e6), night-anchor.js
   onsetPhoneWallMs: C.PHONE_WALL,
+  // the timed start (timed-start.js, modern-campaign-ports.js): the planned and the actual tap,
+  // on the phone's wall clock because the office seed is drawn from it
+  targetPhoneWallMs: C.PHONE_WALL, plannedPhoneWallMs: C.PHONE_WALL, tapPhoneWallMs: C.PHONE_WALL,
   // relative to the plan's night start
   gateAtMs: C.PLAN,
   // durations
@@ -56,9 +64,11 @@ const BY_LEAF = Object.freeze({
   aimMs: C.DURATION, plannedAfterOnsetMs: C.DURATION, authorizedAfterOnsetMs: C.DURATION,
   releasedAimMs: C.DURATION, periodMs: C.DURATION, lagMs: C.DURATION, phaseLagMs: C.DURATION,
   gateLagMs: C.DURATION, armReadyAtMs: C.DURATION, settleMs: C.DURATION, durationMs: C.DURATION, shrunkByMs: C.DURATION,
+  afterOnsetMs: C.DURATION, residueMs: C.DURATION, waitMs: C.DURATION,
   ageUs: C.DURATION_US, frameAgeUs: C.DURATION_US,
   // differences between two clocks
   offsetMs: C.OFFSET, phoneWallMinusMonoMs: C.OFFSET, wallMinusHostMs: C.OFFSET,
+  latchedOffsetMs: C.OFFSET, // host monotonic minus device monotonic, as the latch saw it
 });
 
 /** The declared clock of a field, or null when nothing declares it. */

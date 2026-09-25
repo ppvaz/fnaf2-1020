@@ -1,0 +1,161 @@
+{
+  "schema": "custody-recovery-check-v1",
+  "tool": "npm run evidence -- recovery-check",
+  "method": "recoverFromRunLog (tools/evidence-pack.mjs): events.jsonl = the event rows between the campaign's evidence.started and the next; result.json = the retained object the CLI printed",
+  "campaigns": [
+    {
+      "run": "night5-n5-armblock-20260920T004056Z",
+      "campaign": "campaign-2026-09-20T00-41-12.166Z",
+      "events": {
+        "original": "37c9ca23e5ef1030567ac6257036a8e7634439571005a1206112f3ba2a072dfb",
+        "recovered": "37c9ca23e5ef1030567ac6257036a8e7634439571005a1206112f3ba2a072dfb",
+        "identical": true
+      },
+      "result": {
+        "original": "d7c4747706f3d375bc2b1f1c0167389aacc6a0c7b385988cb1810ba523ae3385",
+        "originalStatus": "COMPLETE",
+        "recovered": "d7c4747706f3d375bc2b1f1c0167389aacc6a0c7b385988cb1810ba523ae3385",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6-aim0-derived-20260920T012539Z",
+      "campaign": "campaign-2026-09-20T01-25-54.247Z",
+      "events": {
+        "original": "35a5f3f32a7e1f6df42308145888ac666df093d8ccec3f0f8487c34460dd21df",
+        "recovered": "35a5f3f32a7e1f6df42308145888ac666df093d8ccec3f0f8487c34460dd21df",
+        "identical": true
+      },
+      "result": {
+        "original": "10b30d054682cee2174027983456f2f46ca443b0794fb89e9194371068923d75",
+        "originalStatus": "ABORTED",
+        "recovered": "10b30d054682cee2174027983456f2f46ca443b0794fb89e9194371068923d75",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6-aim255-20260920T013901Z",
+      "campaign": "campaign-2026-09-20T01-39-16.104Z",
+      "events": {
+        "original": "b2e18a679296663bb079c93ed80ed6a6ec3049ba2917f9832ddc6c98e76207cb",
+        "recovered": "b2e18a679296663bb079c93ed80ed6a6ec3049ba2917f9832ddc6c98e76207cb",
+        "identical": true
+      },
+      "result": {
+        "original": "82f3a92cceec55d8939c246129ea8f3891f320d29b0a55d691732feab5c75675",
+        "originalStatus": "ERROR",
+        "recovered": null,
+        "printed": false,
+        "identical": false
+      }
+    },
+    {
+      "run": "night6-n6-aim255-periodfix-20260920T014459Z",
+      "campaign": "campaign-2026-09-20T01-45-14.223Z",
+      "events": {
+        "original": "8f1a2395d32aaa224f77e0ec00f8a54daca4ef2e77e0c74829c7056de49f2a0e",
+        "recovered": "8f1a2395d32aaa224f77e0ec00f8a54daca4ef2e77e0c74829c7056de49f2a0e",
+        "identical": true
+      },
+      "result": {
+        "original": "b7c883939f4164f680f1d37bd2be0bb8db86c2b7edbb66f7271040b68ce251b6",
+        "originalStatus": "ABORTED",
+        "recovered": "b7c883939f4164f680f1d37bd2be0bb8db86c2b7edbb66f7271040b68ce251b6",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6-bbfix-20260920T010859Z",
+      "campaign": "campaign-2026-09-20T01-09-14.899Z",
+      "events": {
+        "original": "25ffcee153dafed9b3a2f33b70d14dc4424cc47e42133445a33dc96ab955fd2d",
+        "recovered": "25ffcee153dafed9b3a2f33b70d14dc4424cc47e42133445a33dc96ab955fd2d",
+        "identical": true
+      },
+      "result": {
+        "original": "236f9f56f51b55c943417516990687632f39e3e5c6e2fc2aaa7cdbe33f79bafd",
+        "originalStatus": "ABORTED",
+        "recovered": "236f9f56f51b55c943417516990687632f39e3e5c6e2fc2aaa7cdbe33f79bafd",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6-unlock3-20260920T010216Z",
+      "campaign": "campaign-2026-09-20T01-02-31.713Z",
+      "events": {
+        "original": "b88f4b6295c523ebaef53593449b09c1cb80262301e3a39da2dfc434c7796fdf",
+        "recovered": "b88f4b6295c523ebaef53593449b09c1cb80262301e3a39da2dfc434c7796fdf",
+        "identical": true
+      },
+      "result": {
+        "original": "31657ce440bce3451bc779ee1c25203fad7f6f985d28574a9dfcc46ab92f6ae8",
+        "originalStatus": "ERROR",
+        "recovered": null,
+        "printed": false,
+        "identical": false
+      }
+    },
+    {
+      "run": "night6-n6h-m1-20260920T021433Z",
+      "campaign": "campaign-2026-09-20T02-14-48.323Z",
+      "events": {
+        "original": "b911a6a6d84ed9f4e3051a661da63054dffdc18e7318fcca65795300a43ca496",
+        "recovered": "b911a6a6d84ed9f4e3051a661da63054dffdc18e7318fcca65795300a43ca496",
+        "identical": true
+      },
+      "result": {
+        "original": "7a2e600aa38908bc38215eb8ac82729caadd6d8494c72350deadd9995ce4be39",
+        "originalStatus": "ABORTED",
+        "recovered": "7a2e600aa38908bc38215eb8ac82729caadd6d8494c72350deadd9995ce4be39",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6h-m2-20260920T022809Z",
+      "campaign": "campaign-2026-09-20T02-28-21.996Z",
+      "events": {
+        "original": "1fba90d13037e3bdb7db02c846005f1c07732c934cc0de8a34b26d30578e0504",
+        "recovered": "1fba90d13037e3bdb7db02c846005f1c07732c934cc0de8a34b26d30578e0504",
+        "identical": true
+      },
+      "result": {
+        "original": "1655a3a5cd670e1814b0e20a114bb42f545e77ca4e65f4b87701b1c0d17fb1f5",
+        "originalStatus": "ABORTED",
+        "recovered": "1655a3a5cd670e1814b0e20a114bb42f545e77ca4e65f4b87701b1c0d17fb1f5",
+        "printed": true,
+        "identical": true
+      }
+    },
+    {
+      "run": "night6-n6h2-01-20260920T024030Z",
+      "campaign": "campaign-2026-09-20T02-40-43.128Z",
+      "events": {
+        "original": "d7e96b61d0e55054d7029138115a056050612250c4940270fe41c2252a07bcf1",
+        "recovered": "d7e96b61d0e55054d7029138115a056050612250c4940270fe41c2252a07bcf1",
+        "identical": true
+      },
+      "result": {
+        "original": "26421c704f451dbab25034e5e360a80d220bc5d5adc6f7b72cb8913cd10b6260",
+        "originalStatus": "COMPLETE",
+        "recovered": "26421c704f451dbab25034e5e360a80d220bc5d5adc6f7b72cb8913cd10b6260",
+        "printed": true,
+        "identical": true
+      }
+    }
+  ],
+  "summary": {
+    "campaigns": 9,
+    "eventsIdentical": 9,
+    "resultsPrinted": 7,
+    "resultsIdentical": 7,
+    "resultsNotPrinted": [
+      "campaign-2026-09-20T01-39-16.104Z (ERROR)",
+      "campaign-2026-09-20T01-02-31.713Z (ERROR)"
+    ]
+  }
+}

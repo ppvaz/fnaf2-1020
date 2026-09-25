@@ -3398,6 +3398,7 @@
       "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [
+        "device-transport",
         "local-http-port"
       ],
       "subprocesses": true,

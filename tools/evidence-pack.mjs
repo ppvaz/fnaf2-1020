@@ -18,6 +18,16 @@
 //
 // Packing is deterministic -- no timestamps, sorted entries -- so re-packing an unchanged run is
 // a no-op and the pack's sha256 can carry a human's Plan 12 attestation.
+//
+// A campaign directory that is gone can still be packed from its night-run log, and the pack
+// says so. night-run.sh tees the campaign CLI's stdout and stderr into run/campaign.log; the CLI
+// prints the retained result with the same JSON.stringify(retained, null, 2) it writes to
+// result.json, and writes every event row to stderr as it appends it to events.jsonl
+// (apps/device/src/cli.js, modern-campaign-ports.js; unchanged from 2026-09-12 on). Checked on
+// the campaigns that still have both (RECOVERY_RECORD): every events.jsonl and every printed
+// result.json comes back byte-identical. What the log never carried stays lost and is named as
+// lost: request.json, observations.jsonl, the observer frames, and the result of a campaign
+// that threw, which the CLI writes but does not print.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,6 +40,7 @@ export const RUN_PACK_SCHEMA = 'run-pack-v1';
 export const ATTESTATION_SCHEMA = 'plan12-attestation-v1';
 export const ATTESTATION_FILE = 'plan12-attestation.json';
 export const PACKS_DIR = 'docs/evidence/runs';
+export const RECOVERY_RECORD = 'docs/evidence/custody-recovery-20260925.json';
 
 // What the campaign itself writes; the gate's manifestComplete needs the first three.
 const CAMPAIGN_TEXT = ['result.json', 'events.jsonl', 'request.json', 'observations.jsonl'];
@@ -145,6 +156,91 @@ const withheldEntry = (name, file) => {
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
 
 /**
+ * One campaign's result.json and events.jsonl, recovered from the night-run log that captured
+ * the CLI's output. A log may hold several attempts' campaigns; only the rows between this
+ * campaign's `evidence.started` and the next one are its own. A campaign is matched by its
+ * directory name, a timestamp: verdicts before 2026-09-13 record the directory relative to the
+ * repository while the log records it absolute. Null when the log never started this campaign;
+ * `result` is null when no result was printed for it.
+ * @param {string} log run/campaign.log
+ * @param {string} campaignDir the evidence directory as the campaign recorded it
+ * @returns {{result: string | null, events: string} | null}
+ */
+export function recoverFromRunLog(log, campaignDir) {
+  const lines = log.split('\n');
+  const events = [];
+  let inside = false;
+  let found = false;
+  let result = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.startsWith('{"at":')) {
+      let row;
+      try { row = JSON.parse(line); } catch { continue; }
+      if (row?.type === 'evidence.started') {
+        inside = typeof row.evidenceDirectory === 'string' && basename(row.evidenceDirectory) === basename(campaignDir);
+        found ||= inside;
+      }
+      if (inside && typeof row?.type === 'string') events.push(line);
+      continue;
+    }
+    // The retained result is a top-level object printed with two-space indentation, so its
+    // own closing brace is the first line that is exactly `}`.
+    if (!inside || line !== '{') continue;
+    let end = index + 1;
+    while (end < lines.length && lines[end] !== '}') end += 1;
+    if (end === lines.length) break;
+    const text = lines.slice(index, end + 1).join('\n');
+    try {
+      const value = JSON.parse(text);
+      if (value?.mode === 'live' && Object.hasOwn(value, 'result')) result = text;
+    } catch { /* not a printed object after all */ }
+    index = end;
+  }
+  if (!found) return null;
+  return { result, events: events.length ? `${events.join('\n')}\n` : '' };
+}
+
+/**
+ * Does recovery reproduce the campaigns that are still on disk? For every night-run directory
+ * whose log and campaign directory both survive, recover the campaign from the log and compare
+ * it with the files the campaign wrote. This is the check a recovered pack's custody cites.
+ * @param {string} root repository root
+ */
+export function recoveryCheck(root) {
+  const runsDir = join(root, 'artifacts', 'runs');
+  const campaigns = [];
+  for (const run of existsSync(runsDir) ? readdirSync(runsDir).sort() : []) {
+    const runDir = join(runsDir, run);
+    if (!existsSync(join(runDir, 'campaign.log')) || !existsSync(join(runDir, 'verdict.txt'))) continue;
+    const verdict = readFileSync(join(runDir, 'verdict.txt'), 'utf8');
+    const named = [...verdict.matchAll(/^--- attempt \d+ of \d+: (\S+) ---$/gm)].map(match => match[1]);
+    const paths = named.length ? named : [verdict.match(/^campaign dir (\S+)$/m)?.[1]].filter(Boolean);
+    const log = readFileSync(join(runDir, 'campaign.log'), 'utf8');
+    for (const path of paths) {
+      const dir = join(root, 'artifacts', basename(path));
+      if (!existsSync(join(dir, 'result.json')) || !existsSync(join(dir, 'events.jsonl'))) continue;
+      const got = recoverFromRunLog(log, path);
+      const result = readFileSync(join(dir, 'result.json'), 'utf8');
+      const events = readFileSync(join(dir, 'events.jsonl'), 'utf8');
+      campaigns.push({ run, campaign: basename(path),
+        events: { original: sha256(events), recovered: got ? sha256(got.events) : null, identical: got?.events === events },
+        result: { original: sha256(result), originalStatus: JSON.parse(result).status ?? null,
+          recovered: got?.result ? sha256(got.result) : null, printed: Boolean(got?.result), identical: got?.result === result } });
+    }
+  }
+  const printed = campaigns.filter(item => item.result.printed);
+  return {
+    schema: 'custody-recovery-check-v1', tool: 'npm run evidence -- recovery-check',
+    method: 'recoverFromRunLog (tools/evidence-pack.mjs): events.jsonl = the event rows between the campaign\'s evidence.started and the next; result.json = the retained object the CLI printed',
+    campaigns,
+    summary: { campaigns: campaigns.length, eventsIdentical: campaigns.filter(item => item.events.identical).length,
+      resultsPrinted: printed.length, resultsIdentical: printed.filter(item => item.result.identical).length,
+      resultsNotPrinted: campaigns.filter(item => !item.result.printed).map(item => `${item.campaign} (${item.result.originalStatus})`) },
+  };
+}
+
+/**
  * The run directory night-run.sh wrote for a campaign, and which attempt that campaign was.
  * @param {string} root repository root
  * @param {string} campaign campaign directory name
@@ -193,9 +289,13 @@ export function resolvePackTargets(root, id) {
   if (!attempts.length) throw new Error(`${id} produced no campaign directory; there is nothing the gate could read`);
   return attempts.map(([attempt, path]) => {
     const campaignDir = join(root, 'artifacts', basename(path));
-    if (!existsSync(join(campaignDir, 'result.json')))
-      throw new Error(`${id}: campaign ${basename(path)} is not on this machine; pack it where it was played`);
-    return { campaignDir, runDir, packId: attempt > 1 ? `${id}-attempt${attempt}` : id };
+    const packId = attempt > 1 ? `${id}-attempt${attempt}` : id;
+    if (existsSync(join(campaignDir, 'result.json'))) return { campaignDir, runDir, packId };
+    // Gone entirely, not merely incomplete: then the night-run log is the custody left.
+    const log = join(runDir, 'campaign.log');
+    if (!existsSync(campaignDir) && existsSync(log) && recoverFromRunLog(readFileSync(log, 'utf8'), path))
+      return { campaignDir: path, runDir, packId, recoverFromLog: true };
+    throw new Error(`${id}: campaign ${basename(path)} is not on this machine; pack it where it was played`);
   });
 }
 
@@ -238,15 +338,25 @@ export function buildFnaf1Pack({ root, home = '', fnaf1RunDir, packId }) {
  * Build a pack in memory. Nothing is written.
  * @param {{root: string, home?: string, campaignDir: string, runDir?: string | null, packId: string}} options
  */
-export function buildPack({ root, home = '', campaignDir, runDir = null, packId }) {
-  const wrapper = readJson(join(campaignDir, 'result.json'));
-  if (!isCampaignResult(wrapper)) throw new Error(`${basename(campaignDir)} is not a device campaign`);
-  const entry = campaignEntry(packId, wrapper);
+export function buildPack({ root, home = '', campaignDir, runDir = null, packId, recoverFromLog = false, timeline = null }) {
+  let recovered = null;
+  if (recoverFromLog) {
+    if (!runDir) throw new Error('recovering a campaign needs the night-run directory whose log captured it');
+    const log = readFileSync(join(runDir, 'campaign.log'));
+    recovered = recoverFromRunLog(log.toString('utf8'), campaignDir);
+    if (!recovered) throw new Error(`${basename(runDir)}/campaign.log never started ${basename(campaignDir)}`);
+    recovered.logSha256 = sha256(log);
+  }
+  const wrapper = !recovered ? readJson(join(campaignDir, 'result.json'))
+    : recovered.result === null ? null : JSON.parse(recovered.result);
+  if (wrapper !== null && !isCampaignResult(wrapper)) throw new Error(`${basename(campaignDir)} is not a device campaign`);
+  // A result the CLI never printed is not reconstructed: the pack says it is lost.
+  const entry = wrapper ? campaignEntry(packId, wrapper) : { outcome: 'RESULT_LOST', claimLevel: 'UNKNOWN', nights: null };
   const files = [];
   const texts = new Map();
   const withheld = [];
   const frames = new Map();
-  const campaignNames = readdirSync(campaignDir).sort();
+  const campaignNames = recovered ? [] : readdirSync(campaignDir).sort();
   for (const name of campaignNames) {
     const file = join(campaignDir, name);
     if (CAMPAIGN_TEXT.includes(name) || !statSync(file).isFile()) continue;
@@ -255,8 +365,12 @@ export function buildPack({ root, home = '', campaignDir, runDir = null, packId 
     if (item.kind === 'frame') frames.set(name, { sha256: item.sha256, bytes: item.bytes });
   }
   const context = { root, home, frames };
-  for (const name of CAMPAIGN_TEXT.filter(item => campaignNames.includes(item))) {
-    const { entry: fileEntry, text } = packText(name, readFileSync(join(campaignDir, name)), context);
+  const sources = recovered
+    ? [['events.jsonl', recovered.events], ['result.json', recovered.result]]
+      .filter(([, text]) => text !== null).map(([name, text]) => [name, Buffer.from(text)])
+    : CAMPAIGN_TEXT.filter(item => campaignNames.includes(item)).map(name => [name, readFileSync(join(campaignDir, name))]);
+  for (const [name, source] of sources) {
+    const { entry: fileEntry, text } = packText(name, source, context);
     files.push(fileEntry);
     texts.set(name, text);
   }
@@ -282,6 +396,17 @@ export function buildPack({ root, home = '', campaignDir, runDir = null, packId 
       withheld.push({ name: basename(video[2]), sha256: video[1],
         bytes: existsSync(local) ? statSync(local).size : null, kind: 'video' });
     }
+    if (timeline) {
+      // A video grade kept outside the run directory (a cohort's forensics), accepted only when
+      // it names this run's own recording.
+      const source = readFileSync(timeline);
+      const graded = JSON.parse(source.toString('utf8')).video;
+      if (!video || graded !== video[2]) throw new Error(`${timeline} grades ${graded}, not this run's ${video?.[2] ?? 'recording'}`);
+      if (texts.has('run/timeline.json')) throw new Error(`${basename(runDir)} already carries its own timeline.json`);
+      const { entry: fileEntry, text } = packText('run/timeline.json', source, { root, home });
+      files.push(fileEntry);
+      texts.set('run/timeline.json', text);
+    }
     const bundlePath = existsSync(join(runDir, 'verdict.txt'))
       ? readFileSync(join(runDir, 'verdict.txt'), 'utf8').match(/^bundle\s+(\S+)$/m)?.[1] : null;
     if (bundlePath) {
@@ -296,6 +421,13 @@ export function buildPack({ root, home = '', campaignDir, runDir = null, packId 
     schema: RUN_PACK_SCHEMA, version: 1, id: packId, campaign: basename(campaignDir),
     run: runDir ? basename(runDir) : null, outcome: entry.outcome, claimLevel: entry.claimLevel,
     nights: entry.nights, bundle, files, withheld, packer: 'tools/evidence-pack.mjs',
+    ...(recovered ? { custody: {
+      kind: 'recovered-from-run-log', source: 'run/campaign.log', sourceSha256: recovered.logSha256,
+      recovered: sources.map(([name]) => name).sort(),
+      lost: ['observations.jsonl', 'observer frames', 'request.json', ...(wrapper ? [] : ['result.json'])].sort(),
+      validation: RECOVERY_RECORD,
+    } } : {}),
+    ...(timeline ? { graded: { 'run/timeline.json': scrubPaths(timeline, { root, home }).text } } : {}),
   };
   return { pack, texts };
 }
@@ -340,11 +472,24 @@ export function readPack(dir) {
   }
   if (pack.kind === 'fnaf1-run')
     return { pack, digest: packDigest(pack), wrapper: null, files: pack.files.map(file => file.name), attestation: null };
-  const wrapper = readJson(join(dir, 'result.json'));
-  if (!isCampaignResult(wrapper)) throw new Error('pack result.json is not a device campaign');
+  const lost = pack.custody?.lost?.includes('result.json');
+  if (!lost && !pack.files.some(file => file.name === 'result.json')) throw new Error('pack has no result.json');
+  const wrapper = lost ? null : readJson(join(dir, 'result.json'));
+  if (wrapper !== null && !isCampaignResult(wrapper)) throw new Error('pack result.json is not a device campaign');
   const attestationFile = join(dir, ATTESTATION_FILE);
   return { pack, digest: packDigest(pack), wrapper, files: pack.files.map(file => file.name),
     attestation: existsSync(attestationFile) ? readJson(attestationFile) : null };
+}
+
+/**
+ * The index entry for a campaign pack: the campaign's own reading when its result survived,
+ * and the pack's RESULT_LOST record when it did not.
+ * @param {string} id
+ * @param {{pack: any, wrapper: any}} packed readPack's result
+ */
+export function packEntry(id, { pack, wrapper }) {
+  return wrapper ? campaignEntry(id, wrapper)
+    : { id, kind: 'device-campaign', outcome: pack.outcome, claimLevel: pack.claimLevel, nights: pack.nights, attempts: [] };
 }
 
 /**
@@ -379,7 +524,8 @@ export function trackedWinners(root) {
  */
 export function packPromotionChecks({ pack, digest, wrapper, files, attestation }, winners) {
   return {
-    ...campaignPromotionChecks(wrapper, files),
+    ...(wrapper ? campaignPromotionChecks(wrapper, files)
+      : { offlineEvidence: false, terminalPass: false, manifestComplete: false, plan12Attestation: false }),
     plan12Attestation: attestation?.schema === ATTESTATION_SCHEMA && attestation.status === 'PASS'
       && attestation.packSha256 === digest,
     winnerCommitted: Boolean(pack.bundle?.winnerHash && winners.has(pack.bundle.winnerHash)),
