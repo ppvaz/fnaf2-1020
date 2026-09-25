@@ -1,0 +1,31 @@
+==============================================================
+run: night6-n6h-m1-20260920T021433Z
+==============================================================
+capture: night6-n6h-m1-20260920T021433Z.mp4
+hid trace: MISSING (run with HID_TRACE_RUN=1)
+input trace: none (run atrace-input.sh around the command)
+SurfaceFlinger latency: none (set SF_LAYER for capture)
+cue trace: none (run with CUE_HELPER=1)
+legacy night PCM: none (receiver owns live audio)
+audio facts: none (run with external authority socket)
+session manifest: none (unmanifested run)
+campaign bundle: artifacts/campaign-2026-09-20T02-14-48.323Z
+frame trace: none (run query-cue-helper.sh trace start/stop around the run)
+capture rate: 57 fps (ffprobe 462960000/8072893)
+  using measured 57 fps for timing-sensitive graders (nominal 60)
+
+--- session manifest (v1 provenance contract) ---
+  no night6-n6h-m1-20260920T021433Z-session.json: this run is unmanifested, so nothing below can
+  name its game build, model hashes, clock alignment or win evidence.
+  Nothing was validated.
+  Run under tools/device/trial.sh, which emits one.
+
+--- input dispatch / frame landing (Perfetto) ---
+  no input trace kept for night6-n6h-m1-20260920T021433Z; rendered video cannot establish dispatch.
+
+--- clock transitions (HUD first frame, 1 AM) ---
+HUD first=28982ms; 1 AM=103509ms; delta=74527ms; resolution=18ms
+
+[ 1/13   7%] --- video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) ---
+           ... video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) still running (20s)
+           ... video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline) still running (40s)
