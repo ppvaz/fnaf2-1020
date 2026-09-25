@@ -8,13 +8,14 @@ consumer of the canonical model rather than the architectural root. See the
 discipline. Listed below in plan order; each entry names its own
 dependencies.
 
-**Current completion and the single next action:**
-[`PROGRESS.md`](PROGRESS.md).
+**The path — every thread to its last consequence, steps S1-S7, and the gates
+loosened or archived for it (Pedro, 2026-09-25):** [`ROADMAP.md`](ROADMAP.md).
+It supersedes the triage below wherever they disagree, and the plans' own
+"gate" sections where its gate table names them.
 
-**Order and dependencies across all of it, keyed to Plan 12's claim ladder:**
-[`ROADMAP.md`](ROADMAP.md).
+**What each session did against those steps:** [`PROGRESS.md`](PROGRESS.md).
 
-Current triage (2026-09-17):
+Triage of 2026-09-17 (kept for its reasoning; the path above is current):
 
 - **The device campaign has cleared every night.** Nights 1–4 on 2026-09-07/08,
   Night 5 on 09-12, Night 6 on 09-13, and Night 7 — Custom Night `golden-freddy`,
@@ -194,14 +195,16 @@ progress log written before 2026-09-09.
     was recovered for FNaF 3/4 (`K=29`, empirically, pending jadx). Names the
     community strategy for each game, the prior-art gap (FNaF 3 and 4 have no
     source-available autonomous player), and the decoupling cost
-    (`CONTROL_VOCABULARY`, 113 sites). Gated on the Night 7 custody debt.
+    (`CONTROL_VOCABULARY`, 113 sites). Its custody gate was lifted on
+    2026-09-25 (ROADMAP S6).
 27. [27-pivot-and-rebrand.md](27-pivot-and-rebrand.md) — the rename to
     `fnaf-solver` (repo) and `@sixam/*` (scope, 719 specifiers), split into
     four mechanical commits plus one structural pivot. Establishes that
     `com.scottgames.fnaf2` inside `docs/evidence/` is a *measurement* and must
     be frozen, that the companion APK's application ID is device state rather
-    than branding and must not change, and that the rebrand should follow
-    custody recovery but precede any new-game code.
+    than branding and must not change. Its sequencing was restated on
+    2026-09-25: after ROADMAP S1's first promotion edge, in a quiet window
+    (new-game code already exists, so "before any" no longer applies).
 28. [28-solver-interface.md](28-solver-interface.md) — the interface an outside
     caller (or their agent) uses instead of investigating by hand: one MCP
     surface over all four games, six namespaces, built on a shared
@@ -212,4 +215,5 @@ progress log written before 2026-09-09.
     the mistake register's known-bad moves with a citation and a remedy; and
     keeps promotion human-only. Re-measures the custody reading (148 runs,
     7 `DEVICE_MEASURED`, debt 11 of 13, still zero promotion edges), which
-    supersedes CLAUDE.md's 2026-09-17 numbers. Gated behind Plans 12, 26 and 27.
+    supersedes CLAUDE.md's 2026-09-17 numbers. Starts after ROADMAP S1's first
+    promotion edge (restated 2026-09-25).

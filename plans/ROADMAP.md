@@ -1,361 +1,266 @@
-# Roadmap
+# Roadmap: every thread to its last consequence
 
-> ## Superseded, 2026-09-17 — read this first
->
-> **This file's ladder position, its Track A milestones, and Track B's premise
-> were all overtaken by device results between 2026-09-07 and 2026-09-14.** The
-> reasoning below is retained unedited because the order it chose is still the
-> useful part; its *status* claims are not current. For where the work actually
-> stands, read [`PROGRESS.md`](PROGRESS.md), the
-> [device record in the root README](../README.md), and
-> [`SOLVING-FNAF2.md`](../docs/research/SOLVING-FNAF2.md).
->
-> What is refuted, precisely:
->
-> - **"Where we actually are" is wrong in every row.** It says every device
->   record is `FIXTURE`, the candidate profile is `dryRunOnly`, and "Nights 3–6
->   have no graded device attempt". The modern path cleared Nights 1–4 on
->   2026-09-07/08, Night 5 on 09-12, Night 6 on 09-13 and Night 7 (10/20,
->   `golden-freddy`, all ten dials 20) on 09-14, all `DEVICE_MEASURED` under
->   profile `hid-mediaprojection`. Its "honest one-line summary" — that the only
->   real clear belongs to the retired path — no longer holds.
-> - **Track A's exit gates A2 through A5 were met**, in order, by that campaign.
->   A6 was not: Night 6 has no declared reliability cohort. The one cohort that
->   exists is Night 7's, at **3 wins in 10 predeclared runs**
->   ([`night7-cohort-k2-result`](../docs/evidence/night7-cohort-k2-result-20260914.json)).
-> - **Structural fact 1 was never route-general.** "Night 7 is the first night
->   the route cannot run at all" is a measurement of `recipe.devicePlan`
->   (Minus 7) at 12/100, and the sentence around it drops that scope. Minus Toys
->   clears Night 7 3000/3000 exact, and on 2026-09-17 all ten Custom Night
->   presets cleared 3000/3000 in all four lanes
->   ([`night7-preset-sweep`](../docs/evidence/night7-preset-sweep-20260917.json)).
-> - **Track B's premise is therefore refuted.** Night 7 was not reached by
->   inventing an observation-conditioned grammar. It was reached by a Minus Toys
->   binding whose release is *anchored* to the game's own 5000 ms movement-roll
->   grid — which directive 2 had no name for. What won is open loop plus a
->   measured anchor and a belief-gated supervisor, not a closed loop and not a
->   blind macro.
-> - **Directive 2 still names a real defect, and it is no longer the top one.**
->   The current bottleneck is model fidelity: until 2026-09-17 the model killed
->   every censused seed on nights the phone had won, which turned out to be a
->   two-wall-clock instrument error rather than a rule
->   ([`night6-model-gap-two-clocks`](../docs/evidence/night6-model-gap-two-clocks-20260917.json)).
->
-> The rule this file wrote for itself — *"when one of those changes a ladder
-> position, this file changes in the same commit; when they disagree with this
-> file, they win"* — was not kept for fifteen days. That is the defect this
-> block exists to stop repeating.
+**Pedro's directive, 2026-09-25.** Take every plan and every thread of this
+project, within what is possible, to its last consequence. Gates that are
+superseded, obsolete, or that compete with that objective are loosened or
+archived. This file states the intent, the path, the boundaries, and the gates
+that changed.
 
-**Written 2026-09-02.** One sequenced route from the current evidence state to
-the charter's goal: a graded 10/20 clear on the canonical Android target, with
-evidence that survives replay and scrutiny.
+It replaces the 2026-09-02 roadmap, which had declared itself superseded on
+2026-09-17 and is kept unedited at
+[`archive/ROADMAP-2026-09-02.md`](archive/ROADMAP-2026-09-02.md). Code comments
+that name "ROADMAP Track A1" or "Track B" mean that file.
 
-This file answers *"in what order, and what unblocks what"*. It does not
-produce evidence, does not promote anything, and is not a second progress log.
-Every status below is read off [`PROGRESS.md`](PROGRESS.md), the plan files,
-[`22-STATUS.md`](22-STATUS.md) and the generated catalogs — never from memory.
-When one of those changes a ladder position, this file changes in the same
-commit; when they disagree with this file, they win.
+## The intent
 
-Rungs are [Plan 12](12-end-to-end-evidence-campaign.md)'s claim ladder,
-unchanged. Nothing here weakens the claim discipline in
-[`PROJECT-CHARTER.md`](../PROJECT-CHARTER.md): simulation, replay, shadow,
-bounded live action, one clear, and reliability remain distinct claims.
+Followed to their ends, the plans stop being twenty-odd efforts and become one
+object: **a verified solver for the Clickteam build-296 night games.** It has
+five parts:
 
-## Two directives that set this order (Pedro, 2026-09-02)
+- **Truth.** The game itself, recompiled and trace-equivalent to the phone, is
+  the source of truth. The hand model becomes a cross-check.
+- **Decision.** An exact table of what is winnable: `P_max` per night and per
+  Custom Night vector, the viability kernel, and the robustness field.
+- **Embodiment.** A controller that runs on the phone and plays close to that
+  ceiling.
+- **Understanding.** A human who can hold a machine-found route.
+- **Proof.** Every answer carries its label and provenance, and negatives can be
+  queried.
 
-1. **The legacy shell runner is deprecated immediately.** It is historical
-   reference and characterization input only. No new device run climbs the
-   ladder through it.
-2. **Open loop is the defect.** The game demands reaction; the program has been
-   spending its effort on schedules that cannot react. The closed loop is the
-   spine of this roadmap, not a later package.
+FNaF 2 at 10/20 stays the primary target. FNaF 1, 3 and 4 run on the same
+runtime (Plan 26) and are the same method's other instances. "Solved" is used in
+the sense of [`SOLVING-FNAF2.md`](../docs/research/SOLVING-FNAF2.md): mechanically
+solved, then state estimation, then control, then globally optimised. The end
+state depends on the constraints assumed, and every negative names the family it
+searched.
 
-Both are recorded as decisions, not as findings. What follows is what they cost
-and what they unblock.
+## The path
 
-## Scope
+The order below is the dependency order, not a calendar. Each step names what
+closes it and the artifact that closes it. That artifact is what makes a commit
+consequential. The "stands" line is a snapshot taken on 2026-09-25. **Trust the
+named command over the snapshot**: the previous roadmap's status went stale for
+fifteen days because it was written down instead of read.
 
-In scope: the Truth → Decision → Embodiment → Proof spine that ends in a graded
-Night 7 artifact. The trainer (Plans 04, 24), the in-APK campaign (Plan 17), and
-the tooling/architecture work (Plans 18, 22) appear only where they gate a rung.
-They are real work with their own value; they are not on this critical path.
+### S1: Custody and the first promotion edge
 
-## Where we actually are
+- **Closes when** `docs/evidence/graph.json` holds a promotion edge for a packed
+  win, and every committed winner's run is packed.
+- **Artifact:** Pedro's `plan12-attestation.json` over a run pack (human-only,
+  and agents never write one). Also the run packs for Night 5 `contact-final`,
+  Night 6 `h` and Night 7 `k2`, from the peer machine.
+- **Stands:**
+  - 7 run packs under `docs/evidence/runs/`, 2 of them wins that pass every
+    check except the attestation.
+  - **0 promotion edges.**
+  - `UNTRACKED_WINNER_DEBT` 11 of 13.
+  - The k3 cohort's campaign directories and videos are gone.
+  - Read with `npm run evidence -- list` and `npm run evidence -- promote <run>`.
+- **Absorbs** Plans 09 and 12.
 
-Package completion is **49 / 158 mandatory packages (31%)**, and that measures
-written-plan completion, not probability of a clear. The maintenance gap this
-file recorded here is closed: the 2026-09-04 audit folded Plans 22, 23 and 24
-into the denominator (133 → 158, Plan 22 P1 the only closure among them) and
-corrected a one-package arithmetic error that had left the headline reading 47
-against rows that summed to 48. The figure fell 35% → 31% on that maintenance
-alone, with no package changing state — admitted scope, not lost ground.
+### S2: Fidelity at the level of encounters
 
-| Route | What it has | Ladder position |
-|---|---|---|
-| Legacy shell (`tools/device/legacy-trial.sh`) | Real device runs, a **Night 1 clear** (`n1-full-1640`, 2026-08-26, 420.2 s alive, save advanced to Night 2) and a second Night 1 pass under Minus Toys (`n1-minustoys-armverify-20260830`) | **Deprecated.** Its results stay as historical evidence; they do not move the modern path's ladder |
-| Modern packages (`packages/*`, `apps/device`) | Contracts, campaign FSM, ADB preflight, executors, belief estimator, cycle planner, bench-trace, dry-run CLI | Level 0–1. Every device record to date is `FIXTURE`; the candidate profile is `dryRunOnly` |
+Two routes lead to one answer, and they run side by side.
 
-The graded story-night record beyond Night 1 is: Night 2 open-loop Minus Toys
-**refuted** on the phone (`n2-minustoys-0117`), and a Night 2 observe-only run
-that ended `aborted`/cause-unknown (`n2-reactive-observe-20260830`). Nights 3–6
-have no graded device attempt.
+- **S2a, on the phone.** A same-phase twin: the pinned 24850 night replayed at
+  today's anchor phase, both nights frame-traced. This is the next physical
+  test.
+- **S2b, on the host.** The clean-room recompile (Plan 17 route 5, Plan 25
+  horizon 2) runs until it plays a night. Its trace is then compared with the
+  simulator and with the phone.
 
-Honest one-line summary: **the only real clear belongs to a path we have just
-retired, the path that replaces it has zero physical qualification, and the
-route it would execute is still open loop.**
+Details:
 
-## The four structural facts the order follows
+- **Closes when** either:
+  - the model and the phone agree on occupied mask windows on a traced night at
+    that night's own seed, or
+  - k2's schedule replayed into the recompiled game gives the same 6 AM and the
+    same per-cycle ledger as the phone recording.
+- **Artifact:** a frame-traced twin evidence record, or a trace-equivalence
+  record.
+- **Stands:**
+  - The model matches outcomes, not encounters: 2 of 11 mask windows
+    ([encounter fidelity](../docs/evidence/model-encounter-fidelity-20260918.json)).
+  - Its nights run about half again as busy, with Withered Chica and Withered
+    Freddy in excess.
+  - On Night 7 it kills nights the phone wins.
+  - The recompile boots to the title screen with placeholder sprites
+    ([recompile notes](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md)).
+- **Absorbs** Plan 17 (route 5), Plan 25 horizon 2, and the model parts of
+  Plans 15 and 19.
 
-Measured results, not opinions. They are not re-litigated here.
+### S3: The ceiling, from a census over policies
 
-1. **Nights 1–6 are offline-viable; Night 7 is not.** The human gate at ±60 ms
-   gives 99/89/85/78/46 on Nights 1–5 and 6 against a 40/100 floor, and
-   **12/100 on Night 7** — the first night the route cannot run at all
-   (Plan 12, "The human gate"). No knob rescues it: `hallPulseMs`,
-   `readLatencyMs`, `maskMarginMs` and `pilotOffset` were all swept, and the
-   best value is the shipped one.
-2. **The phone cannot hold a phase-locked schedule.** `n2-minustoys-0117`
-   cleared the deterministic gate 200/200 and died on the phone at ~2 AM: every
-   beat was locked to a clock the device holds to ~302 ms + drift, against a
-   whole-schedule tolerance of **33 ms early / 99 ms late**. Under the
-   calibrated ensemble the same route is 0/600 on Nights 3–5, and a perfect
-   AM-digit re-anchor tops out at ~27–48%. This is the measured form of
-   directive 2.
-3. **Verifying your own presses is not the closed loop.** A modelled monitor
-   recovery loop — and a free, ideal, always-correct one — reclaim **0/200 on
-   every night** (Plan 12, "The closed loop, modelled and priced"). The cliff is
-   the sweep's stun geometry under 7–18 frames of launch lateness. Read
-   precisely: that result refutes *actuator-state repair inside a fixed macro*.
-   It says nothing against reacting to **game** state, and the deaths it
-   explains — Nights 2–6's dominant cause is a **missed Balloon Boy read** —
-   are reaction failures by name.
-4. **The clock fix unblocks Night 6 and only Night 6.** A fork-free
-   `read < /proc/uptime` wait loop lands 0 ms late on 15/15 targets with the
-   game running; at a 0–10 ms band the route recovers Nights 1–5 to 197–200/200
-   and Night 6 to 171/200 — Night 7 to **25/200**, still under the floor.
+- **Closes when** there is a `P_max` per story night and per Custom Night preset
+  over all 65,536 seeds, with a held-out block, or a lower bound scoped to the
+  family searched. It also needs the dial frontier (Balloon Boy x Foxy first),
+  with its corner vectors run on the phone.
+- **Artifact:** census records under `docs/evidence/`, each naming its policy
+  family and held-out block, plus the device runs at the frontier corners.
+- **Stands:**
+  - Exhaustive censuses are routine, but over *fixed schedules*, not over
+    policies.
+  - All ten presets clear 3000/3000 in four lanes for Minus Toys
+    ([preset sweep](../docs/evidence/night7-preset-sweep-20260917.json)).
+  - Frontier files exist under `docs/evidence/invent/`.
+- **Absorbs** Plans 05, 11 and 21, and Plan 25 horizon 1.
+- **Needs S2:** a ceiling computed on a model that misses encounters is a
+  ceiling of the model.
 
-Consequence: **Night 6 is an execution problem and can start now; Night 7 is a
-research problem and must run in parallel.** And by fact 2, the execution
-problem is not "run the macro more precisely" — it is "stop running a macro".
+### S4: A controller that plays at the ceiling, on the phone
 
-## Hostless device direction (2026-09-06)
+The Companion hosts the whole loop, with no host in it. It observes through
+native regions and keeps a belief over the seed and the frame phase. It
+identifies the seed during the night (65,536 -> 1), then plays that seed's plan.
 
-The finished live runtime is intended to run on the phone: Cue Helper owns the
-capture path, top-level lifecycle/game-state object, belief/controller,
-safety arbiter, campaign supervision, and a qualified input backend. The PC
-continues as build, calibration, replay, evidence, and telemetry tooling. The
-host is still part of the current qualification composition, so this is a
-migration direction rather than a new claim-ladder rung.
+- **Closes when** a predeclared Night 7 cohort reports its win rate against S3's
+  `P_max`.
+- **Artifact:** the cohort's run packs and its result record.
+- **Stands:**
+  - k3 reached 6 AM on 8 of 10 nights with an anchored open-loop schedule and a
+    belief-gated supervisor
+    ([k3 cohort](../docs/evidence/night7-cohort-k3-result-20260918.json)).
+  - `seedpin` hits a 7-value window, and the exact value about one time in five.
+  - Twins are proven but did not replay the night, because frame phase enters
+    the random stream
+    ([twins](../docs/evidence/night6-twin-nights-proven-20260918.json)).
+- **Absorbs** Plans 08, 10, 13, 14, 19, 20 and 23.
+- **Needs** the seed-provenance axis below.
 
-The migration has two independent gates:
+### S5: The human route
 
-1. move lifecycle/state authority into Cue Helper without creating a second
-   host truth source; and
-2. qualify a hostless actuator. AccessibilityService is attractive for this
-   purpose and, on this project's target SDK 36 / 120 Hz device, is
-   theoretically sampled at about 8 ms rather than the old 100 ms behavior.
-   That is framework granularity, not end-to-end proof. The first stock-game
-   acceptance gate on 2026-09-06 failed: the service callback completed but
-   FNaF2 ignored the tap that UHID accepted. AccessibilityService is therefore
-   not promoted; UHID remains the current in-night and menu-control baseline.
-   The user-facing accessibility grant flow is a separate untested gate. See
-   [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md)
-   and its retained failed result.
+- The robustness field `δ*(x)` gives the route that maximises the worst-case
+  timing margin.
+- That route is certified on the phone with jitter injected at the human gate's
+  level.
+- The trainer and coach then teach it, and a person clears 10/20 on video, with
+  the learning curve recorded.
+- **Artifact:**
+  - the certification runs;
+  - trainer code that a gate exercises;
+  - the human attempt's record, made under a predeclared protocol with consent.
+- **Absorbs** Plans 02, 03, 04 and 24, and Plan 25 horizon 4.
 
-## The debt the two directives create
+### S6: The method on four games, and the interface
 
-Both directives are right and neither is free. Naming the cost is the point.
+FNaF 1, 3 and 4 go through the same chain: dump, model, census, device lane,
+pack, promotion. Then come the rebrand to `fnaf-solver` / `@sixam/*` (Plan 27)
+and the solver MCP with its claim envelope (Plan 28).
 
-- **The Night 1 clear does not transfer.** It was produced by the deprecated
-  runner. The modern path enters Plan 12's ladder at Level 1 and climbs it
-  again. Nothing else is honest.
-- **The measured clock lives in the retired binary.** The fork-free
-  `/proc/uptime` loop exists in `legacy-trial.sh` and its test scripts.
-  Whatever the modern executor does about timing, it must be *measured there*,
-  not inherited by assumption from a file we no longer run.
-- **The reactive branch has lost its host.** `REACTIVE=observe` (Plan 19 P4) is
-  wired into `legacy-trial.sh` only. Re-hosting it is not a port — it is
-  Track A's first milestone, done properly.
-- **The modern executor is open loop at a better boundary.**
-  `apps/device/src/adb-device-local-executor.js` compiles one bounded HID
-  script with fixed inter-action delays, pushes it to the phone, and observes
-  only a lifecycle poll that can abort on `gameover`. That is a safer, better
-  contracted version of exactly the architecture directive 2 rejects. It is a
-  correct *actuation* boundary and the wrong *control* boundary: keep it as the
-  bounded physical edge, and stop letting a whole night be one compiled script.
-- **`test:contracts` still points at the retired lane.** The device gates that
-  exercise the legacy driver stay green as characterization tests; they must not
-  be read as qualification of the path that climbs.
+- **Stands:**
+  - **FNaF 1:** 4/20 reached 6 AM on 2 of 4 nights on the phone
+    ([first 6 AM](../docs/evidence/fnaf1-420-first-6am-20260925.json)).
+  - **FNaF 3:** 65,536/65,536 in the model on all six nights, and Night 1 on the
+    phone.
+  - **FNaF 4:** model only ([four games](../docs/research/FOUR-GAME-NIGHTS.md)).
+- **Absorbs** Plan 25 horizon 5 and Plans 26, 27 and 28.
 
-## Track A — a closed-loop controller that clears Night 6
+### S7: The lab runs itself
 
-Sequential. Each milestone's exit gate is an artifact, not an opinion. The
-deliverable at every rung is the **belief-state cycle controller**
-(Plan 20, `packages/core/src/control`, `packages/core/src/estimation`),
-executing bounded cycles through the modern actuation edge — never a full-night
-compiled schedule.
+A planner ranks the disagreements between phone, model and (after S2b) the
+recompile. For each, it picks the run whose outcome refutes one of two
+explanations. It emits only bundles and queued Cue Helper jobs, and never
+arbitrary shell. The mistake registers become executable gates, and the lab
+never promotes.
 
-### A0 — Record the deprecation and the cutover (done as a decision, open as work)
+- **Artifact:** a morning report that refutes a mechanism nobody had queued,
+  with the run bundles that did it.
+- **Absorbs** Plan 25 horizon 3 and Plans 07, 18 and 22.
 
-- `docs/architecture/COMPATIBILITY.md` and `generated/legacy-paths.json`
-  already carry `tools/device/legacy-trial.sh` as lifecycle `legacy` with a
-  removal gate. Tighten the wording to match the directive: reference and
-  characterization only, **no new ladder evidence**, with `FNAF2_LEGACY_TRIAL=1`
-  remaining the explicit opt-in for historical replay.
-- Update `22-STATUS.md` P5: the crossover is no longer a question of *whether*
-  the modern path takes over, only of injecting a qualified transport and
-  retaining a real bundle.
-- **Exit gate:** the registry, `22-STATUS.md` and this file agree, and
-  `npm run catalog` regenerates clean.
+**Order.**
+- **Now:** S1, which needs minutes of Pedro plus the peer machine.
+- **Next:** S2a is the next physical test; S2b runs beside it.
+- **Then:** S3 after S2, and S4 after S3.
+- **S5** needs S3's robustness field.
+- **S6** is already under way. Its gates are restated below.
+- **S7** comes last, because it automates S2 to S5.
 
-### A1 — Close the loop offline, end to end (no phone)
+## Where the threads meet
 
-The controller must be the thing that decides, before it is the thing that acts.
+- **The seed pin plus the table give a tool-assisted night on stock hardware.**
+  Once `seedpin` and the frame phase are both controlled, a night becomes a
+  lookup into the table. That is the clairvoyant solution of `SOLVING-FNAF2.md`,
+  and it is a different claim from winning the observable game. Hence the new
+  axis below.
+- **The recompile plus the lab give a three-way arbiter.** Every disagreement
+  classifies itself as a decoder error, a translation error, or a timing error.
+- **The robustness field plus the coach:** the route that maximises the
+  worst-case margin is the mathematically best *human* route, and it is what the
+  trainer should teach.
+- **Varying the game's constants** yields `P_max(θ)`, a difficulty phase
+  diagram, for all four games.
 
-- Plan 20 P6's real-time placement, now that its trace contract exists as a
-  host/fixture lane: what runs where, on which clock, with which deadline.
-  `docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md` owns the boundary.
-- Re-host Plan 19's observation/reaction path on the modern controller: video
-  facts and their refusal semantics feed the estimator; the cycle planner emits
-  the next bounded cycle; the actuation edge stays the executor.
-- Plan 15's remaining packages: one definition per game fact, one calibrated
-  adapter per capture method, and a refusal for every uncalibrated pairing. A
-  reactive controller with sensor-bound classifiers reacts to the wrong thing.
-- **Exit gate:** a full night driven cycle-by-cycle against recorded and
-  synthetic facts, beating the disabled-observation control, with no compiled
-  full-night schedule anywhere in the path.
-- **2026-09-03:** the synthetic-fact half is met on all seven nights and the
-  controller now SURVIVES four of them -- 92.0%, 50.5%, 83.5%, 82.5% and 37.5%
-  on Nights 1-5 over a held-out 200-seed cohort each, against controls that are
-  0/200 everywhere. Nights 6 and 7 are 0/200 against a measured resource wall
-  (the box period and the Foxy band are both shorter than one wind trip). The
-  recorded-fact half remains `tools/factreplay.mjs`'s simulator-produced
-  stream, which claims `MODEL_ONLY`; a manifest from a real phone run is still
-  A2's item. Detail and the seven defects this closed are in
-  [`PROGRESS.md`](PROGRESS.md), 2026-09-03.
+## Boundaries: what "within possibilities" excludes
 
-### A2 — Level 1, replay: one real session validated
+- **PAIRIP (Pedro, 2026-08-28).** No runtime attach to the retail APK, and no
+  re-signing. The recompile is a personal research artifact. Dumps, generated
+  code, recordings and game frames are never committed. What is published is the
+  method and the equivalence evidence.
+- **21^10 dial vectors** are reachable only through monotonicity, and that is a
+  hypothesis to test, not a shortcut: Balloon Boy and Golden Freddy interact
+  with other dials.
+- **"Formally solved" is always conditional** on the decoded dump and on a model
+  of how the phone delivers frames and touches.
+- **One handset.** Plan 14 package 6 waits for a second device and is not
+  counted against the path.
+- **S5 needs people:** volunteers, consent and a predeclared protocol. Feedback
+  comes only between attempts.
+- **A belief-state solution** is tractable only if the state quotient collapses
+  to few classes. That too is a hypothesis.
 
-- Plan 09 P2's single remaining item: *no manifest from a real phone run has
-  been validated yet*. Every producer emits one; none has been proven against
-  hardware rather than mock adb.
-- Plan 14 packages 1–2: classify every device-facing number as geometry
-  (translates), layout mode (must be measured), or pixel model / timing (does
-  not translate), and bind the g56 profile digest into the bundle.
-- **Exit gate:** one captured night replays offline to the same decisions, with
-  a validated manifest and a profile digest.
+## Claim axis the path adds: seed provenance
 
-### A3 — Level 2, shadow: the controller watches a real night
+A night's seed is `natural` (the game's wall clock), `pinned` (`seedpin` wrote
+the clock) or `identified` (inferred during the night by the controller).
 
-- Plan 20 P7 with `act=false`, on a monitor-stressing Night 5 or 7 geometry —
-  the rule the `n2-minustoys-0117` incident wrote.
-- Plan 23 P5–P6: HUD interference, touch passthrough and self-capture
-  qualification, so the overlay cannot be the thing that kills a run.
-- Measure the modern edge's timing here, against fact 4's numbers: the bench
-  trace stops being a fixture and starts being a phone.
-- **Exit gate:** a graded observe-only night where intended actions, belief,
-  timing margin and recovery count are recorded and correct, with no measurable
-  game-affecting side effect.
+- A `pinned` win is a clairvoyant claim.
+- It is labelled as one, and it is never merged into a natural-clock cohort.
+- Plan 12 carries the rule.
 
-### A4 — Level 3, bounded live branch
+## What counts as consequential now
 
-- Fast safety actions first, then one cycle primitive at a time — Plan 20 P7's
-  own promotion order.
-- Requires a qualified transport (Plan 22 P5) and a profile that is no longer
-  `dryRunOnly`.
-- **Exit gate:** a retained bundle showing the branch fired, the game accepted
-  it (a send is not acceptance — verify the observed result), and the fail-safe
-  release ran.
+A commit is consequential when it retains a verifiable record that closes or
+advances a step above. That can be:
 
-### A5 — Levels 4–5, full Night 6 attempt, then a clear
+- device evidence or a run pack;
+- a promotion;
+- a frame-traced twin or trace-equivalence record;
+- a census whose held-out block is named;
+- code that a gate exercises in the Companion, the controller, the trainer or the
+  solver interface.
 
-- Plan 13's remaining packages: save-safe lifecycle, per-night qualification,
-  fresh-save story progression through Nights 2–5. Those nights are also the
-  cheapest place to prove the loop fixes what the macro could not — their
-  dominant simulated death is the missed BB read (fact 3).
-- **Exit gate:** one complete stock-device Night 6 with a positive 6 AM, save
-  advancement, and a full artifact chain from commit to terminal outcome.
+Docs and plans alone remain bookkeeping. The `commit-msg` hook is unchanged:
+host-side records land in `docs/evidence/`, which it already accepts. A host
+result never stands in for a device claim, and the labels `MODEL_ONLY`, `FIXTURE`
+and `DEVICE_MEASURED` still do not promote one another.
 
-### A6 — Level 6, Night 6 reliability
+## Gates changed on 2026-09-25
 
-- A declared consecutive cohort, reporting all wins, deaths, aborts and
-  exclusions. Aborts, focus loss, helper failures and truncated captures are
-  reported, never silently dropped.
-- **Exit gate:** the cohort report. Nothing about 10/20 is implied by it.
+| Gate | Where | Why it had to change | Now |
+|---|---|---|---|
+| "No host-side substitute work" | `CLAUDE.md`, `AGENTS.md`, charter | Forbade S2b, S3, S6 and S7, which are host-side by nature | **Loosened.** Host-side work counts when it retains a record for a step. It never stands in for a device claim. |
+| Consequential = a Plan 12 rung or trainer code | same, and the hook's comment | Left the Truth and Decision steps with no consequential form | **Redefined** by the step list above. The hook's mechanics are unchanged. |
+| "Laser-focus on 6 AM successes; nothing outranks the next graded run bundle" | `CLAUDE.md` | Superseded by the path. Its target now lives in S1 and S4. | **Replaced** by this file, with S1 first. |
+| Plan 26 "does not start yet" | Plan 26 | Overtaken by its own work: FNaF 1 4/20 on the phone, FNaF 3 and 4 censuses | **Lifted.** |
+| Plan 27 "custody first, then rebrand" | Plan 27 | Waited for custody in full, which may never come for k3's lost media | **Restated:** after S1's first promotion edge, in a confirmed quiet window. |
+| Plan 28 "sits behind all three" | Plan 28 | Its reason stands, but "all of custody" is not its trigger | **Restated:** after S1's first promotion edge. |
+| Plan 12 Gate A: "the exact emitted plan passes the current human/model gate" | Plan 12 | The human gate scores human execution at ±60 ms. A machine route is gated by the device lane at measured timings. | **Narrowed** to human-route claims (S5). |
+| Plan 12 Gates C and D (shadow night, bounded branch) as prerequisites | Plan 12 | Written for a controller extracted from the legacy runner, which is archived. The anchored bindings reached rungs 4, 5 and 7 directly. | **Entry gates for a new closed-loop controller (S4)**, not prerequisites for promoting a run already won. |
+| Plan 12 Gate G: "begin with shadow and bounded branches again", with holdouts for every Night 7 observation | Plan 12 | Would block promotion of the 10/20 wins already on the phone | **Loosened.** Promoting a won run needs what `evidence -- promote` checks: pack, terminal, committed winner, attestation. The Gate G list applies to a reliability or controller claim. |
+| Plan 05's 1200-seed admission gate | Plan 05 | Superseded by the 3000-seed rule and a held-out block | **Superseded.** |
+| `PROGRESS.md` dashboard and counting rule | `PROGRESS.md` | Measured completion of written plans (31%), not progress. Stale since 2026-09-04, and its "next gate" column named archived commands. | **Archived** to [`archive/PROGRESS-dashboard-2026-09-04.md`](archive/PROGRESS-dashboard-2026-09-04.md). The steps above replace it. |
+| The 2026-09-02 roadmap | `plans/ROADMAP.md` | Had declared itself superseded on 2026-09-17 | **Archived.** |
+| Fixture service path and the `device:dry-run` CI lane | CI, `CLAUDE.md` | Played no nights | Retired the same day in `6d78c7e`. CI now runs the campaign dry run over a committed winner. |
 
-## Track B — the Night 7 route (runs in parallel, starting now)
+**Kept, because they serve the path:**
 
-Track A cannot reach Night 7 by executing better. The current route's grammar
-cannot express a Foxy reset the Balloon Boy attack cycle can reach, and its
-sweep does not tolerate one frame of differential displacement (Plan 12, "What
-this means for the ladder"; `MINUS-7-STRATEGY.md` §3.1).
-
-Directive 2 applies to the search as much as to the runtime: **a route that
-tolerates a frame is a route that observes.** A search over timing geometry has
-already been run to exhaustion and recorded as a wall (Plan 16, closed by
-negative). What has not been searched is the space of observation-conditioned
-programs.
-
-- **B1 — invention substrate.** Plan 21 P7's invention campaign on the
-  grammar/IR/equivalence machinery P1–P6 closed, with the grammar ranging over
-  branches conditioned on facts the controller can actually observe within its
-  measured budget. Plan 05 P6 defines and sources that language, with duplicate
-  controls excluding Plans 05/06/16's closed families.
-  **Correction, 2026-09-02: P1–P6 are closed for the Night 1 Minimal target
-  only, and until this date the grammar had no branch construct at all — so B1
-  was never "run the campaign", it was "close the prerequisite".** The
-  observation-conditioned language, its measured budget (visual read 59.5 ms
-  p95 DEVICE_MEASURED; all four audio facts and the host round trip `UNKNOWN`
-  and excluded) and the mechanical duplicate control have landed. The remaining
-  B1 blocker is an evaluator: the exact-engine adapter compiles one
-  unconditional stream, so a branched program refuses to compile rather than
-  being flattened, and no campaign has been run. See `plans/PROGRESS.md`
-  §"Plan 05 — Custom Night invention campaign", 2026-09-02.
-- **B2 — the falsifiable target.** A route that survives ±1 frame of
-  differential displacement *and* can reach the BB branch's mid-cycle 5 s check,
-  which the two-row shared prefix cannot.
-- **B3 — the gate.** ≥40/100 on the human gate at ±60 ms against Night 7's own
-  AI table, then the actuator-band and compiler-equivalence gates the Minimal
-  target already passes. A candidate that clears the simulator inherits
-  Track A's rungs from Level 1; it does not skip them.
-- **Sensor lead worth pricing here:** the 2 Hz winding-tick phase clock is
-  capturable over A2DP and every strategy must wind. It is the densest known
-  re-anchor and a natural input to a reactive program — a candidate input to B1,
-  not a prerequisite.
-- **Stopping rule.** If B2 is refuted across the searched grammar, that is a
-  first-class negative and the program's honest answer becomes "Night 6
-  reliability, and 10/20 refuted for this policy class" — not a quieter attempt
-  at the same wall.
-
-## Track C — explicitly not on the critical path
-
-Kept visible so it is neither mistaken for a blocker nor for dead work:
-
-- **Trainer / Arcade Lab (Plans 04, 24, 03).** Plan 04's remaining input is
-  measured trainer timing by step — practice runs, not more modelling. Plan 24
-  P1–P4 and P3A are offline foundations; the live pilots (P5, P6) depend on
-  Plan 23's activity gate, so they queue behind A3 rather than gating it.
-  Plan 03's Android vent/mask/light sourcing is complete; its reactive coach,
-  decision table, lesson ladder, and grading remain unimplemented.
-- **In-APK bot (Plan 17).** An independent route with its own ladder; the
-  recompiled engine already renders on the g56. If it ever observes and acts
-  internally with an auditable trace it changes which path climbs Track A — it
-  is not permitted to become the reason Track A stalls.
-- **Architecture and tooling (Plans 18, 22, 07).** Plan 22 P5 and P0 gate
-  Track A; the rest is opportunistic.
-- **Audio (Plan 08, Plan 19 P6).** Input to B1 as above.
-
-## Rules this roadmap does not get to bend
-
-- Plan 12 owns promotion. A rung is climbed by a retained artifact, never by a
-  roadmap entry or a green scaffold.
-- `FIXTURE` is not gameplay evidence, a send is not game acceptance, and a
-  transport's self-report is not `DEVICE_MEASURED`.
-- Device work stays dry-run by default: resolved hashed profile, capability
-  preflight, exclusive lease, bounded deadlines, retained telemetry, fail-safe
-  release.
-- A refuted route, a failed run, or a blocked path is a result. It stays
-  discoverable; it does not get quietly re-attempted under a new name.
-- Deprecating the legacy runner retires the *path*, not its evidence. Its
-  measurements remain citable; its clears remain its own.
+- the hook's mechanics, `PEDRO-OK` as human-only, and no hook bypass;
+- a winner committed in the same commit, `UNTRACKED_WINNER_DEBT`, and
+  `test-winners-rebuild.mjs`;
+- the seam-slack floor;
+- the 3000-seed rule with a held-out block;
+- both mistake registers;
+- result labels, and device safety;
+- the publishing boundary;
+- the Cue Helper queue when the phone is absent;
+- "a refuted route's next commit is the next route's physical test".

@@ -38,7 +38,7 @@ input only. It may not produce new evidence on
 path climbs it from Level 1. The runner's own historical results — including
 the Night 1 clear `n1-full-1640` — remain citable and remain attributed to it.
 Its device gates stay green as characterization tests and are not qualification
-of the path that climbs. See [`ROADMAP.md`](../../plans/ROADMAP.md).
+of the path that climbs. See the [2026-09-02 roadmap](../../plans/archive/ROADMAP-2026-09-02.md).
 
 ## Transitional model and research paths
 

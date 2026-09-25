@@ -29,6 +29,11 @@ measured and an invented one would be the tautology mistake 7 describes.
 
 ## The gate: this does not start yet
 
+**Restated 2026-09-25** ([`ROADMAP.md`](ROADMAP.md), step S6): the trigger is
+S1's first promotion edge in `docs/evidence/graph.json`, not all of custody and
+not Plans 26 and 27 finishing. The reason below stands: the interface's headline
+field is provenance, and it cannot ship while that field is empty on every win.
+
 The standing directive (Pedro, 2026-09-06, retargeted 2026-09-17) is Night 7
 reliability and the promotion of what is already won. Plan 26 is gated on the
 same custody debt and Plan 27's rebrand is sequenced after it. **This plan sits

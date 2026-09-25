@@ -7,7 +7,9 @@ here promotes a claim, and nothing here is evidence. Where a rung has been reach
 record that reached it is named.
 
 The framing below came from Pedro on 2026-09-17, in the middle of the seed-locking work. It is
-kept close to his words because the shape of the argument is the point.
+kept close to his words because the shape of the argument is the point. On 2026-09-25 it became
+the project's path: [`plans/ROADMAP.md`](../../plans/ROADMAP.md) turns these rungs into steps
+S1-S7, each with the artifact that closes it.
 
 ## The game as a control problem
 

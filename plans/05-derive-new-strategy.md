@@ -248,6 +248,11 @@ the campaign searches before 6b is written. See `plans/PROGRESS.md`
 
 ### Package 7 — the search
 
+*Superseded 2026-09-25 ([`ROADMAP.md`](ROADMAP.md) gate table): the 1200-seed
+admission gate below predates the project's 3000-seed rule; a survivor is
+admitted at 3000 seeds and confirmed on a held-out block, and the search now
+feeds step S3, a census over policies.*
+
 - **7a. Harness.** `tools/invent/search.mjs`: rollout = `interpret` →
   semantic action → exact engine, seeded like `tools/minus7/search.mjs`.
   1200-seed admission gate reused verbatim. Pareto front over

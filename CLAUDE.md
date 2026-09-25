@@ -33,22 +33,40 @@ Finish by updating the structured progress/result record, citing its generated
 evidence ID, and stating exactly what remains open; do not create a parallel
 handwritten evidence log.
 
-## Consequence lock (active, 2026-09-06)
+## The path (Pedro, 2026-09-25)
 
-A commit is **consequential** only if it advances a Plan 12 rung above
-FIXTURE (real device evidence, a graded manifest, a promotion) or ships
-trainer code. Everything else — docs, plans, gates, benchmarks, scaffolding,
-refactors — is **bookkeeping**.
+Every plan and thread is taken, within what is possible, to its last
+consequence: a verified solver for the Clickteam build-296 night games, with
+FNaF 2 at 10/20 as the primary target. The steps, what closes each, the
+boundaries, and the gates that were loosened or archived for it are in
+[`plans/ROADMAP.md`](plans/ROADMAP.md): S1 custody and the first promotion
+edge, S2 encounter-level fidelity (same-phase twin on the phone, clean-room
+recompile on the host), S3 the ceiling from a census over policies, S4 a
+controller at that ceiling on the phone, S5 the human route, S6 the method on
+four games and the solver interface, S7 the lab running itself. A gate that is
+superseded, obsolete, or competes with the path is loosened or archived, and
+recorded in that file's table.
+
+## Consequence lock (active 2026-09-06, loosened 2026-09-25)
+
+A commit is **consequential** if it retains a verifiable record that closes or
+advances a step of the path: device evidence or a run pack, a promotion, a
+frame-traced twin or trace-equivalence record, a census that names its policy
+family and held-out block, or code a gate exercises in the Companion, the
+controller, the trainer or the solver interface. Docs and plans alone —
+and gates, benchmarks, scaffolding, refactors that close no step — are
+**bookkeeping**. A host-side record never stands in for a device claim: the
+labels still do not promote one another.
 
 - The `commit-msg` hook refuses commits that touch only bookkeeping paths
-  (`docs/`, `plans/`, `*.md`) unless the same commit stages device evidence
-  under `artifacts/` or `docs/evidence/`, or the message carries
-  `EVIDENCE:<path>` naming evidence from a prior commit.
+  (`docs/`, `plans/`, `*.md`) unless the same commit stages evidence under
+  `artifacts/` or `docs/evidence/`, or the message carries `EVIDENCE:<path>`
+  naming evidence from a prior commit.
 - `PEDRO-OK` in a commit message is the human-only override. Agents never
   write it and never bypass hooks (`--no-verify`, `commit -n`).
-- Start every session by naming the rung it will move and the physical
-  artifact it aims to produce. If that artifact cannot be produced this
-  session, say so and stop — no host-side substitute work.
+- Start every session by naming the step it will move and the artifact it aims
+  to produce. If that artifact cannot be produced this session, say so and
+  stop — no substitute work that closes no step.
 - If device work is blocked because the phone is absent or locked, enqueue a
   Cue Helper job (`cue.queue.enqueue`) and end the device work there.
 - When a route is refuted on device, the next commit is the next route's
@@ -62,14 +80,13 @@ refactors — is **bookkeeping**.
   machine, and on 2026-09-15 the k3 Night 7 bundle could not be rebuilt from
   the evidence records' knob deltas.
 
-Standing directive (Pedro, 2026-09-06; target moved 2026-09-17): **laser-focus
-on 6 AM successes on-device.** Night 6 is done (first 6 AM 2026-09-13) and so is
-Night 7 (10/20, `golden-freddy`, 2026-09-14). The current execution target is
-**Night 7 reliability and the promotion of what is already won**: the only
-cohort is 3 wins in 10, and no result has a Plan 12 promotion edge. Nothing
-outranks the next graded run bundle.
+The 2026-09-06 standing directive ("laser-focus on 6 AM successes on-device;
+nothing outranks the next graded run bundle") is replaced by the path. Its
+target survives in it: promotion of what is won is S1 and comes first, Night 7
+reliability is S4. Nights 1-7 have all reached 6 AM on the phone; the best
+Night 7 cohort is k3's 8 of 10, and no result has a promotion edge yet.
 
-**Promotion waits on an attestation and on custody (measured 2026-09-25).**
+**S1 — promotion waits on an attestation and on custody (measured 2026-09-25).**
 `npm run evidence -- pack <run>` commits a live night's text evidence to
 `docs/evidence/runs/<run>/` with every frame and recording named by sha256 only,
 and `night-run.sh` packs each campaign it runs: commit the directory. `list`,

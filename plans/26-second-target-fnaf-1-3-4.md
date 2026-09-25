@@ -25,17 +25,25 @@ what the architecture actually assumed, and it assumed one game.
 Nothing here is a claim or a Plan 12 rung. Every number below was measured this
 session and says how; every gap says `UNKNOWN` and what would close it.
 
-## Gate: this does not start yet
+## Gate: lifted 2026-09-25
 
-The standing directive (Pedro, 2026-09-06, retargeted 2026-09-17) is Night 7
-reliability and the promotion of what is already won, and promotion is blocked
-on custody: `npm run evidence -- list` sees 79 runs here and zero
-`DEVICE_MEASURED`, because every winning bundle lives under gitignored
-`artifacts/` on the peer machine. `UNTRACKED_WINNER_DEBT` stands at 13 of 13.
+**Lifted by Pedro's 2026-09-25 directive** ([`ROADMAP.md`](ROADMAP.md), step
+S6 and the gate table). The gate had already been overtaken by the work it
+held back: FNaF 1 4/20 reached 6 AM on the phone on 2026-09-25, FNaF 3 was
+censused over every seed and cleared Night 1 on the handset, and FNaF 4 has a
+model and a held-out census. Custody still comes first in the path (S1), but
+as the step to take first, not as a lock on this plan. The original text is
+kept below.
 
-**No work in this plan begins before that debt is cleared or Pedro explicitly
-re-targets.** A second game with the first game's evidence uncustodied would
-multiply the custody problem, not the result.
+> The standing directive (Pedro, 2026-09-06, retargeted 2026-09-17) is Night 7
+> reliability and the promotion of what is already won, and promotion is blocked
+> on custody: `npm run evidence -- list` sees 79 runs here and zero
+> `DEVICE_MEASURED`, because every winning bundle lives under gitignored
+> `artifacts/` on the peer machine. `UNTRACKED_WINNER_DEBT` stands at 13 of 13.
+>
+> **No work in this plan begins before that debt is cleared or Pedro explicitly
+> re-targets.** A second game with the first game's evidence uncustodied would
+> multiply the custody problem, not the result.
 
 ## What was measured on 2026-09-19
 

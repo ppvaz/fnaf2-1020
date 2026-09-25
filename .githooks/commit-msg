@@ -1,8 +1,10 @@
 #!/bin/sh
-# Consequence lock (2026-09-06). A commit that touches only bookkeeping
-# paths (docs/, plans/, markdown, agent instructions) must arrive with
-# device evidence: stage it under artifacts/ or docs/evidence/ in the same
-# commit, or reference prior evidence with EVIDENCE:<path> in the message.
+# Consequence lock (2026-09-06, loosened 2026-09-25 -- plans/ROADMAP.md). A
+# commit that touches only bookkeeping paths (docs/, plans/, markdown, agent
+# instructions) must arrive with a retained record: device evidence, a run
+# pack, or a host-side step record (twin, trace equivalence, census with a
+# named held-out block), staged under artifacts/ or docs/evidence/ in the same
+# commit, or referenced from a prior commit with EVIDENCE:<path>.
 # PEDRO-OK in the message is the human-only override. Agents never write
 # the key and never bypass this hook (--no-verify, commit -n).
 
@@ -34,7 +36,7 @@ fi
 # Refuse only when every staged path is bookkeeping.
 if ! echo "$staged" | grep -Ev '^(docs/|plans/)|\.md$' > /dev/null; then
   echo "consequence lock: refused — bookkeeping-only commit without evidence." >&2
-  echo "  - stage the device evidence (artifacts/, docs/evidence/) in this commit," >&2
+  echo "  - stage the evidence (artifacts/, docs/evidence/) in this commit," >&2
   echo "  - add EVIDENCE:<path> naming evidence from a prior commit, or" >&2
   echo "  - have Pedro add PEDRO-OK to the message." >&2
   exit 1

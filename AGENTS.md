@@ -108,11 +108,14 @@ One canonical file, one pointer — do not reintroduce the copy.
 The non-negotiables, restated here so they cannot be missed even if `CLAUDE.md`
 is not opened. **None of these replaces reading it.**
 
-- **Consequence lock.** A commit is *consequential* only if it advances a Plan 12
-  rung above FIXTURE (real device evidence, a graded manifest, a promotion) or
-  ships trainer code. Docs, plans, gates, benchmarks, scaffolding and refactors
-  are *bookkeeping*. The `commit-msg` hook refuses bookkeeping-only commits
-  unless they stage device evidence or carry `EVIDENCE:<path>`.
+- **The path and the consequence lock.** Work follows the steps S1-S7 of
+  [`plans/ROADMAP.md`](plans/ROADMAP.md) (Pedro, 2026-09-25). A commit is
+  *consequential* if it retains a verifiable record that closes or advances a
+  step — device evidence or a run pack, a promotion, a twin or
+  trace-equivalence record, a census naming its family and held-out block, or
+  code a gate exercises. Docs and plans alone are *bookkeeping*. The
+  `commit-msg` hook refuses bookkeeping-only commits unless they stage evidence
+  or carry `EVIDENCE:<path>`.
 - **Never bypass a hook.** No `--no-verify`, no `commit -n`. `PEDRO-OK` is a
   human-only override; agents never write it.
 - **Device work is dry-run by default:** resolved hashed profile, capability

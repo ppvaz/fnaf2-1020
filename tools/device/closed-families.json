@@ -12,7 +12,7 @@
         "plans/06-hybrid-strategy-search.md: fixed CAM 03/06/07 anchors and all 125 three-phase clock schedules score 0/150 under the corrected office endgame",
         "plans/16-constrained-policy-search.md: packages 4 and 5 closed by recorded negative; the constrained scheduling space -- timing knobs, cycle length, sweep geometry, the Night 7 opener -- is exhausted"
       ],
-      "why": "Every family above is a program whose control flow never reads a game fact. plans/ROADMAP.md Track B states the consequence directly: 'A search over timing geometry has already been run to exhaustion and recorded as a wall. What has not been searched is the space of observation-conditioned programs.'"
+      "why": "Every family above is a program whose control flow never reads a game fact. plans/archive/ROADMAP-2026-09-02.md Track B states the consequence directly: 'A search over timing geometry has already been run to exhaustion and recorded as a wall. What has not been searched is the space of observation-conditioned programs.'"
     },
     {
       "id": "timing-only-mutation",

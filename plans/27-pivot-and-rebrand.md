@@ -108,6 +108,11 @@ This is the part that actually makes the repo multi-game, and it is small:
 
 ## Sequencing, and the honest tradeoff
 
+**Restated 2026-09-25** ([`ROADMAP.md`](ROADMAP.md), step S6): the rebrand
+waits for S1's first promotion edge and a confirmed quiet window, not for
+custody in full — some of it (the k3 cohort's media) may never be recovered.
+The reasoning below, written 2026-09-19, is kept.
+
 The rebrand is **bookkeeping** under the consequence lock, and the standing
 directive is Night 7 reliability plus promotion of what is already won, blocked
 on custody (`UNTRACKED_WINNER_DEBT` 13 of 13, zero `DEVICE_MEASURED` here).

@@ -21,6 +21,30 @@ plan owns the second one.
 Read "the route cannot run at all" as "that route cannot", not as a property of
 Night 7.
 
+**Gates loosened 2026-09-25 (Pedro's directive; [`ROADMAP.md`](ROADMAP.md)
+step S1 and its gate table).** What won on the phone is an anchored open-loop
+binding under a belief-gated supervisor, which reached levels 4, 5 and 7
+without passing through the shadow and bounded-branch gates written for a
+controller extracted from the now-archived legacy runner. So:
+
+- **Promoting a run already won** needs what `npm run evidence -- promote`
+  checks: a committed run pack, a passing terminal, its winner committed
+  (`test-winners-rebuild.mjs` keeps every committed winner compiling), and a
+  person's `plan12-attestation.json` bound to the pack's sha256. Gates C, D and G's "begin with shadow and bounded branches again"
+  are not prerequisites for it.
+- **Gates C and D** remain the entry gates for a *new* closed-loop controller
+  (ROADMAP S4), which has to earn live control branch by branch.
+- **Gate A's human-gate clause** applies to a claim that a *person* can hold
+  the route (ROADMAP S5). A machine route is gated by the device lane at the
+  handset's measured timings.
+- **Gate G's remaining list** (holdouts per Night 7 observation, the safety
+  review) applies to a Night 7 reliability or controller claim, not to
+  promoting a single won night.
+- **Seed provenance is a claim axis.** A night whose seed was pinned by
+  `seedpin` is labelled `pinned` — a clairvoyant result — and is never merged
+  into a cohort of natural-clock nights; one identified by the controller
+  during the night is `identified`.
+
 ## Goal
 
 Produce one self-contained, independently gradable chain from repository commit
@@ -372,6 +396,8 @@ non-copyright diagnostic summaries only.
 
 ### Gate A: offline readiness
 
+*Human-gate clause narrowed to human-route claims, 2026-09-25 (see top).*
+
 - canonical engine/source/device suites pass;
 - policy passes ordinary, pinned-worst, and required fault sweeps;
 - plan 09 replay and terminal classifiers pass holdout contracts;
@@ -393,12 +419,17 @@ positive/negative evidence its branch assumes.
 
 ### Gate C: shadow night
 
+*Entry gate for a new closed-loop controller; not a prerequisite for promoting
+a run already won, 2026-09-25 (see top).*
+
 - run the new controller in shadow beside the current route;
 - compare expected actions and beliefs against the recording;
 - require no unexplained deadline misses or permanent belief inversion;
 - replay the session offline and reproduce the shadow decisions.
 
 ### Gate D: one bounded live branch
+
+*As Gate C, 2026-09-25.*
 
 Promote one branch whose timeout/unknown fallback is already safe. Monitor
 forcedown recovery or monitor/mask verification is preferable to a new threat
@@ -433,6 +464,10 @@ rules. Report:
 Do not tune inside the cohort. A change starts a new versioned cohort.
 
 ### Gate G: 10/20 promotion
+
+*Loosened 2026-09-25 (see top): promoting a won 10/20 night needs the pack,
+terminal, committed winner and attestation; the list below governs a Night 7
+reliability or controller claim.*
 
 Require all of the following:
 

@@ -6,10 +6,22 @@ This project concerns one canonical target: `com.scottgames.fnaf2` v2.0.7, the
 modern Android release-7 build (Fusion build 296). PC and community work are
 supporting evidence, never silent substitutes for Android behaviour.
 
+FNaF 1, 3 and 4 on the same handset run the same Clickteam runtime (770.0,
+build 296; Plan 26) and are admitted as sibling targets. Each is its own
+target, identified by its package name; no result on one stands in for
+another.
+
 ## Vision
 
 Make that 10/20 night understandable, learnable, and demonstrably controllable
 with evidence that survives replay, scrutiny, and testing on real hardware.
+
+Taken to its last consequence (Pedro, 2026-09-25): a verified solver for the
+build-296 night games — the game itself as ground truth, an exact table of
+what is winnable, a controller that plays at that ceiling on the phone, a
+route a human can hold, and a provenance label on every answer. The path, its
+boundaries and the gates changed for it are in
+[`plans/ROADMAP.md`](plans/ROADMAP.md).
 
 ## Mission
 
@@ -38,7 +50,8 @@ is a first-class result when its conditions and artifacts remain reproducible.
 Simulation, replay, shadow operation, bounded live control, a single clear,
 and reliability are distinct claims. Plan 12 owns their promotion ladder. No
 platform-general, full-state, or autonomous-controller claim is implied by a
-result at a lower level.
+result at a lower level. A night whose seed was pinned (`seedpin`) is a
+clairvoyant result, labelled as one and never merged with natural-clock nights.
 
 ## Admission rule for new work
 
@@ -46,15 +59,18 @@ Every proposed effort must name: the layer it strengthens, the decision or user
 outcome it unlocks, its falsifiable hypothesis, its retained evidence artifact,
 and its promotion or stopping gate.
 
-## Consequence rule (2026-09-06)
+## Consequence rule (2026-09-06, loosened 2026-09-25)
 
-A session or commit is consequential only if it advances a Plan 12 rung above
-FIXTURE level or ships trainer functionality. Documentation, plans, gates,
-benchmarks, and refactors are bookkeeping: permitted only in direct attendance
-on consequential work. The consequence lock (the `commit-msg` hook plus the
+A session or commit is consequential if it retains a verifiable record that
+closes or advances a step of [`plans/ROADMAP.md`](plans/ROADMAP.md): device
+evidence, a run pack or a promotion; a twin or trace-equivalence record; a
+census naming its policy family and held-out block; or code a gate exercises in
+the Companion, controller, trainer or solver interface. Documentation and plans
+alone are bookkeeping: permitted only in direct attendance on consequential
+work. A host-side record never stands in for a device claim. The consequence lock (the `commit-msg` hook plus the
 session protocol in `AGENTS.md`/`CLAUDE.md`) enforces this mechanically; its
 `PEDRO-OK` override key is reserved to Pedro. When a route is refuted, the next
 work item is the next route's physical test or a human decision — not further
-recording. Standing objective: 6 AM successes on-device. Nights 1-7 have each
-reached 6 AM; as of 2026-09-17 the objective is Night 7 reliability and the
-promotion of results already won, neither of which any run yet holds.
+recording. The 2026-09-06 standing objective (6 AM successes on-device) is
+absorbed by the path: Nights 1-7 have each reached 6 AM, promotion of what is
+won is step S1 and comes first, and Night 7 reliability is step S4.
