@@ -1,6 +1,6 @@
 # Plan progress
 
-**Updated:** 2026-09-21.
+**Updated:** 2026-09-25.
 
 **How to read this file.** It is a log, append-ordered from 2026-09-09: **the
 newest work is at the bottom**, so read the last entry first. Everything before
@@ -1544,3 +1544,29 @@ The README carries the FNaF 1 GIF (one Bonnie visit, `420-d` at 12 AM) beside FN
 Pedro asked to restore. Open: a Companion-side recorder that encodes the frames the helper
 already has, so a video does not cost the night; the evidence pack adapter for FNaF 1 runs.
 Evidence ID: `fnaf1-420-first-6am-20260925`.
+
+**2026-09-25: the Plan 12 gate reads committed run packs; nineteen closed probes are archived.**
+The gate read only `artifacts/`, which is per machine and gitignored, so a win could be promoted
+only where it was played and only while its campaign directory survived. It did not survive for
+the k3 cohort: its ten campaign directories and ten videos are no longer on the machine that played
+them, while [`night7-cohort-k3-result-20260918`](../docs/evidence/night7-cohort-k3-result-20260918.json)
+still cites them, and the vault has never exported anything (`docs/evidence/packs/` is empty).
+
+`npm run evidence -- pack <night-run label | campaign id>` now writes a campaign's text evidence and
+`night-run.sh`'s derived facts to `docs/evidence/runs/<run>/`, with the executor's `maskCells` grid
+replaced by its hash, machine paths made portable, and every recording and frame listed as withheld
+by sha256 only; it refuses anything pixel-shaped it was not told about
+([`README`](../docs/evidence/README.md), `tools/evidence-pack.mjs`). `night-run.sh` packs every
+campaign it runs. The seven live campaigns of 2026-09-20 still on this machine are packed: two 6 AMs
+and five Night 6 deaths, 1.2 MB against ~2.6 GB withheld. On a checkout with no `artifacts/`,
+`evidence -- promote` passes both wins on four of five checks and waits only for a person's
+`plan12-attestation.json`; the Night 5 win's winner (`fnv1a-9ca64157`, `artifacts/toys-n5`) was never
+committed and now is, as `tools/device/campaign-night5-toys-n5-winner.json`.
+
+Separately, nineteen device probes and their eight tests whose questions are closed left the tree
+([`ARCHIVED-ROUTES.md`](../docs/ARCHIVED-ROUTES.md), tag `archive/2026-09-24`).
+
+Open: Pedro's attestations for the two packed wins; packing Night 5 `contact-final`, Night 6 `h` and
+Night 7 `k2` on the peer machine, and `k3` wherever its campaigns still exist; the FNaF 1 runner,
+which does not write campaign directories and so is not packed; the legacy `trial.sh` lane (Plan 22
+P9). Evidence IDs: `night5-n5-armblock-20260920T004056Z`, `night6-n6h2-01-20260920T024030Z`.
