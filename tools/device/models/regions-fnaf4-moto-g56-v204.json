@@ -1,0 +1,15 @@
+{
+  "schema": "native-regions-v1",
+  "id": "regions-fnaf4-moto-g56-v204",
+  "claimLevel": "PLACEMENT from retained native frames (~/fnaf-apks/explore/f4-views, f4-n1); no detector threshold is claimed here",
+  "target": { "package": "com.scottgames.fnaf4", "build": "2.0.4 (11)", "device": "ZF525F5BH5", "geometry": [2400, 1080] },
+  "why": "Raw native pixels only (NativeRegions.java). The two edges tell the views apart -- the left door frame is white in room-left and absent at the doors, the closet louvres fill the centre at the closet, the dark hall fills the door views -- and the centre carries what a flashlight shows: a hall occupant, Foxy in the closet, Freddles on the bed. The clock is the night's own time. 7824 samples of the helper's 8192.",
+  "sets": {
+    "night": {
+      "left_edge":  { "x": 0,    "y": 150, "width": 400,  "height": 800, "step": 16, "reads": "view: the left door frame (room-left), dark hall (doors)" },
+      "right_edge": { "x": 2000, "y": 150, "width": 400,  "height": 800, "step": 16, "reads": "view: right door frame (room-right), door blade (left door), louvres (closet)" },
+      "center":     { "x": 600,  "y": 200, "width": 1204, "height": 700, "step": 14, "reads": "what the flashlight shows: hall occupant, closet occupant, Freddles" },
+      "clock":      { "x": 2040, "y": 30,  "width": 320,  "height": 80,  "step": 5,  "reads": "hour text" }
+    }
+  }
+}

@@ -63,6 +63,7 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/src/com/ppvaz/fnafcompanion/TeachPanel.java" \
   "$HERE/src/com/ppvaz/fnafcompanion/NativeRegions.java" \
   "$HERE/src/com/ppvaz/fnafcompanion/Fnaf1Lesson.java" \
+  "$HERE/src/com/ppvaz/fnafcompanion/Fnaf4Lesson.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/CueDetectorTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/AudioAnalyzerTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/PhaseClockTest.java" \
@@ -78,10 +79,12 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/test/com/ppvaz/fnafcompanion/CycleLessonTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/TeachPanelTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/NativeRegionsTest.java" \
-  "$HERE/test/com/ppvaz/fnafcompanion/Fnaf1LessonTest.java"
+  "$HERE/test/com/ppvaz/fnafcompanion/Fnaf1LessonTest.java" \
+  "$HERE/test/com/ppvaz/fnafcompanion/Fnaf4LessonTest.java"
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.CueDetectorTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.NativeRegionsTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.Fnaf1LessonTest
+"$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.Fnaf4LessonTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.AudioAnalyzerTest
 $JAVA -cp "$TEST_TMP" com.ppvaz.fnafcompanion.PhaseClockTest
 $JAVA -cp "$TEST_TMP" com.ppvaz.fnafcompanion.PixelWatchTest

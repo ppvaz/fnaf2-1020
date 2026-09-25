@@ -303,6 +303,93 @@ public final class OverlayController {
         }
     }
 
+    // The FNaF 4 teach panel: its own lesson and window, the same contract as
+    // FNaF 1's (origin attaches, clear detaches). Debug builds only.
+    private volatile Fnaf4Lesson f4Lesson = new Fnaf4Lesson();
+    private volatile Fnaf4PanelView f4View;
+
+    /** {@code LESSON <token> f4 <origin|step|door|closet|bed|level|clear|status> ...}. */
+    public String f4Command(String[] field, int from) {
+        if ((context.getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+            return "ERROR teach-release-build";
+        }
+        if (field.length <= from) return "ERROR f4-usage";
+        String verb = field[from];
+        if ("clear".equals(verb)) {
+            mainHandler.post(this::detachF4);
+            f4Lesson = new Fnaf4Lesson();
+            return "OK f4=OFF";
+        }
+        if ("status".equals(verb)) {
+            return "OK f4=" + (f4View != null ? "ATTACHED" : "NONE")
+                    + " originNs=" + f4Lesson.originNs() + " step=" + f4Lesson.step();
+        }
+        if (!permissionGranted()) return "ERROR teach-permission";
+        f4Lesson.apply(field, from, System.nanoTime());
+        if ("origin".equals(verb)) mainHandler.post(this::attachF4);
+        return "OK f4=" + verb;
+    }
+
+    private void attachF4() {
+        if (f4View != null || windowManager == null) return;
+        OverlayGeometry.Transform transform = currentTransform();
+        OverlayGeometry.PixelRect rect = transform.display.resolve(new NormalizedRect(
+                Fnaf4Lesson.LEFT / (float) PixelWatch.NATIVE_WIDTH,
+                Fnaf4Lesson.TOP / (float) PixelWatch.NATIVE_HEIGHT,
+                Fnaf4Lesson.RIGHT / (float) PixelWatch.NATIVE_WIDTH,
+                Fnaf4Lesson.BOTTOM / (float) PixelWatch.NATIVE_HEIGHT));
+        int left = Math.round(rect.left);
+        int top = Math.round(rect.top);
+        int width = Math.round(rect.width());
+        int height = Math.round(rect.height());
+        // The clearance is proved in native content pixels: refuse anything
+        // that would scale, rotate or shift the rectangle over a region.
+        if (transform.display.rotation != OverlayGeometry.Rotation.ROTATION_0
+                || left != Fnaf4Lesson.LEFT || top != Fnaf4Lesson.TOP
+                || width != Fnaf4Lesson.WIDTH || height != Fnaf4Lesson.HEIGHT) {
+            Log.w("FnafCueHelper", "f4 teach panel refused: display rect " + rect);
+            return;
+        }
+        Fnaf4PanelView panel = new Fnaf4PanelView(context, f4Lesson);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                width, height,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.OPAQUE);
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.x = left;
+        params.y = top;
+        if (Build.VERSION.SDK_INT >= 30) params.setFitInsetsTypes(0);
+        if (Build.VERSION.SDK_INT >= 28) {
+            params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
+        params.alpha = maximumObscuringOpacity();
+        params.packageName = context.getPackageName();
+        params.setTitle("FNaF Companion FNaF 4 teach panel");
+        try {
+            windowManager.addView(panel, params);
+            f4View = panel;
+        } catch (RuntimeException error) {
+            Log.e("FnafCueHelper", "f4 teach panel attach failed", error);
+        }
+    }
+
+    private void detachF4() {
+        Fnaf4PanelView current = f4View;
+        f4View = null;
+        if (current != null && windowManager != null) {
+            try {
+                windowManager.removeViewImmediate(current);
+            } catch (RuntimeException ignored) {
+                // Idempotent teardown.
+            }
+        }
+    }
+
     public String teachStatus() {
         CycleLesson lesson = teachLesson;
         return "OK teach=" + teachState + " window=" + (teachAttached ? "ATTACHED" : "NONE")

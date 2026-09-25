@@ -1589,3 +1589,25 @@ packs, and a Plan 12 decision on whether a pack recovered from its log, which ha
 `request.json`, can be promoted. The recovered wins pass `offlineEvidence`, `terminalPass` and
 `winnerCommitted` and fail `manifestComplete` on exactly that file. 81 further non-win
 campaigns (79 recoverable from their logs, 2 still on disk) are not packed yet (`npm run evidence -- pack <run>`).
+
+**2026-09-25 (late): FNaF 4 Nights 1-3 reach 6 AM on the phone, by sound and native frames, with a
+teach panel.** Pedro moved the goal from FNaF 3 to FNaF 4's hardest mode. The fresh install showed
+only NEW GAME / CONTINUE 1: 20/20/20/20 (Extras -> Nightmare) needs `beat7`, the APK has no backup
+path, so Nights 1-7 are played first. `tools/device/fnaf4-run.sh` plays them: native REGION views
+(`fnaf4-detectors.py`, templates from an open-loop Night 1 calibration), the phone's A2DP mix on the
+host (`tools/cue/fnaf4-cues.py`: matched filters, and the breathing loop's level with its phase),
+and a Companion panel of its own visual language (a station map, the step, the game's clocks and a
+listening meter; FNaF 1's bars and FNaF 2's ring fit tick- and cycle-keyed routes, FNaF 4's is a
+walk that reacts to sound). Night 1, 2 and 3 were each won; Night 3 with the panel and a video.
+Night 4's best died 0.24 s before 6 AM. Every death named a fix: arrival by near-exact match after
+the walk's measured minimum (the dark carpet read as the right door), Foxy's entry read off a
+return that does not end at the hub (follow 37, g98/g100), the closet only at follow 0, occupancy
+against the empty lit template with a cut at 2 (Pedro saw Foxy at a stage the old cut called
+empty), the bed kept due against Freddy's meter, and a clamping pan out of the closet. The level
+origin is measurable from breathing phase (0.44-0.55 s before the first room frame). Fredbear and
+Nightmare are traced (every side change is a sound; a laugh is the room teleport only on a 30/20 s
+clock) and the loop and panel have a Fredbear branch that has not met him yet.
+
+Evidence ID: `fnaf4-nights-1-3-20260925` (`docs/evidence/fnaf4-nights-1-3-20260925.json`); winner
+`tools/device/fnaf4-night3-loop-winner.json`. Consequential: the device wins and the runner. Open:
+Night 4, then Nights 5-7 (Fredbear, Nightmare), the Plushtrap minigame (two hours off), and Night 8.

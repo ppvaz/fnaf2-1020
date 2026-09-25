@@ -3003,6 +3003,8 @@ public final class CaptureService extends Service {
                     return overlayController.teachStatus();
                 case "f1":
                     return overlayController.f1Command(field, 3);
+                case "f4":
+                    return overlayController.f4Command(field, 3);
                 default:
                     return "ERROR lesson-usage";
             }

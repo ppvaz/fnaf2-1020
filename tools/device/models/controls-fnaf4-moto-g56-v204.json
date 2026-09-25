@@ -1,0 +1,28 @@
+{
+  "schema": "control-map-v1",
+  "id": "controls-fnaf4-moto-g56-v204",
+  "claimLevel": "DEVICE_MEASURED (placement: each point was pressed on the handset and the next native SNAP showed the named effect); timings are not claimed here",
+  "recordedAt": "2026-09-25",
+  "target": { "game": "FNaF 4", "package": "com.scottgames.fnaf4", "version": "2.0.4 (versionCode 11)" },
+  "device": { "serial": "ZF525F5BH5", "model": "moto g56 5G", "displayGeometry": "1080x2400" },
+  "view": {
+    "frame": [1300, 768],
+    "window": [1024, 768],
+    "mapping": "Display Mode FULL stretches the 1024x768 window to 2400x1080: screen_x = (frame_x - scroll) * 2.34375, screen_y = frame_y * 1.40625. The room view is centred on `follow` X, clamped to 512..788 (g25), so scroll is 0 looking left, 238 at the hub (follow 750, g681-g703) and 276 looking right.",
+    "pan": "A touch held at game screen x < 205 pans left 12 px/frame, < 345 left 6; > 819 right 12, > 679 right 6 (g21-g24). Touches in 345..679 do not pan -- which is why a double tap meant for the closet at native x 1640 from the left view panned the room instead (f4-views 0024).",
+    "tips": "Options -> Show Tips / Instructions cycles NIGHT 1 -> NEVER -> ALWAYS; set to NEVER on 2026-09-25 so Night 1 renders like every later night (the tip boxes sit over the bed, door and closet views)."
+  },
+  "controlMap": {
+    "continue":   { "x": 1230, "y": 645,  "anchor": "screen", "frame": "title", "effect": "CONTINUE (f4-title 0004)" },
+    "options":    { "x": 1200, "y": 982,  "anchor": "screen", "frame": "title", "effect": "OPTIONS (f4-views 0003)" },
+    "panLeft":    { "x": 100,  "y": 540,  "anchor": "screen", "frame": "room", "holdMs": 500, "effect": "12 px/frame left" },
+    "panRight":   { "x": 2300, "y": 540,  "anchor": "screen", "frame": "room", "holdMs": 500, "effect": "room-right view (f4-views 0038)" },
+    "leftDoor":   { "x": 560,  "y": 600,  "anchor": "screen", "frame": "room-left", "gesture": "double", "gapMs": 100, "effect": "carpet run to the left door (f4-n1 0005/0006); frame hitzone 32..288 x 268..558 (g723)" },
+    "rightDoor":  { "x": 2100, "y": 600,  "anchor": "screen", "frame": "room-right", "gesture": "double", "gapMs": 100, "effect": "carpet run to the right door (f4-views 0041/0042); frame hitzone 1012..1268" },
+    "closet":     { "x": 1050, "y": 600,  "anchor": "screen", "frame": "room-hub or room-right", "gesture": "double", "gapMs": 100, "effect": "to the closet (f4-views 0051/0052); from room-left use x 1340..1590" },
+    "bed":        { "x": 1200, "y": 950,  "anchor": "screen", "frame": "room", "effect": "turn to the bed (f4-views 0016/0017)" },
+    "back":       { "x": 1200, "y": 950,  "anchor": "screen", "frame": "door, closet or bed", "effect": "run back / turn around; HUDGoBackHitzone 256..768 x 601..751 (g723) = native 600..1800 x 845..1056" },
+    "flashlight": { "x": 400,  "y": 900,  "anchor": "screen", "frame": "door, closet or bed", "gesture": "hold", "effect": "lit hall (f4-n1 0020), lit closet (f4-views 0055), lit bed (f4-views 0018); x 632 is inside the go-back strip and ran back instead (f4-n1 0010)" },
+    "closeDoor":  { "x": 1990, "y": 900,  "anchor": "screen", "frame": "door or closet", "gesture": "hold", "effect": "door shut (f4-n1 0008, f4-views 0045), closet shut (f4-views 0053)" }
+  }
+}

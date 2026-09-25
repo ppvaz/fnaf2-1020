@@ -72,18 +72,25 @@ const read = (regions) => ({ regions: { cam_label: fill(N, 0), ...regions } });
   ok('someone in the lit window behind a shut door is occupied', chica.right === 'occupied' && chica.rightDoor === 2);
 }
 
-// --- 2b. the FNaF 1 teach panel clears every region the route reads ---------------
+// --- 2b. each teach panel clears every region its route reads ----------------------
+// The helper captures the overlay with the game, so a panel over a region
+// would be read as the room.
 {
   const { readFileSync } = await import('node:fs');
-  const java = readFileSync(new URL('../../android/companion/src/com/ppvaz/fnafcompanion/Fnaf1Lesson.java', import.meta.url), 'utf8');
-  const constant = (name) => Number(new RegExp(`int ${name} = (\\d+);`).exec(java)?.[1]);
-  const panel = { left: constant('LEFT'), top: constant('TOP'), right: constant('RIGHT'), bottom: constant('BOTTOM'), guard: constant('GUARD_PX') };
-  ok('panel constants read', Object.values(panel).every(Number.isFinite));
-  const model = JSON.parse(readFileSync(new URL('./models/regions-fnaf1-moto-g56-v207.json', import.meta.url), 'utf8'));
-  for (const [name, r] of Object.entries(model.sets.night)) {
-    const apart = r.x >= panel.right + panel.guard || r.x + r.width <= panel.left - panel.guard
-      || r.y >= panel.bottom + panel.guard || r.y + r.height <= panel.top - panel.guard;
-    ok(`teach panel clears ${name} by ${panel.guard} px`, apart);
+  for (const [game, lesson, regions] of [
+    ['FNaF 1', 'Fnaf1Lesson.java', 'regions-fnaf1-moto-g56-v207.json'],
+    ['FNaF 4', 'Fnaf4Lesson.java', 'regions-fnaf4-moto-g56-v204.json'],
+  ]) {
+    const java = readFileSync(new URL(`../../android/companion/src/com/ppvaz/fnafcompanion/${lesson}`, import.meta.url), 'utf8');
+    const constant = (name) => Number(new RegExp(`int ${name} = (\\d+);`).exec(java)?.[1]);
+    const panel = { left: constant('LEFT'), top: constant('TOP'), right: constant('RIGHT'), bottom: constant('BOTTOM'), guard: constant('GUARD_PX') };
+    ok(`${game} panel constants read`, Object.values(panel).every(Number.isFinite));
+    const model = JSON.parse(readFileSync(new URL(`./models/${regions}`, import.meta.url), 'utf8'));
+    for (const [name, r] of Object.entries(model.sets.night)) {
+      const apart = r.x >= panel.right + panel.guard || r.x + r.width <= panel.left - panel.guard
+        || r.y >= panel.bottom + panel.guard || r.y + r.height <= panel.top - panel.guard;
+      ok(`${game} teach panel clears ${name} by ${panel.guard} px`, apart);
+    }
   }
 }
 

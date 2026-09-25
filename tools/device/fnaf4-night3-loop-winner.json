@@ -1,0 +1,63 @@
+{
+  "schema": "fnaf4-route-winner-v1",
+  "id": "fnaf4-night3-loop",
+  "game": "FNaF 4",
+  "target": {
+    "package": "com.scottgames.fnaf4",
+    "build": "2.0.4 (11)",
+    "device": "ZF525F5BH5"
+  },
+  "night": {
+    "mode": "story",
+    "night": 3,
+    "lengthMs": 360000
+  },
+  "won": {
+    "run": "fnaf4-loop-n3c-teach-20260925T054831301Z",
+    "evidence": "docs/evidence/fnaf4-nights-1-3-20260925.json",
+    "terminal": "helper SNAPs after the night read the red 06:00 screen and the next day's 'days until the party' card; the relaunched title's CONTINUE advanced by one"
+  },
+  "command": "tools/device/fnaf4-run.sh --live --confirm-live --mode loop --detectors ~/fnaf-apks/fnaf4-detectors/cal0.json --teach --video --night 3",
+  "resolvedOptions": {
+    "mode": "loop",
+    "night": null,
+    "teach": true,
+    "video": true,
+    "stopAfterMs": 380000
+  },
+  "loop": {
+    "cycles": 13,
+    "closes": 7,
+    "flashes": 79,
+    "occupiedHall": 0,
+    "closetHolds": 4,
+    "lost": 1
+  },
+  "sources": {
+    "tools/device/fnaf4-run.mjs": "3f32fa219672098ebcc3ba70fcc62b505c2ddbe1cf77f93e1f06ec0c99f2e7aa",
+    "tools/device/fnaf4-run.sh": "e12973494c45a52ba3f072780809e116fbb529074a491f76e0ccec6bdf84c25a",
+    "tools/cue/fnaf4-cues.py": "b8c582d1f723da465310c8a9fe23d5812d6dd6a1d56644e2402862a107a01ec3",
+    "tools/device/fnaf4-detectors.py": "f59f9f689c6d5da91407cdcc88ccc11af8542776ca504087ac3af12d8658d4b6",
+    "tools/device/models/controls-fnaf4-moto-g56-v204.json": "1862a318786cf07f4fc1b6cdc5131b65830e629055cd2e628708eb5692670676",
+    "tools/device/models/regions-fnaf4-moto-g56-v204.json": "6a88b6044cb173c0e2c90d2eb4150adf799aadab5d34bc197eeeb910d9aa8a5d",
+    "android/companion/src/com/ppvaz/fnafcompanion/Fnaf4Lesson.java": "6f1b5d2caa61a49c31816fa2c82d9e478a3ff518496bba495c1e88af50c00f25",
+    "android/companion/src/com/ppvaz/fnafcompanion/Fnaf4PanelView.java": "c52a3caca04c8bfeac31279fda2559d0af4ef9b4688f7437416ab1b68274cc49",
+    "android/companion/src/com/ppvaz/fnafcompanion/NativeRegions.java": "ea121d995b1ceaea3ae9b3df01e0f96d352043f0cfeae3dde7a3b9f3e6cf6635"
+  },
+  "detectors": {
+    "file": "~/fnaf-apks/fnaf4-detectors/cal0.json",
+    "sha256": "6a89c93c870cf7062cc5e4a9dc3d436c64793add413780d540b61b6808b5d9c2",
+    "tracked": false,
+    "why": "View templates are the game's own rendering, kept out of the repository by the publishing boundary.",
+    "rebuild": [
+      "tools/device/fnaf4-run.sh --live --confirm-live --mode calibrate --label cal0   (Night 1 on CONTINUE, before 2 AM)",
+      "python3 tools/device/fnaf4-detectors.py build --run <that run> --out ~/fnaf-apks/fnaf4-detectors/cal0.json"
+    ],
+    "builtFrom": "fnaf4-calibrate-cal0-20260925T050559824Z"
+  },
+  "audio": {
+    "refs": "~/fnaf-apks/fnaf4-refs (tools/dump/extract-samples.sh from the APK)",
+    "link": "tools/cue/bt-audio-link.sh --ensure --game-package com.scottgames.fnaf4"
+  },
+  "sourcesNote": "n3c ran on the working copy of 2026-09-25 05:48 UTC, before --night existed (the loop then had no Fredbear branch). The hashes are the sources as committed here, which keep n3c's loop and add fixes found on Night 4 after it: occupancy against the empty lit template with a cut at 2 (n3c held Foxy at 16.0 and 9.1 under the old cut of 6), stage-sized closet holds, the bed kept due every 35 s, the clamping pan out of the closet, and the Fredbear loop for Nights 5-8. Re-running Night 3 with this binding needs --night 3."
+}
