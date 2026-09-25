@@ -38,7 +38,8 @@ const commandRegistry = Object.entries(rootPackage.scripts).map(([id, command]) 
   lifecycle: id.includes('legacy') ? 'legacy'
     : id.includes('qualification') ? 'supported-live' : 'supported',
 }));
-const toolsIndex = await readFile(join(ROOT, 'tools/TOOLS.md'), 'utf8');
+const toolIndexes = ['tools/README.md', 'tools/cue/README.md', 'tools/device/README.md', 'tools/dump/README.md'];
+const toolsIndex = (await Promise.all(toolIndexes.map(path => readFile(join(ROOT, path), 'utf8')))).join('\n');
 const toolCommands = [...toolsIndex.matchAll(/^\| `([^`]+)` \| ([^|]+) \|/gm)].map(match => ({
   id: match[1].split(/\s+/)[0], invocation: match[1], kind: match[2].trim(), lifecycle: /legacy|historical/i.test(match[2]) ? 'legacy' : 'supported',
 }));
@@ -321,7 +322,7 @@ const legacyPaths = [
 
 const outputs = {
   'import-graph.json': { schema: 'import-graph-v1', files: importGraph },
-  'command-registry.json': { schema: 'command-registry-v1', source: ['package.json', 'tools/TOOLS.md'], commands: commandRegistry, tools: toolCommands },
+  'command-registry.json': { schema: 'command-registry-v1', source: ['package.json', ...toolIndexes], commands: commandRegistry, tools: toolCommands },
   'contract-register.json': contractRegister,
   'contract-specifications.json': contractSpecifications,
   'protocol-register.json': { schema: 'protocol-register-v1', protocols },

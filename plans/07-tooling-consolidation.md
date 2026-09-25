@@ -3,7 +3,7 @@
 **Status:** correctness-contract pass complete, audited 2026-08-23.
 Remaining shared-infrastructure refactors are queued for an opportune change in
 their subsystem. The canonical current inventory is
-[`tools/TOOLS.md`](../tools/TOOLS.md).
+[`tools/README.md`](../tools/README.md) (split per directory from `tools/TOOLS.md` on 2026-09-25).
 
 ## Why this plan exists
 

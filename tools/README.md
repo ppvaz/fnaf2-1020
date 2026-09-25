@@ -1,0 +1,237 @@
+# Tool index
+
+Read this before adding a script. Search these indexes and `rg` the existing
+tools, then extend the closest tool when possible. The generated command catalog
+under `docs/architecture/generated/` is the machine-readable command authority;
+these pages are the narrative inventory, one per directory:
+
+- this page: suite, build, simulator, search, browser and evidence tools in
+  `tools/` itself and its small subdirectories (`model/`, `minus7/`, `minustoys/`);
+- [`device/README.md`](device/README.md): everything that runs a night on the
+  phone, observes it, or grades what it recorded;
+- [`cue/README.md`](cue/README.md): the audio cue detector and the Bluetooth
+  audio capture it reads;
+- [`dump/README.md`](dump/README.md): the Android source-dump extraction and
+  readers.
+
+`tools/test-docs.mjs` holds each script to a row in the index of its own
+directory, or of the nearest parent that has one.
+
+Known false contracts, stale documentation, and worthwhile consolidation work
+are tracked separately in
+[`plans/07-tooling-consolidation.md`](../plans/07-tooling-consolidation.md). Check
+that plan before creating shared infrastructure; this index describes what
+exists now, not proposed replacements.
+
+Two labels matter:
+
+- **check** asserts an outcome and exits nonzero when it fails;
+- **report** prints evidence for a person to interpret and is not a verdict.
+
+Anything marked **device action** sends input to the connected Android device.
+Confirm the device, focus, screen state, coordinates, and selected night before
+running it. Captures and extracted game content are local evidence, not repo
+assets.
+
+## Quick chooser
+
+| Need | Use this first |
+|---|---|
+| Run the maintained test suite | `node tools/test.mjs` |
+| Check only simulator regressions | `node tools/test.mjs --engine` |
+| Include exhaustive model sweeps too | `node tools/test.mjs --engine --extended` |
+| Check the built page in Chrome | `node tools/test.mjs --browser` |
+| See non-asserting policy diagnostics too | `node tools/test.mjs --reports` |
+| Serve or make the self-contained trainer | `tools/serve.py`, `tools/build.py` |
+| Test the canonical or BB-aware strategy | `tools/simtest.mjs`, `tools/model/reactive-pilot.mjs` |
+| Compare policy families under execution error | `tools/policytest.mjs` |
+| Explore a strategy or cycle | `tools/cyclesearch.mjs` |
+| Run a night on the phone | [`tools/device/night-run.sh`](device/README.md) (records, runs the campaign, grades, packs the evidence, resets the game) |
+| Analyze a recorded phone trial | `grade-minus7.py`, `camtrace.py`, `windpct.py`, `find-events.py` |
+| Inspect the Android event-sheet dump | [`tools/dump/readdump.py`, `tools/dump/coverage.py`](dump/README.md) |
+
+Paths in the tables are relative to the repository root.
+
+## Suite, build, and development entry points
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/test.mjs` | check runner | Canonical entry point. `--engine` is the edit-time headless tier; add `--extended` for campaign-wide and timing-margin model sweeps (the default full suite and CI include them). Every child has an individual watchdog (180 s default; 240–900 s for named heavy model gates; 360 s browser), bounded concurrency, and start/live-output/finish progress; `--browser` and `--reports` select their groups; `--parallel` opts into concurrent timing-sensitive browser checks. It builds `dist/` and starts the dev server when needed. |
+| `tools/push-gate.mjs` | check | Runs the CI job's lanes against the commits being pushed, in a throwaway `git worktree` at each commit rather than in the working tree -- a dirty tree gives a different answer for `catalog` plus `git diff --exit-code` than CI's clean clone does, which is how a missing `command-registry.json` row stayed red online for a day. Runs every lane even after one fails, and re-runs a failed lane's `&&` chain command by command so a second failure hidden behind the first is named. Refuses to run when its lane list has drifted from `.github/workflows/ci.yml`. `--stdin` reads git's pre-push ref lines; with no arguments it validates `HEAD`. Install as a hook with `git config core.hooksPath .githooks`; bypass a known-red push with `git push --no-verify`. A machine without docker gets a loud SKIP for the ShellCheck lane, not a pass, and so does one whose docker refuses to bind-mount the worktree: `mounts denied` is a fact about the host's file sharing, not about the commit, so calling it a FAIL invites a `--no-verify` past a lane nobody actually ran. The worktree base is `FNAF2_PUSH_GATE_TMP`, default `~/.cache/fnaf2-pushgate-tmp`, and deliberately NOT `TMPDIR`: Docker Desktop does not share `/tmp` here, so the gate passed when a person exported a TMPDIR by hand and failed when git's pre-push hook ran the same gate with the environment git gives it. It picks its own base now. Lanes run on an isolated CI-like Python (`FNAF2_CI_PYTHON`, default `~/.cache/fnaf2-ci-py312`) whose version and packages must equal `ci.yml`'s setup-python version and pip pins; without one it reports CI Python dependencies as unverified, never passed. |
+| `tools/build.py` | build | Inlines the imported JS modules, CSS, and fonts into ignored `dist/index.html`. Source works without this build during development. |
+| `tools/serve.py [port]` | dev server | Serves the repo, defaulting to port 8731. `POST /save-layout` validates a calibrated layout, rewrites `packages/core/src/mechanics/config.js`, and rebuilds, so that endpoint is intentionally mutating. `POST /save-trace` records a trainer run's per-step timing census under ignored `captures/traces/`, stamped with save time and commit (`FNAF_TRACE_DIR` overrides the directory for tests). |
+| `tools/chrome.mjs` | internal module | Shared Chrome discovery and DevTools flags for browser tools. `$CHROME` overrides discovery; reuse this instead of adding another locator. |
+| `tools/architecture-test.js` | check | Fast package-boundary gate: core has no application/host imports and production packages do not import tests or reports. |
+| `tools/contract-vectors.py` | check | Dependency-free cross-language reader for the shared valid/invalid semantic-control and measurement JSONL vectors. |
+| `tools/generate-catalog.js` | generator | Generates checked-in import, command, contract, protocol, adapter, test, and duplicate-responsibility inventories under `docs/architecture/generated/`. |
+| `tools/evidence.js` | evidence CLI | Lists, shows, diffs, replays, and causally explains retained bundles; `promote` only proposes Plan 12 review and cannot raise a claim ceiling. `pack <campaign or night-run label> [--replace]` writes a frame-free run pack (`tools/evidence-pack.mjs`); `list`, `show` and `promote` read committed packs as well as `artifacts/`. |
+| `tools/vault.mjs <export|import|verify|refs|list>` | evidence CLI | Moves ignored evidence media (`artifacts/`, `captures/`) between machines through a content-addressed vault outside the repository at `$FNAF2_VAULT_DIR`, and reports tracked evidence whose media is no longer here. Pack manifests under `docs/evidence/packs/` are tracked and record repository-relative paths and sha256 only -- **a vault location is one machine's private detail and never enters a tracked file**, the same rule `session-manifest.py` enforces. `export` takes explicit `--paths` because no run id reliably selects its captures: artifact manifests do not name them, and the stems disagree (`artifacts/night5-drift-20260909-a` against `captures/n5-drift-20260909-a-*`). Blobs are cloned copy-on-write through `cp -c` when the vault shares a filesystem -- 607 MB of measured pftrace/video exported for 1 MB of disk -- and plainly copied to another disk; **node's `COPYFILE_FICLONE` is a no-op on Darwin and copies the whole file**, which is why the clone is a `cp -c` call. Never hardlinked, so editing a capture cannot corrupt the vault copy of it. `import` hashes every object before writing anything and refuses to overwrite divergent content without `--force`; `refs` exits 1 while any referenced path is missing, so it is a report, not a green-lane gate. |
+| `tools/vaulttest.mjs` | check | Round trip, dedup, empty-file fan-out through one shared object, tamper and clobber refusals, the scope guard, and the no-private-paths rule, against a throwaway tree reached with `FNAF2_REPO`. No device, no real captures. |
+| `tools/chronicle.mjs` | generator | Builds the deterministic, interactive `docs/portal/chronicle.html` from the curated checkpoint corpus; the page is a narrative presentation of findings, not a live commit explorer. |
+| `tools/chronicle-harvest.mjs --since COMMIT [--until COMMIT] [--json]` | report | Proposes source-linked candidates from a commit range and dated comments for human/LLM curation. It never writes the corpus or treats a candidate as evidence. |
+| `tools/chronicle-schema.mjs` | module | Shared Chronicle vocabulary and cross-checkpoint validation used by the generator, harvester contract, and corpus. |
+| `tools/test-chronicle.mjs` | check | Verifies corpus vocabulary, source reachability, deterministic generation, the final outlook section, and harvester shape without device access or claim promotion. |
+| `tools/policy-inspect.js` | inspection CLI | Prints the finite reviewed policy phases and canonical byte identity without executing a device path. |
+
+| `tools/test-docs.mjs` | check | Keeps the two indexes honest: every relative markdown link resolves, every page under `docs/` is listed in `docs/README.md`, and every tool script has a **table entry** in this file -- a mention in prose is not an entry, which is what let this drift to 47 missing scripts and 5 missing pages. A link into gitignored output is a failure, not an exemption. |
+| `tools/retrieval-benchmark.mjs` | check | Runs a small deterministic newcomer-query benchmark over the maintained README/architecture/evidence routes and requires each expected authority in the top five; it measures route discoverability, not claim truth or semantic search quality. |
+
+## Simulator checks and reports
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/sourcetest.mjs` | check | Direct assertions for sourced engine rules and reachable input states, keyed to event-sheet groups. Runs first in the engine suite so a wrong mechanism cannot hide behind unchanged population statistics. |
+| `tools/seed-recovery.mjs` | report/module | Stock-APK RNG hypothesis CLI: turns a device-time or host-marker window into low-16-bit seed candidates, filters exact roll observations, and replays sourced event observations through the simulator. It reports candidates only; it never authorizes device actions. |
+| `tools/seed-recoverytest.mjs` | check | Phone-free regression for timestamp wrap, host/device marker windows, full-space roll filtering, event replay, and candidate-count bounds. |
+| `tools/stat.mjs` / `tools/stat.py` | module | Dependency-free statistical primitives shared by gates and reports: Wilson score intervals, bounded required-N planning, two-proportion z tests, and explicit PASS/FAIL/INCONCLUSIVE contract verdicts. The Python twin is kept numerically aligned and is cross-checked by `test-stat.mjs`. |
+| `tools/test-stat.mjs` | check | Cross-language regression for the statistical helper, including 0/n and n/n intervals, target half-width planning, two-proportion significance, and a small sample that must remain `INCONCLUSIVE`. |
+| `tools/simtest.mjs` | check | Canonical headless engine/mechanics regressions, plus the coach's per-step grading contract (a measured window may only tighten a lesson's tolerance, and must grade lopsidedly). `--sweep` also drives perfect Minus 7 over 200 seeds. |
+| `tools/propertytest.mjs` | check | Dependency-free bounded property gate: shrinks a failing campaign seed, checks `Sim.snapshot()`/`restore()` identity and continuation, compares same-seed event traces, and proves Night 1 never arms Balloon Boy. |
+| `tools/model/reactive-pilot.mjs [n]` | report/check | BB-aware reactive Minus 7 bot and reusable worker task. Supports `--worst`, `--jitter=MS`, and `--assert`; only `--assert` turns the survival result into a failing check, and it also guards the step model (ids matching `CYCLE_SCRIPT`, and both per-step paths being identities when asked for nothing). As a worker task it additionally accepts `profile` (per-step error weights, see `PROFILES`) and `stepShift` (move one step by a fixed number of frames). |
+| `tools/policy.mjs` | internal module | The plans/11 exact-engine policy adapter: one observation/action contract over `packages/core/src/mechanics/plant-model.js`'s `Sim`, with `truth`/`belief` observation modes, three execution-error shapes (`iid`, `correlated`, `common`), and an optional `tools/device/actuator.mjs` layer. It creates no second simulator and prices nothing; reuse it instead of adding another run loop. |
+| `tools/policybaselines.mjs` | internal module | The policies compared through `policy.mjs`: the local Minus 7 control (literally `model/reactive-pilot.mjs`'s `Bot`, driven through the adapter), Jason-, Shooter25- and Couraeel-style reimplementations from this repository's own reconstructions, and the five deliberate controls. Every guessed detail is marked `[GUESS]` in place. |
+| `tools/policytest.mjs` | report/check | Prints the plans/11 comparison -- `--nights`, `--deaths`, `--slack`, `--actuator` -- and `--assert` is the regression: the adapter must reproduce `model/reactive-pilot.mjs` night-for-night, zero error must be an identity in all three shapes, belief mode must not leak a truth-only field, all five controls must score zero on night 7, and the baselines must still clear night 1. `POLICY_RUNS` sets the seeds per cell. |
+| `tools/androidstalltest.mjs` | report | Controlled comparison of sourced, legacy, no-stall, and gate-only Android camera-stall models. |
+| `tools/minustoystest.mjs [n]` | report/check | Compatibility alias for the research package's real glitch-aware Android Minus Toys evaluator: deliberately arms CAM 11 `viewing` + CAM 09 marker, then runs the published 10 s wind/mask cadence. Supports `--worst`, `--no-split` (load-bearing negative control), and `--assert`. |
+| `tools/minus2test.mjs [n]` | report | Compatibility alias for the research package's real glitchless Minus Two evaluator. Supports `--worst` and `--cams=3,5,6`-style camera sets. |
+| `tools/minus6test.mjs [n]` | report | Android-model probe of a two-camera Minus 6 candidate that tolerates defended office encounters. Supports `--worst`. |
+| `tools/rvctest.mjs [n]` | report | Diagnostic skeleton of the PC-origin RVC timer policy on the Android model. `--no-vent-stall` disables its free right-vent-light stall. |
+| `tools/model/stock-device-pilot.mjs [n]` | legacy report/check | Replays the retired swipe-era phone schedule in the simulator for historical sweeps and actuator regressions. It is no longer a selectable device route. Options include `--vent`, `--sync`, `--evict`, `--late-flash`, `--cycles=N`, `--night=N`, and `--worst`; `--assert` guards the narrow BB→Foxy claim rather than full survival. `--device-actuator` prices the model through per-press launch lateness plus the mask seam. |
+| `tools/phasesweep.mjs [n] [--sync]` | report | Retained negative search over every 200 ms pilot-cycle phase: delaying BB's latched final hop reduces but never eliminates office arrivals. |
+| `tools/periodicsweep.mjs [n]` | report | Prices a blind full BB response every N cycles; it can exclude BB but loses earlier to the hall/office trade. |
+| `tools/flicksweep.mjs [n]` | report | Prices removing the blind Golden Freddy mask flick, alone and with periodic BB responses. |
+| `tools/reactivetest.mjs` | check | Plan 19 package 1 gate for the stock-device video loop. Asserts the `packages/core/src/sensing/observer.js` fact model (every fact `OBSERVED`/`UNKNOWN`, one read per `OBSERVE_INTERVAL`, round-trip latency and drop rate surface as `UNKNOWN(read-dropped)` not a stale value, mid-animation refuses), the `packages/core/src/control/controller.js` animation-window guard (`guardIntents`, the night 6-38 rule), and the `BlackoutReactive` FSM for both the mask-camp and camming entries. Ends with an integration run: the real minimal Night 1 Minus Toys schedule plus four synthetic blackouts -- base 200/200 dead to a blackout, +reactive 0/200, +noisy-observer 0/200. `--assert` exits non-zero on any failure. |
+| `tools/nightloop.mjs` | check | ROADMAP Track A1 full-night closed-loop campaign. Drives `CycleController` cycle by cycle for whole nights against `Observer` facts with no compiled full-night schedule in the path, and compares the acting arm against an observation-disabled control and an open-loop control. Reports per-night survival with a Wilson 95% interval, deaths, held/released contact counts and the primitive-selection histogram per arm. `--nights=1-7`, `--seeds=`, `--seed-base=` (a disjoint block is a held-out cohort), `--workers=` (shared pool), `--policy=night|baseline` (`baseline` is the declared control scorer, not a strategy), `--gate=static|exact` -- READ THE GATE: `static` attests reviewed-library membership and is what a phone can do, `exact` replays each candidate through the live engine and is a privileged lookahead kept only as an upper bound. `--assert` runs a smoke cohort, exiting non-zero on failure. Every number here is a statement about the model, never gameplay evidence. |
+| `tools/nightloop-run.mjs` | module | One full night through the belief-state controller, extracted so a cohort can cross `tools/pool.mjs`'s worker boundary as plain data. Owns the two gates (`staticGate`, `exactGate`), the retained baseline control scorer, and the caller-owned deferred-action queue that releases every held contact at its own frame and drains the rest on a terminal outcome. `runNight(options)` and `runNightBatch(list)`. |
+| `tools/minus7/cycle.mjs` | report | The canonical Minus 7 main cycle, frame-exact, against the sourced engine: `MINUS-7-STRATEGY.md` section 5 with section 8's structural change that the monitor is never up on a 5 s interval, which removes office Golden Freddy and makes Balloon Boy's arrival deterministic. Reads the stopwatch, its own two controls and the vent bang, and nothing else. `--night=`, `--seeds=`, `--all-seeds`, `--slack=` (per-row iid executor error in ms), `--countUnmask` (replaces the departure bang with arithmetic). Exports `CYCLE`, `runCycle` and `cohort` for `tools/pool.mjs`. Model numbers only; no device claim. |
+| `tools/minustoys/cycle.mjs` | report | The Zach_Scream Minus Toys routine (`MINUS-3-STRATEGY.md` section 3), frame-exact on the sourced engine: split-camera setup, one 10 s loop, the mask hold that evicts the openings between sessions. `--open-loop` disables the vent-bang ledger, which is the arm that claims zero perception and zero reactions. `--night=`, `--seeds=`, `--slack=`. Exports `CYCLE`, `runMinusToys7` and `cohort`. Model numbers only; no device claim. |
+| `tools/phase-tolerance.mjs` | report | Prices the two ORTHOGONAL components of executor timing error against the frame-exact published cycles (`--family=minus7|minustoys`). `--kmax`/`--kstep` sweep a COMMON-MODE offset of the whole cycle against the 5 s interval with its internal gaps intact -- a perfectly repeatable hand that is consistently late; `--slack` sweeps the per-row iid scatter the family evaluators already model, which assumes a perfect clock because every row is scheduled from the true interval. Giving both prints the joint map. `--sigma` (with optional `--mean`) instead runs a DISPATCH-LATENCY model: each row is dispatched at its intended time plus a draw from N(mean, sigma) in ms, the frame quantization turns that into a slip, and the realized slip rate is reported next to survival so a measured handset sigma converts directly. That is the only one of the models that can express the range a handset lives in -- `--slack` quantizes to whole frames, so it can say a 0% or a 67% slip rate and nothing between. Reproduces `tools/device/minus-toys-margin.mjs`'s 33 ms early figure by an independent method. `--seeds=`, `--night=`. Model numbers only; no device claim. |
+| `tools/factreplay.mjs` | check | ROADMAP Track A1 offline fact-stream record and replay. Records a night's observation/decision stream as `offline-fact-stream-v1` (manifest header with night, seed, observer config, library, commit and a stable stream digest; one JSON boundary per line), then drives `CycleController` from the recording alone and asserts it rebuilds every decision identically. Retained exact-gate verdicts travel with the stream so a replay has no engine to consult and cannot invent one. This is a simulator-produced offline stream claiming `MODEL_ONLY`, not a device capture: Plan 09 P2's open item is a manifest from a real phone run, which this is not. `--assert` records and replays a short night. |
+| `tools/ventreacttest.mjs` | check/report | BB-only vent coverage experiment and release gate. It asserts deadline/endpoint/UNKNOWN/identity unit contracts; the default report exposes survival negatives, while `--assert` fails on regressions instead of letting a `KNOWN_NEGATIVE` pass. |
+| `tools/mangletest.mjs` | check | Mangle audio-static gate: the same s0020 cue is separated into non-actionable CAM 11/winding-camera context and actionable office/right-vent context; BB/CAM 11 facts do not cross-trigger `MangleThreatReactive`, and the response holds the mask for five continuous ticks. `--assert` exits non-zero on any failure. |
+| `tools/phaseclocktest.mjs` | check | Phone-free Plan 21 phase contract: paired A2DP latency calibration, 2 Hz period/phase lock, explicit one-second parity, confidence/stale handling, and refusal to convert uncalibrated receipt phase into game-frame boundaries. |
+| `tools/factlinktest.mjs` | check | Phone-free Plan 20 package 6 foundation: bounded newline-delimited fact messages preserve event/transport timestamps, ordered receipt surfaces sequence loss and staleness, and `SafeCycleHandoff` drains only an already-approved bounded cycle after link loss or stops at expiry. It does not claim USB-CDC timing, MCU firmware, or external-HID acceptance. |
+| `tools/benchtracetest.mjs` | check | Phone-free Plan 20 package 6 bench-trace contract: validates complete visual/audio event-to-result paths, reports nearest-rank p50/p95/p99/p99.9 latency legs, and refuses unsafe link-loss continuation evidence. It does not claim physical timing. |
+| `tools/bench-trace.mjs --input TRACE.json [--out SUMMARY.json]` | report | Read-only Plan 20 package 6 report: validates a retained visual/audio transport trace and emits per-path and aggregate p50/p95/p99/p99.9 latency legs plus safe-cycle continuation facts. It cannot create physical evidence or raise a claim level. |
+| `tools/exercisetest.mjs` | check | Phone-free Plan 24 package 1 contract: freezes exercise questions, replays ordered commitments and independent resolutions, and censors cancelled, expired, or unresolved outcomes. It does not score a player or render a live prompt. |
+| `tools/activitygatetest.mjs` | check | Phone-free Plan 24 package 2 contract: admits only qualified fresh quiet windows, retains refusal reasons, and proves increasing risk/latency cannot weaken the gate or outrank a critical cue. |
+| `tools/microtrainertest.mjs` | check | Phone-free Plan 24 package 3 contract: retained prediction/timing sources, profile-bound recognition with `UNKNOWN`, exact-simulator `MODEL_ONLY` strategy provenance, censoring, latency/scheduler/session joins, and deterministic replay. |
+| `tools/renderertest.mjs` | check | Phone-free Plan 24 Arcade Lab renderer contract: campaign/rhythm/spatial frozen views, accessibility capabilities, raw-media exclusion, shared attempts, and presentation-invariant semantic grading. |
+| `tools/arcadelabtest.mjs` | check | Phone-free Plan 24 Arcade Lab progression contract: deterministic seeded sets, local personal-best counters, neutral censored outcomes, reset, export, and no cross-player state. |
+| `tools/belieftest.mjs` | check | Phone-free Plan 20 belief contract: deterministic replay, unknown-safe facts with provenance, calibration mismatch incidents, and sent-versus-verified control actions. |
+| `tools/reducedmodeltest.mjs` | check | Plan 20 package 2 reduced transition model: controller-visible monitor/mask locks and animation, camera sampling anchor, winding/box, power, and unknown/risk behavior against seeded Night 1 `Sim` traces. |
+| `tools/estimatortest.mjs` | check | Plan 20 package 3 estimator contract: delayed fact timing, UNKNOWN risk preservation, stale-control recovery, calibration refusal, contradictory sensors, and transactional verification. |
+| `tools/tracetest.mjs` | check | Gates the trainer's per-step trace: the Coach's census rows against scripted lateness, `tracereport.mjs` banding math, and serve.py's `/save-trace` against a temporary directory. No browser or phone. |
+| `tools/tracereport.mjs [dir]` | report | Bands the recorded trainer traces per step: lateness quantiles, wind-hold coverage, inter-press spacing, and provenance. Excludes webdriver and off-speed runs from the census. The measured replacement for plans/04's `[INFERRED]` human profile, once enough runs accumulate. |
+
+The canonical runner judges only the explicit engine-check invocations in
+`tools/test.mjs`, including the `--assert` forms of the reactive and stock
+device pilots.
+Policy scripts remain reports when invoked without an assertion contract.
+
+| `tools/latenesssweep.mjs` | report | What a reduction in actuator launch lateness would be worth, and where the knee is. Sweeps the measured 110-300 ms band through the exact engine; the knee sits at the 2->3 frame boundary. Its band is labelled "actuator.mjs default band" and is a second copy of it -- see `tools/device/device-constants.json`. |
+| `tools/model/closed-loop-reclaim.mjs` | report | What the live runner's closed loop reclaims from the measured actuator. `hid-device-pilot.mjs --device-actuator` prices an **open-loop** monitor model (23/200 Night 1, 0/200 Nights 2-7); this adds the checkpoint read and verified recovery the live runner has and the pilots do not, so the gap between the two is the value of the recovery rather than a property of the phone. |
+
+## Strategy search and worker infrastructure
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/cyclesearch.mjs` | search/report | Hill-climbs timing variants around the shipped Minus 7 cycle. `--curve` prints only the baseline jitter curve; `--steps` prints the per-step tolerance window (what the model tolerates on each input on its own, no randomness) and takes `--order=10-4-7`; `--profile=NAME` scores against per-step human error weights instead of uniform jitter, which are `[INFERRED]` and make the result a sensitivity analysis rather than a measurement; `--knobs=hallHold=5,flashHold=3` overrides the shipped knobs, so a published variant curve stays reproducible and a search can resume from a winner; `--serial` disables worker parallelism. Note that the legacy `--jitter` model moves a light's press and release independently and so randomises flash length; prefer a profile when comparing cycles. |
+| `tools/minus7/paramsearch.mjs --nights=N,N --shape=correlated [--runs --admit --beam --rounds --geom=slot:dev:con] [--winner-out PATH]` | search/report | Plan 16's constrained policy search: dominance-pruned beam over the immutable search-knob assignments in `model/hid-device-pilot.mjs` (all default-inert -- the 803feb3 plan is byte-identical with every knob 0), evaluated `recipe.build -> devicePlan -> modelGate`. Pareto frontier on the per-night survival + seed-CVaR vector; `--admit` re-scores the frontier at 1200 seeds. `--shape` selects the human-gate slack model. `--geom` fixes the sweep geometry the timing knobs search on top of (see `geometrysearch.mjs`). `--winner-out` persists a `winner-v1` only when the admission gate passes; otherwise it refuses to write. Exports `baselineLadder`, `evalParams`, `searchParams`, `FLOORS`, `SHIPPED_GEOM`. |
+| `tools/minus7/geometrysearch.mjs [--mode=grid\|admit] [--runs --slots --dev-offsets --configs] [--winner-out PATH --admit-runs N]` | search/report | Plan 16's sweep-geometry axis (the one paramsearch never had). `grid` maps `min(n2-6)` over a dense (`sweepSlotMs` x `deviceSpacingMs`) grid, `con` coupled; `admit` re-scores named `slot:dev:con` configs at 1200 seeds under both slack shapes, AND rebuilds+replays at readLatency 480, AND checks a +-ms neighbourhood. Result: the n2-6 gain is real (~+10 correlated at `dev~=62`, holds at 480) but a phase-lock SPIKE -- the neighbourhood collapses to ~46, it fails the 70 bar under iid, and it drops n7 to ~14. `--winner-out` persists a `winner-v1` for the best grid cell only after an explicit all-shape admission passes; it is not shippable without a device check that a ~4 ms-wide spacing basin survives real actuator jitter. |
+| `tools/minus7/i10latency.mjs [--runs=800] [--latencies=...]` | report | Plan 08 / item 10: how fast does a BB-departure-bang read have to be? Sweeps `replay()`'s `bangLatencyMs` (the whole audio path: PCM buffering + onset classification + IPC + reaction) against the blind baseline and reports the crossover. Result: item 10 needs end-to-end latency **< ~33 ms** for a useful gain, < ~50 ms to break even; above ~67 ms it is a net loss. Android's CDD recommends ≤30 ms for continuous PCM delivery ALONE, so the latency item 10 needs is below what the audio path can deliver -- **item 10 is closed on latency, not merely blocked on plan 08/15.** |
+| `tools/minus7/n7probe.mjs [--runs=800]` | report | Plan 16 pkg 5: where is Night 7 actually lost? Three controlled `Sim` prototype patches (applied + restored -- a measurement control, not a second engine). Refutes pkg 5's opener premise: a PERFECT opening Foxy reset (extended `foxyDormant` on n7) moves n7 by ~0.0 at 5/8/12/20/40 s. n7 needs a Foxy reset ~every 2.5 s (perfect x2 -> n7 33->61 %); the clear cycle HAS two but they miss under jitter, and once perfect every remaining n7 death is `inside-office` (the geometry lever). So n7 is a steady-state clear-cycle problem -- robust execution of the two existing resets (pkg 4: needs device time) stacked with the tight sweep geometry -- not an opener change. |
+| `tools/minus7/cyclelengthsearch.mjs [--windows=6000,...] [--runs --nights]` | report | Plan 16 structural experiment: sweeps `attackWindowMs` (the BB-response cycle boundary, `model/hid-device-pilot.mjs` `attackWindow` / `recipe.build` / `replay`, all default 10000 = inert) and scores EVERY pinned actuator config (nominal gate at readLatency 550, plus `n6target`/`n6target-worst`/`n6target-actuator` at 480), with per-config survival, failure-reason mix and median time-of-death. `attackWindowMs=10000` is the regression fixture. Result: every shorter window collapses -- 10 s is load-bearing (it is 2x the 5 s movement-opportunity grid; anything else permanently shifts the clear cycle's monitor-down phase). |
+| `tools/minus7/devicetimesearch.mjs [--runs=600] [--nights=2,3,4,5,6,7]` | report | Plan 16 / PROGRESS item 13: prices the phone's timing numbers against the ladder, one at a time, through `recipe.build -> devicePlan(deviceSpacingMs) -> jitterPlan -> replay` (correlated + iid). Result: only `sweepSlotMs` (-> emitted sweep spacing) moves the sub-70 nights -- slot 120->100 takes nights 2-6 over 70%, but the emitted spacing (113 ms) then sits below the device-validated 133 ms floor. `readLatencyMs`, `hallPulseMs` and the recovery Foxy-reset beat are all inert. So nights 2-6 are sweep-selection-spacing-bound; n7 is not (tops out ~43, phase-breaks below slot 90). |
+| `tools/constrainedsearch.mjs --mode=screen\|exhaustive\|validate [--workers=N --pool-batch=N]` | search/report | Plan 16 package-4 exhaustive enumerator for the permitted Foxy-reset decoupling geometry. It keeps `803feb3` as an immutable baseline, runs candidate × night seed batches through `recipe.build -> devicePlan -> modelGate`, and reports a Pareto frontier. `--mode=exhaustive` gates every legal enumerated candidate at `--gate-runs` (1200 by default), with `iid` confirmation by default (`--secondary-shape=none` disables it); its 300-seed screen is informational, never a beam-pruning rule. `--candidate-file` accepts a JSON array for validation and `--shard=I/N` makes deterministic machine shards. |
+| `tools/minus7/constrained-worker.mjs` | module | Worker task for `constrainedsearch.mjs`: delegates one candidate × night × seed batch to `paramsearch.mjs`'s `evalParams`. Workers give CPU parallelism around the exact engine, never a second engine. |
+| `tools/minus7/robustify.mjs --night=N [--seeds --range --descend]` | report | Per-row jitter-robustness analysis of one emitted device plan: baseline unjittered vs iid +/-60 ms, then each plan row shifted +/-range frames to find rows on a tolerance cliff. `--descend` is coordinate descent. Finding: no single-row shift fixes the fragility -- it is distributed across a precision routine. |
+| `tools/minus7/sim.mjs` | module | Searchable wrapper over `packages/core/src/mechanics/plant-model.js`: `cloneSim`, a sourced-only state `view()` (office pan, render flicker, sound identity, object handles dropped), and a compiled semantic action set with `run()`. No new game rules. |
+| `tools/minus7/search.mjs`, `tools/minus7/policy.mjs` | module/report | Exploratory: a from-scratch semantic-action beam search + a reactive policy over the engine (the 2026-08-27 architecture note). They run, but a myopic heuristic / untuned reactive policy does not find Minus-7-quality play -- MCTS with a tuned default policy is unstarted. `paramsearch.mjs` is the one producing results. |
+| `tools/minus7/test-search.mjs` | check | Plan 16 pkg 1/3 gates: `Sim.snapshot()/restore()` bit-identity, every semantic action runs, `paramsearch` reproduces the 803feb3 ladder on a zero perturbation, the sweep-geometry axis threads + moves n6, and item 10 (`attackBangGateMs`) is pinned as a recorded negative -- a large win at a perfect bang oracle, worse than blind at 150 ms latency. Runs in `tools/test.mjs --engine`. |
+| `tools/pool.mjs` | internal module | Process-wide persistent worker pool for pure simulated-night batches. Reuse it instead of creating another worker layer. |
+| `tools/pool-worker.mjs` | internal module | Worker half of `pool.mjs`; keeps task modules imported between batches. |
+
+## Browser checks
+
+These use Node's built-in WebSocket and Chrome's DevTools Protocol, with no
+Puppeteer dependency. Prefer `node tools/test.mjs --browser`; individual tools
+accept a page URL when a focused run is useful.
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/browsertest.mjs [url] [screenshot]` | check | General load/input smoke check; writes `/tmp/m7-report.png` by default. |
+| `tools/caltest.mjs [url]` | check | Exercises drag-versus-press and layout saving. It snapshots and restores `packages/core/src/mechanics/config.js` because saving is a real write. |
+| `tools/lessontest.mjs [url]` | check | Drives the lesson ladder with an in-page perfect player and checks gating, cues, streaks, and pass screens. It takes real lesson time; `--wind-only` is the focused held-input regression. |
+| `tools/lightcheck.mjs [url]` | check | Verifies that office and camera lights swap with monitor state and remain independently calibratable. |
+| `tools/phasetest.mjs [url]` | check | Drives the BB-focused Phase A and Phase B lessons and asserts their browser behavior. |
+
+## Evidence and device-adjacent tools
+
+The phone's own tools are in [`device/README.md`](device/README.md). These live
+in `tools/` because they read what a device night left behind, or check the
+policy and HID layers a device plan is compiled through.
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/evidence-campaign.mjs` | module | How the evidence index reads the phone's own nights: `isCampaignResult`, `campaignEntry` and `campaignPromotionChecks` over `artifacts/campaign-*/result.json`, a `{mode, status, result}` wrapper around a validated `device-campaign-result-v1`. A live campaign is `DEVICE_MEASURED`; an attempt is a `WIN` only with the `sixam` terminal and its `campaign-proof-v1` hash, otherwise `UNPROVEN_WIN`. The Plan 12 checks are the same four the CLI applies to sessions and bundles, and the attestation is never inferred. Before 2026-09-18 the index reported every campaign as `UNRECOGNIZED_ARTIFACT` and zero device-measured runs on a machine holding 24 device wins. |
+| `tools/test-evidence-campaign.mjs` | check | Pins the campaign reading in `test:unit`: live wins are `DEVICE_MEASURED`, dry runs are `FIXTURE`, deaths and proofless wins are not wins, a malformed result is refused, and the promotion gate refuses a live win only for its missing attestation. No device. |
+| `tools/evidence-pack.mjs` | module | Frame-free run packs: a live campaign's `result.json`, `events.jsonl`, `request.json` and `observations.jsonl` plus `night-run.sh`'s derived facts (verdict, run report, phase, grade log, `.err` notes), written under `docs/evidence/runs/<run>/` so the Plan 12 gate reads them on any checkout. Pixel payloads (`PIXEL_KEYS`, today the 20x9 `maskCells` grid) become `{cells, sha256}`, machine paths become repository-relative or `~`, and every file not copied -- video, observer and death frames, raw logcat, `campaign.log` -- is listed as `withheld` by sha256 and size. It refuses rather than guesses: a long numeric array, a long hex or base64 run, or a NUL byte stops the pack. Deterministic, so a re-pack of an unchanged run is `UNCHANGED` and a person's `plan12-attestation.json` binds one exact pack sha256. Used by `npm run evidence -- pack` and by `night-run.sh` after every run. A FNaF 1 runner's directory (`probe.json`/`run.json` + `events.jsonl`) packs as kind `fnaf1-run` through `buildFnaf1Pack`, with no campaign result for the gate. |
+| `tools/test-evidence-pack.mjs` | check | Builds a campaign and its night-run directory in a throwaway tree and pins what crosses into a pack: no media file, no pixel grid, no machine path, every frame still named by hash, unknown pixel fields and tampering refused, and the gate's five checks read from the pack. `test:unit`. |
+| `tools/evidence-cohort.mjs` | module | A cohort result computed from its run packs: reads a `cohort-predeclaration-v1`, finds each slot's packs by label (`<night>-<prefix>-rNN[b..z]-<stamp>`), and applies the predeclared rule -- executor terminal sixam AND video terminal clear, the video read from the pack's `grade.log` `TERMINAL:` line or `timeline.json`. A run that never reached the night is excluded, the last of several is counted and the rest superseded, a sixam without a video grade is `UNGRADED`, and runs on another binding are named. Used by `npm run evidence -- cohort`. |
+| `tools/test-evidence-cohort.mjs` | check | Four-slot synthetic cohort of real packs: a win, a death, an ungraded sixam and an excluded-then-rerun slot, plus a superseding re-run on the wrong binding. `test:unit`. |
+| `tools/policygrammartest.mjs` | check | Plan 21 package 3 grammar regression: generated Minimal is identified as a known family and impossible action ordering/timing controls are rejected. |
+| `tools/observationlanguagetest.mjs` | check | Plan 05 package 6b/6c: the measured observation budget (audio excluded as UNKNOWN), the branch construct's freshness/reaction rules, and the mechanical closed-family duplicate control. |
+| `tools/policyequivalencetest.mjs` | check | Plan 21 package 5 regression: IR, device plan, and mocked phone traces match; early arm, hard-coded cadence, and missing terminal/observe-tail mutations fail. |
+| `tools/policysearchtest.mjs` | check | Plan 21 package 4 regression: a reproducible Minimal positive and dropped-wind negative are retained with source/calibration provenance and a persisted Pareto report. |
+| `tools/policyartifacttest.mjs` | check | Plan 21 package 6 regression: canonical IR and compiled-plan hashes bind the runner artifact, mutations are refused, the Minimal branch has no second schedule writer, and post-run grading remains opt-in. |
+| `tools/hidreporttest.mjs` | check | Parses the HID fixture and fails unless CAM 10/04/07 each receive a fresh contact-1 down/up while contact 0 stays on the light, with a final explicit two-contact release. Runs without a device. |
+| `tools/model/hid-device-pilot.mjs [runs] [--night=6]` | report/check | Exact-simulator report for HID policy comparisons. `--sparse-left --night=7` is the idealized 267 ms upper bound; `--pilot-offset-ms=N` exposes its epoch dependency. `--device-sweep` substitutes the phone-proven 790 ms/240 ms-feed actuator and now also applies to the selected Night 6 left-opening route, and `--assert-rejected` requires zero survivors so the ideal result cannot be mistaken for a live route. `--pulse-light` pulses the camera light around each selection instead of holding contact 0 across the sweep, which is what makes the sweep affordable at all on night 6's 3000-frame flashlight; `--mask-margin-ms=N` sizes the BB mask's phase margin against a known T0 instead of spending a blind second. `--vocal-cam5` is plan 08's perfect-third-vocal upper bound; its error controls are `--drop-vocal=1..3` and `--vocal-false-count=1..3`. `--assert` requires complete survival with no missed BB state. Other diagnostic modes include `--cam5`, `--sparse-cam5`, `--always-threat`, and `--tick-aligned-mask`. `--bang-cam5` arms the CAM 05 read from the source bang and re-syncs its count on the read result; `--drop-bang=`/`--false-bang=` inject cue errors. `--device-actuator` prices the run through `tools/device/actuator.mjs` with one lateness draw per wall-timed beat (the branch macros floor off the read that happened, like `rm_floor`); `--press-late-ms=MIN,MAX` overrides the measured band. This pilot has no desync recovery loop, so its actuator numbers price open-loop monitor toggling, not the live runner. |
+| `tools/fnaf1-device-lane.mjs [--seeds N] [--start S] [--lane typical\|worst\|best] [--policy grid420\|flick4b] [--opt.key value]` | report | FNaF 1 on the handset's clock (MODEL_ONLY): the simulator driven by device actions at the measured costs of `tools/device/models/fnaf1-device-timing-*.json`; exports the `grid420` policy the phone runs. |
+| `tools/test-fnaf1-device-lane.mjs`, `tools/device/test-native-regions.mjs` | check | Phone-free gates for FNaF 1's input rules and the device lane, and for the REGION codec, the FNaF 1 classifier (including the flicker rule) and the Custom Night runner's refusals. |
+
+## Game simulator censuses
+
+The dump readers these are checked against are in [`dump/README.md`](dump/README.md).
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/census.mjs --game fnaf1` | report | Seed census over a game simulator. `--seeds` (default 3000, the standing floor), `--start` for a disjoint seed block, `--night`, `--policy`, `--custom 20` for 4/20, `--all` for every policy, `--json`. Covers FNaF 1, 3 and 4; a model result, not a device measurement. |
+| `tools/test-night-models.mjs` | check | Checks the four night models against figures derived independently of them: FNaF 1's published table and 8:55 night, FNaF 2's `config.js` round-trip, FNaF 3's handset-measured 240 s Night 1, and the roll arithmetic. |
+| `tools/test-fnaf3-census.mjs` | check | Pins the FNaF 3 simulator and the published community line: the controls that must lose (office camping, doing nothing), the six-night census, the 240/360 s clock, the vent topology behind the sealing order, and that the attack chain advances on the ventilation blackout rather than on a move. Its negative control is that disabling the blackout ramp makes the failing controls pass. |
+| `tools/test-fnaf1-census.mjs` | check | Pins the FNaF 1 simulator, its policies and their controls: `sealed` must die of power and never to a character, and parking off CAM 4B must let Freddy in on every seed. |
+| `tools/test-fnaf4-census.mjs` | check | Pins the FNaF 4 simulator and policies: black-flash and idle controls must fail, the community line must clear story Nights 1–4 in its small deterministic block, and the bedroom, closet, meter, forced-turn and shadow-night mechanics must match the traced groups. |
+
+## Archived toolchains
+
+The in-engine recompile toolchain (Plan 17), the ESP32 audio bridge and its
+host tools, and the Plan 05 invention engine (`tools/invent/`) left the tree on
+2026-09-24. [`docs/ARCHIVED-ROUTES.md`](../docs/ARCHIVED-ROUTES.md) names the
+tag that holds them and how to restore one.
+
+## Generated files and dependencies
+
+- `dist/`, `captures/`, `artifacts/`, raw screenshots and classifier models
+  are generated/local and ignored.
+- Node tools use built-in modules; Chrome browser checks expect Node 22 and a
+  Chrome binary (or `$CHROME`).
+- Recorded-video analysis requires `ffmpeg`; PNG screen tools require Pillow.
+- Device tools require `adb`, the owned Android game, the calibrated landscape
+  layout, and exactly one intended device unless the script explicitly gains a
+  serial selector.
+- Dump regeneration additionally requires Docker and a prepared CTFAK checkout.
+
+## Adding or changing a tool
+
+1. Search this index and existing implementations with `rg`; extend an
+   existing entry point or shared module when the responsibility overlaps.
+2. Decide whether the result is an asserting **check**, a human-read **report**,
+   an internal module, or a state-changing **device action**. Make the exit
+   behavior match the label.
+3. Reuse `chrome.mjs`, `pool.mjs`, `screenstate.py` or `coords.sh` instead of
+   duplicating browser, parallel, device guard or coordinate infrastructure.
+4. For device actions, validate inputs, focus, and screen state; refuse unsafe
+   overwrite; use a device-side monotonic schedule for timed sequences.
+5. Add or update the entry in the index of the script's directory in the same
+   change, including its interface, side effects, dependencies, and whether it
+   is safe to run unattended.

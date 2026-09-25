@@ -45,7 +45,7 @@ of the path that climbs. See the [2026-09-02 roadmap](../../plans/archive/ROADMA
 | Surface | Lifecycle | Canonical replacement | Removal gate |
 |---|---|---|---|
 | `tools/device/recipe.mjs` | transitional | package-owned winner/device-bundle emitter | bundle compiler no longer imports the tools tree and replay hashes match |
-| `tools/device/actuator.mjs` | transitional | adapter actuator/error model with conformance fixtures | pilot/model consumers migrate without changing measured error semantics |
+| `tools/device/actuator.mjs` | transitional | stays the model's actuator/error table; the adapter actuator it was to move behind was retired on 2026-09-25 | a package owns the error model and the pilot consumers replay unchanged |
 | `tools/device/policy-ir.mjs` | transitional | core policy-program contract and research emitter | P3 vocabulary migration and fixed-seed artifact equivalence |
 | `tools/model/stock-device-pilot.mjs` | legacy | structured research experiment with an explicit historical actuator model | historical sweeps replay from retained artifacts |
 | `tools/minustoystest.mjs` | compatibility | `npm run research -- minus-toys` | package artifacts and fixed-seed output are equivalent |

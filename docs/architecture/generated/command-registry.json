@@ -2,7 +2,10 @@
   "schema": "command-registry-v1",
   "source": [
     "package.json",
-    "tools/TOOLS.md"
+    "tools/README.md",
+    "tools/cue/README.md",
+    "tools/device/README.md",
+    "tools/dump/README.md"
   ],
   "commands": [
     {
@@ -664,6 +667,282 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/evidence-campaign.mjs",
+      "invocation": "tools/evidence-campaign.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-evidence-campaign.mjs",
+      "invocation": "tools/test-evidence-campaign.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/evidence-pack.mjs",
+      "invocation": "tools/evidence-pack.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-evidence-pack.mjs",
+      "invocation": "tools/test-evidence-pack.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/evidence-cohort.mjs",
+      "invocation": "tools/evidence-cohort.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-evidence-cohort.mjs",
+      "invocation": "tools/test-evidence-cohort.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policygrammartest.mjs",
+      "invocation": "tools/policygrammartest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/observationlanguagetest.mjs",
+      "invocation": "tools/observationlanguagetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policyequivalencetest.mjs",
+      "invocation": "tools/policyequivalencetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policysearchtest.mjs",
+      "invocation": "tools/policysearchtest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policyartifacttest.mjs",
+      "invocation": "tools/policyartifacttest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/hidreporttest.mjs",
+      "invocation": "tools/hidreporttest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/model/hid-device-pilot.mjs",
+      "invocation": "tools/model/hid-device-pilot.mjs [runs] [--night=6]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/fnaf1-device-lane.mjs",
+      "invocation": "tools/fnaf1-device-lane.mjs [--seeds N] [--start S] [--lane typical\\|worst\\|best] [--policy grid420\\|flick4b] [--opt.key value]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/census.mjs",
+      "invocation": "tools/census.mjs --game fnaf1",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-night-models.mjs",
+      "invocation": "tools/test-night-models.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-fnaf3-census.mjs",
+      "invocation": "tools/test-fnaf3-census.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-fnaf1-census.mjs",
+      "invocation": "tools/test-fnaf1-census.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-fnaf4-census.mjs",
+      "invocation": "tools/test-fnaf4-census.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/capture-bt-audio.sh",
+      "invocation": "tools/cue/capture-bt-audio.sh SECONDS [outdir] [bt-mac]",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-bt-audio-collector.py",
+      "invocation": "tools/cue/test-bt-audio-collector.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/bt-audio-collector.py",
+      "invocation": "tools/cue/bt-audio-collector.py --pcm PCM --raw OUT --state OUT.json ...",
+      "kind": "recorder",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/bt-audio-link.sh",
+      "invocation": "tools/cue/bt-audio-link.sh --ensure\\|--status [--game-package PACKAGE] [bt-mac]",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/audio-authority.py",
+      "invocation": "tools/cue/audio-authority.py [--socket PATH] [--model MODEL] [--profile PROFILE] [--raw-output PATH]",
+      "kind": "external-device authority",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/latency-experiment.py",
+      "invocation": "tools/cue/latency-experiment.py preflight|run|analyze",
+      "kind": "external-device action/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/bridge-audio-authority.py",
+      "invocation": "tools/cue/bridge-audio-authority.py --socket PATH",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/collect-facts.py",
+      "invocation": "tools/cue/collect-facts.py --socket PATH --output OUT",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-audio-authority.py",
+      "invocation": "tools/cue/test-audio-authority.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-bridge-audio-authority.py",
+      "invocation": "tools/cue/test-bridge-audio-authority.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-capture-bt-audio.sh",
+      "invocation": "tools/cue/test-capture-bt-audio.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-bt-audio-link.sh",
+      "invocation": "tools/cue/test-bt-audio-link.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/features.py",
+      "invocation": "tools/cue/features.py",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/reference-report.py",
+      "invocation": "tools/cue/reference-report.py [refdir]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/detect.py",
+      "invocation": "tools/cue/detect.py WINDOW...",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/evaluate.py",
+      "invocation": "tools/cue/evaluate.py BACKGROUND",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/scan-night.sh",
+      "invocation": "tools/cue/scan-night.sh WAV [--refs DIR]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/label-misses.py",
+      "invocation": "tools/cue/label-misses.py VISUAL AUDIO --start-ns N",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/export-model.py",
+      "invocation": "tools/cue/export-model.py --refs DIR --cue C=H[,H] --threshold C=S --margin M --calibration NAME --output OUT",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/correlate.py",
+      "invocation": "tools/cue/correlate.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-cue.py",
+      "invocation": "tools/cue/test-cue.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/build-shadow-windows.py",
+      "invocation": "tools/cue/build-shadow-windows.py TRACE LABELS --output OUT",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/evaluate-shadow.py",
+      "invocation": "tools/cue/evaluate-shadow.py WINDOWS --max-error CUE=RATE... --output OUT",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-build-shadow-windows.py",
+      "invocation": "tools/cue/test-build-shadow-windows.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-evaluate-shadow.py",
+      "invocation": "tools/cue/test-evaluate-shadow.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-export-model.py",
+      "invocation": "tools/cue/test-export-model.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-latency-experiment.py",
+      "invocation": "tools/cue/test-latency-experiment.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "npm",
       "invocation": "npm run device:emit -- --winner winner.json --out artifacts/run-001",
       "kind": "compiler/check",
@@ -762,42 +1041,6 @@
     {
       "id": "tools/device/test-seedpin.mjs",
       "invocation": "tools/device/test-seedpin.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/evidence-campaign.mjs",
-      "invocation": "tools/evidence-campaign.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-evidence-campaign.mjs",
-      "invocation": "tools/test-evidence-campaign.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/evidence-pack.mjs",
-      "invocation": "tools/evidence-pack.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-evidence-pack.mjs",
-      "invocation": "tools/test-evidence-pack.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/evidence-cohort.mjs",
-      "invocation": "tools/evidence-cohort.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-evidence-cohort.mjs",
-      "invocation": "tools/test-evidence-cohort.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -1020,36 +1263,6 @@
     {
       "id": "tools/device/test-policy-interpreter.mjs",
       "invocation": "tools/device/test-policy-interpreter.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/policygrammartest.mjs",
-      "invocation": "tools/policygrammartest.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/observationlanguagetest.mjs",
-      "invocation": "tools/observationlanguagetest.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/policyequivalencetest.mjs",
-      "invocation": "tools/policyequivalencetest.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/policysearchtest.mjs",
-      "invocation": "tools/policysearchtest.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/policyartifacttest.mjs",
-      "invocation": "tools/policyartifacttest.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -1342,18 +1555,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/hidreporttest.mjs",
-      "invocation": "tools/hidreporttest.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/model/hid-device-pilot.mjs",
-      "invocation": "tools/model/hid-device-pilot.mjs [runs] [--night=6]",
-      "kind": "report/check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/menu.sh",
       "invocation": "tools/device/menu.sh",
       "kind": "sourced selector",
@@ -1560,12 +1761,6 @@
     {
       "id": "tools/device/fnaf1-calibration-analyze.mjs",
       "invocation": "tools/device/fnaf1-calibration-analyze.mjs --run DIR [--out FILE]",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/fnaf1-device-lane.mjs",
-      "invocation": "tools/fnaf1-device-lane.mjs [--seeds N] [--start S] [--lane typical\\|worst\\|best] [--policy grid420\\|flick4b] [--opt.key value]",
       "kind": "report",
       "lifecycle": "supported"
     },
@@ -1852,6 +2047,48 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/bb-cue-state.mjs",
+      "invocation": "tools/device/bb-cue-state.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-bb-cue-state.mjs",
+      "invocation": "tools/device/test-bb-cue-state.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-provision-cue-model.sh",
+      "invocation": "tools/device/test-provision-cue-model.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/mock-adb-cue-helper.sh",
+      "invocation": "tools/device/testdata/mock-adb-cue-helper.sh",
+      "kind": "mock",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/mock-control-server.py",
+      "invocation": "tools/device/testdata/mock-control-server.py",
+      "kind": "mock",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/make-title-fixture.py",
+      "invocation": "tools/device/testdata/make-title-fixture.py",
+      "kind": "fixture builder",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/make-intro-card-fixture.py",
+      "invocation": "tools/device/testdata/make-intro-card-fixture.py",
+      "kind": "fixture builder",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/dump/regen-dump.sh",
       "invocation": "tools/dump/regen-dump.sh APPLICATION.CCN [outfile]",
       "kind": "extraction",
@@ -1873,186 +2110,6 @@
       "id": "tools/dump/extract-samples.sh",
       "invocation": "tools/dump/extract-samples.sh APK [outdir] [handle ...]",
       "kind": "query",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/capture-bt-audio.sh",
-      "invocation": "tools/cue/capture-bt-audio.sh SECONDS [outdir] [bt-mac]",
-      "kind": "external-device action",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-bt-audio-collector.py",
-      "invocation": "tools/cue/test-bt-audio-collector.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/bt-audio-collector.py",
-      "invocation": "tools/cue/bt-audio-collector.py --pcm PCM --raw OUT --state OUT.json ...",
-      "kind": "recorder",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/bt-audio-link.sh",
-      "invocation": "tools/cue/bt-audio-link.sh --ensure\\|--status [--game-package PACKAGE] [bt-mac]",
-      "kind": "external-device action",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/audio-authority.py",
-      "invocation": "tools/cue/audio-authority.py [--socket PATH] [--model MODEL] [--profile PROFILE] [--raw-output PATH]",
-      "kind": "external-device authority",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/latency-experiment.py",
-      "invocation": "tools/cue/latency-experiment.py preflight|run|analyze",
-      "kind": "external-device action/report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/bridge-audio-authority.py",
-      "invocation": "tools/cue/bridge-audio-authority.py --socket PATH",
-      "kind": "external-device action",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/collect-facts.py",
-      "invocation": "tools/cue/collect-facts.py --socket PATH --output OUT",
-      "kind": "external-device action",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-audio-authority.py",
-      "invocation": "tools/cue/test-audio-authority.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-bridge-audio-authority.py",
-      "invocation": "tools/cue/test-bridge-audio-authority.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-capture-bt-audio.sh",
-      "invocation": "tools/cue/test-capture-bt-audio.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-bt-audio-link.sh",
-      "invocation": "tools/cue/test-bt-audio-link.sh",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/features.py",
-      "invocation": "tools/cue/features.py",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/reference-report.py",
-      "invocation": "tools/cue/reference-report.py [refdir]",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/detect.py",
-      "invocation": "tools/cue/detect.py WINDOW...",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/evaluate.py",
-      "invocation": "tools/cue/evaluate.py BACKGROUND",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/scan-night.sh",
-      "invocation": "tools/cue/scan-night.sh WAV [--refs DIR]",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/label-misses.py",
-      "invocation": "tools/cue/label-misses.py VISUAL AUDIO --start-ns N",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/export-model.py",
-      "invocation": "tools/cue/export-model.py --refs DIR --cue C=H[,H] --threshold C=S --margin M --calibration NAME --output OUT",
-      "kind": "generator",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/correlate.py",
-      "invocation": "tools/cue/correlate.py",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-cue.py",
-      "invocation": "tools/cue/test-cue.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/build-shadow-windows.py",
-      "invocation": "tools/cue/build-shadow-windows.py TRACE LABELS --output OUT",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/evaluate-shadow.py",
-      "invocation": "tools/cue/evaluate-shadow.py WINDOWS --max-error CUE=RATE... --output OUT",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-build-shadow-windows.py",
-      "invocation": "tools/cue/test-build-shadow-windows.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-evaluate-shadow.py",
-      "invocation": "tools/cue/test-evaluate-shadow.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-export-model.py",
-      "invocation": "tools/cue/test-export-model.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/cue/test-latency-experiment.py",
-      "invocation": "tools/cue/test-latency-experiment.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/bb-cue-state.mjs",
-      "invocation": "tools/device/bb-cue-state.mjs",
-      "kind": "module",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-bb-cue-state.mjs",
-      "invocation": "tools/device/test-bb-cue-state.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-provision-cue-model.sh",
-      "invocation": "tools/device/test-provision-cue-model.sh",
-      "kind": "check",
       "lifecycle": "supported"
     },
     {
@@ -2092,63 +2149,9 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/census.mjs",
-      "invocation": "tools/census.mjs --game fnaf1",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-night-models.mjs",
-      "invocation": "tools/test-night-models.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-fnaf3-census.mjs",
-      "invocation": "tools/test-fnaf3-census.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-fnaf1-census.mjs",
-      "invocation": "tools/test-fnaf1-census.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/test-fnaf4-census.mjs",
-      "invocation": "tools/test-fnaf4-census.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/dump/test-aimap.py",
       "invocation": "tools/dump/test-aimap.py",
       "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/testdata/mock-adb-cue-helper.sh",
-      "invocation": "tools/device/testdata/mock-adb-cue-helper.sh",
-      "kind": "mock",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/testdata/mock-control-server.py",
-      "invocation": "tools/device/testdata/mock-control-server.py",
-      "kind": "mock",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/testdata/make-title-fixture.py",
-      "invocation": "tools/device/testdata/make-title-fixture.py",
-      "kind": "fixture builder",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/testdata/make-intro-card-fixture.py",
-      "invocation": "tools/device/testdata/make-intro-card-fixture.py",
-      "kind": "fixture builder",
       "lifecycle": "supported"
     }
   ]

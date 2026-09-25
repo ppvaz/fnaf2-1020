@@ -21,7 +21,7 @@
 //   - `ONE-PIXEL-VISION.md` linked three files under gitignored `captures/`
 //     that existed for no reader and that no script regenerates.
 //
-// A mention is not an entry. TOOLS.md is checked for a table ROW whose first
+// A mention is not an entry. A tool index is checked for a table ROW whose first
 // cell names the script, because prose naming a tool is what made the old
 // substring check pass while the tool had no entry -- the same trap
 // test-grade-run-coverage.mjs documents for grade-run.sh's header.
@@ -36,7 +36,7 @@ const complain = (message) => { console.error(message); failed = 1; };
 
 // Include files present in the working tree but not staged yet. During a
 // normal patch review, a newly added tool must already have an index row; the
-// old tracked-only census made TOOLS.md fail in the exact interval between
+// old tracked-only census made the tool index fail in the exact interval between
 // creating a file and committing it.
 const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'],
   { cwd: ROOT, encoding: 'utf8' })
@@ -71,31 +71,50 @@ for (const page of docPages)
     complain(`${page} is not listed in docs/README.md -- the index is how a ` +
       'cold session finds it, and an unlisted page reads as a subject with no page');
 
-// --- 3. tools/TOOLS.md carries an ENTRY for every tool script.
-const toolsIndex = readFileSync(join(ROOT, 'tools', 'TOOLS.md'), 'utf8');
-const entries = new Set();
-for (const line of toolsIndex.split('\n')) {
-  if (!line.startsWith('|')) continue;
-  const cells = line.split('|');
-  if (cells.length < 3) continue;
-  for (const m of cells[1].matchAll(/`([\w./-]+\.(?:mjs|json|cs|py|sh|c|S))\b/g))
-    entries.add(basename(m[1]));
+// --- 3. every tool script has an ENTRY in the index of its own directory.
+//
+// The tool index is one README per directory (tools/README.md, tools/device/,
+// tools/cue/, tools/dump/), split from a single TOOLS.md on 2026-09-25. A script
+// is held to the README nearest to it -- its own directory's, or the closest
+// parent's -- so a reader in tools/device/ finds tools/device/'s scripts there.
+const indexes = tracked.filter((f) => /^tools\/(?:[^/]+\/)?README\.md$/.test(f)).sort();
+const entriesOf = new Map();
+for (const index of indexes) {
+  const entries = new Set();
+  for (const line of readFileSync(join(ROOT, index), 'utf8').split('\n')) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|');
+    if (cells.length < 3) continue;
+    for (const m of cells[1].matchAll(/`([\w./-]+\.(?:mjs|json|cs|py|sh|c|S))\b/g))
+      entries.add(basename(m[1]));
+  }
+  entriesOf.set(index, entries);
 }
+const nearestIndex = (file) => {
+  for (let dir = dirname(file); dir.startsWith('tools'); dir = dirname(dir))
+    if (entriesOf.has(`${dir}/README.md`)) return `${dir}/README.md`;
+  return null;
+};
+if (!entriesOf.has('tools/README.md')) complain('tools/README.md, the root tool index, is missing');
 const scripts = tracked.filter((f) => f.startsWith('tools/') && /\.(mjs|py|sh|c|S)$/.test(f));
-for (const script of scripts)
-  if (!entries.has(basename(script)))
-    complain(`${script} has no entry in tools/TOOLS.md. A row naming it, its ` +
+for (const script of scripts) {
+  const index = nearestIndex(script);
+  if (index && !entriesOf.get(index).has(basename(script)))
+    complain(`${script} has no entry in ${index}. A row naming it, its ` +
       'kind (check/report/module/device action) and its interface -- not a ' +
       'mention in prose, which is what let this drift to 47 missing scripts');
+}
 
-// --- 4. TOOLS.md must not list a script that has been deleted.
-for (const name of entries) {
-  if (/\.(cs|json|S)$/.test(name)) continue; // fixtures and plugin sources
-  if (!scripts.some((s) => basename(s) === name))
-    complain(`tools/TOOLS.md has an entry for ${name}, which is not a tracked ` +
-      'tool script -- a stale entry sends a reader after a command that is gone');
+// --- 4. an index must not list a script that has been deleted.
+for (const [index, entries] of entriesOf) {
+  for (const name of entries) {
+    if (/\.(cs|json|S)$/.test(name)) continue; // fixtures and plugin sources
+    if (!scripts.some((s) => basename(s) === name))
+      complain(`${index} has an entry for ${name}, which is not a tracked ` +
+        'tool script -- a stale entry sends a reader after a command that is gone');
+  }
 }
 
 if (failed) process.exit(1);
 console.log(`docs: ${links} links resolve, ${docPages.length} pages indexed, ` +
-  `${scripts.length} tool scripts carry an entry`);
+  `${scripts.length} tool scripts carry an entry in ${indexes.length} tool indexes`);

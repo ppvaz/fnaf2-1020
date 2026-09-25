@@ -17,6 +17,7 @@ and gains its outcome in place, per the retraction convention in
 
 | § | Family | Outcome |
 |---|---|---|
+| 5, 7, 8 | Device paths | **Resolved by removal, 2026-09-25.** The legacy `trial.sh` lane and its 12 stages, 19 closed probes, the fixture service path (`service.js`, `composition.js`, `modern-composition.js`, `calibration-fixture.js`, `live-seam-composition.js`), the runtime package, the adapter hexagon, screencheck and the machine executor left the tree ([`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)). One composition root remains, `modern-campaign-ports.js` behind `cli.js campaign`, and one device executor, `adb-device-local-executor.js` (its schedule, shell and effect halves now `hid-schedule.js`, `device-shell.js`, `control-effect.js`). The rows in §5, §7 and §8 describe the tree before that date |
 | — | Removed and archived code | **2026-09-24.** `tools/invent/`, `esp32-audio-authority.py`, `gatesearch`/`gatebot`, `strategysearch` and `knobsweep` left the tree ([`../ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)); rows below that name them describe the tree before that date |
 | 1 | Frame ingest | **Resolved.** `camera-` and `watch-calibrate.py` now import the loaders instead of copying them; their dead PIL guards went with them |
 | 4 | Calibration CLI | **Resolved for four of five.** `add_common_arguments()` in `monitor-calibrate.py`; `screen-calibrate.py` left alone because it has no gate |
@@ -519,7 +520,7 @@ than anything here, and it is gate-enforced; read it alongside §13.
 Ownership rules that decide most of these questions live in
 [`README.md`](README.md) and [`../../CLAUDE.md`](../../CLAUDE.md); shim
 lifecycles and removal gates live in [`COMPATIBILITY.md`](COMPATIBILITY.md);
-the command surface is [`../../tools/TOOLS.md`](../../tools/TOOLS.md).
+the command surface is [`../../tools/README.md`](../../tools/README.md).
 
 ## 22. Open gaps
 

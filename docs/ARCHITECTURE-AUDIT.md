@@ -740,3 +740,24 @@ across.
   The *recording*-rate half is closed — `grade-run.sh` now probes with
   `ffprobe` and refuses a capture that is not the rate its graders assume.
 - **Findings 3, 5, 9, 10 above**, untouched by this pass.
+
+## Status, 2026-09-25
+
+Appended rather than edited in place, because other pages cite this one by line.
+
+- **Finding 13, the runner's size** — resolved by removal: `trial.sh`, its
+  launcher and its 12 stages left the tree on 2026-09-25
+  ([`ARCHIVED-ROUTES.md`](ARCHIVED-ROUTES.md)). The campaign executor that
+  replaced it was split the same day (`hid-schedule.js`, `device-shell.js`,
+  `control-effect.js`), and what remains open of that split is
+  [`LEG-004`](architecture/LEGIBILITY-FOLLOWUPS.md).
+- **Finding 6's remainder, timing constants across three languages** — the
+  shell copy left with the runner; `test-screen-map.mjs` holds the coordinate
+  transform to one answer in the transport and the Companion.
+- **Finding 5, the screen-model builder** — moot: the screencheck classifier
+  and its builder were retired with the fixture service path.
+- **Finding 14, `tools/device` as one flat directory** — its index is now
+  [`../tools/device/README.md`](../tools/device/README.md), split per
+  directory from `tools/TOOLS.md`; the directory itself is still flat.
+- **Findings 3, 9, 10 and the tick rate** — unchanged by this pass.
+
