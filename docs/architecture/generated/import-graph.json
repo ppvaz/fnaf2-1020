@@ -2217,6 +2217,15 @@
       ]
     },
     {
+      "file": "tools/night.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/nightloop-run.mjs",
       "imports": [
         "@fnaf2-1020/core/control",
@@ -2542,6 +2551,16 @@
       "imports": [
         "../packages/core/src/mechanics/config.js",
         "../packages/core/src/mechanics/games/index.js"
+      ]
+    },
+    {
+      "file": "tools/test-night.mjs",
+      "imports": [
+        "./night.mjs",
+        "node:assert/strict",
+        "node:fs",
+        "node:os",
+        "node:path"
       ]
     },
     {
