@@ -11,7 +11,7 @@
     "profile": "HID contacts; Cue Helper MediaProjection native REGION frames and SNAP; the phone's A2DP mix read on the host (BlueALSA, SBC 44.1 kHz stereo) by tools/cue/fnaf4-cues.py; no screencap anywhere"
   },
   "question": "Can the phone play FNaF 4's story nights by sound and native frames -- the nights that unlock 20/20/20/20 (Extras -> Nightmare needs beat7, 10-11-extras g104) -- with the teach panel narrating?",
-  "answer": "Yes for Nights 1-3: each reached 6 AM on the phone (Night 3 with the teach panel narrating and a video). Night 4 is not won yet: its best attempt died 0.24 s before 6 AM, and every death so far is named below with the fix it produced.",
+  "answer": "Nights 1-3: yes, each reached 6 AM on the phone (Night 3 with the teach panel narrating and a video). Night 4: not yet -- the best attempt died 0.24 s before 6 AM, and eleven attempts each named a mechanic the loop had wrong, fixed in the runner.",
   "unlockPath": "The fresh save showed only NEW GAME / CONTINUE 1 / OPTIONS. The title reads beat5..beat8 from the 'fn4' INI (01-02-titlescreen g70s); Extras opens at beat5 and the 20/20/20/20 entry and the cheats need beat7 (10-11-extras g104, g111). The APK has allowBackup=false and targetSdk 36, so the save cannot be seeded: Nights 1-7 are played.",
   "runs": {
     "calibration": {
@@ -93,19 +93,52 @@
       "run": "fnaf4-loop-n4d-teach-20260925T061417773Z",
       "result": "stopped at 2 AM with the night still running",
       "cause": "centre() pans the room to about x 680 so the closet takes its double tap (follow 0, g172/g173); the walk back out of the closet ends at that same x, which no room template matches (the hub read 35.4), and the loop took an unknown view for the end of the night. Fixed: out of the closet the loop pans fully right (the view clamps at 788, room-right, which renders exactly), and an unknown view must last 5 s before the night is called over."
+    },
+    "night4e": {
+      "run": "fnaf4-loop-n4e-teach-20260925T062126464Z",
+      "result": "DEAD at ~84 s, Chica, on a right-hall flash after a quiet listen",
+      "cause": "Chica walked up DURING the listen: the A2DP mix carried her steps (step family, NCC 0.36-0.41, 80.3-81.7 s) and no breathing yet; the flash met her at hall-near. The capture was continuous (breathing scores every 100 ms throughout). Fixed: steps heard from 1.5 s before arrival are doubt, and doubt closes."
+    },
+    "night4f": {
+      "run": "fnaf4-loop-n4f-teach-20260925T062901701Z",
+      "result": "DEAD on a bed turn: Bonnie still breathing after three 3.4 s holds",
+      "cause": "A hold dismisses on the 3000 ms tick only while the door reads shut, which the close animation reaches 733 ms in: a 3.4 s hold was shut 2.67 s. Fixed: 4.2 s holds, up to five rounds, and no bed turn while a door still breathes."
+    },
+    "night4g": {
+      "run": "fnaf4-loop-n4g-teach-20260925T063454179Z",
+      "result": "DEAD at ~128 s, Bonnie, on a flash after a close and a 1.1 s re-listen",
+      "cause": "The breathing loop has quiet stretches up to 4.5 s (its envelope); a 1.1 s re-listen partly spent while the door reopened could hear nothing. Fixed: a listen lasts until it has covered 0.5 s of loud or 1.4 s of medium breath at the game's own loop phase (the level origin), and only breathing at that phase counts."
+    },
+    "night4h": {
+      "run": "fnaf4-loop-n4h-teach-20260925T064148778Z",
+      "result": "DEAD at ~151 s on a bed turn after a 19 s right-door episode",
+      "footsteps": "The footsteps rule worked: doubt, close, then breathing at the game's phase (8 hops), a second close, a safe flash.",
+      "cause": "The left door went ~40 s unchecked while the right was resolved, and a bedroom dwell of 16 s (20 - Night) arms the bed-turn kill. Fixed: a bed turn needs both doors cleared within (20 - night - 4) s; a stale door is checked first."
+    },
+    "night4j": {
+      "run": "fnaf4-loop-n4j-teach-20260925T064921763Z",
+      "result": "DEAD at ~70 s, Foxy, arriving home from the right door",
+      "cause": "The closet went ~50 s unchecked across two door episodes. Fixed: the closet is kept due every 20 s (15 s from Night 6)."
+    },
+    "night4k": {
+      "run": "fnaf4-loop-n4k-teach-20260925T065307237Z",
+      "result": "DEAD at ~219 s arriving home from the left door",
+      "cause": "The left-hall flash came after a listen that timed out at 60% breath coverage (the teach panel showed it). Fixed: a quiet verdict needs a covered breath; otherwise it is doubt."
     }
   },
   "findings": [
     "The A2DP path carries every FNaF 4 cue this route needs: the carpet-run sample matches at NCC 0.87-0.97, and the breathing loop -- channel 20 raised from 0 to 100 only while the player listens with Bonnie or Chica at hall-near (03-04-level g2041-g2052) -- matches at 0.50-0.99 against a 0.24 null, with its loop phase consistent across hops.",
     "Foxy's entry is visible and needs no audio: a return from a door that does not end at the hub is follow 37 (g98/g100/g111).",
     "Fredbear and Nightmare are one object whose every arrival on a living-room side plays a side's sample (h26 left, h25 right: g491-g495, the repels g502/g503, g522/g523, g526/g527); only the step into a hall is silent. A laugh (h27/28/36/37/38) is the room teleport only on a 30 s clock (20 s on the shadow nights, g3842-g3848); the same five files play as fakes on a 10 s clock (g530).",
-    "The level's timers start 0.44-0.55 s before its first room frame (medians of 65, 88 and 74 breathing detections on Nights 2-4): the breathing loop starts 1 s into the level (g4) and every detection reports its phase, which places the level origin on the host clock. The 5 s move grid a phase-locked Night 8 route needs is measurable this way."
+    "The level's timers start 0.44-0.55 s before its first room frame (medians of 65, 88 and 74 breathing detections on Nights 2-4): the breathing loop starts 1 s into the level (g4) and every detection reports its phase, which places the level origin on the host clock. The 5 s move grid a phase-locked Night 8 route needs is measurable this way.",
+    "Footsteps are panned: Foxy's hall entries and Bonnie's and Chica's steps play on channels 9 (pan -100) and 10 (+100), our carpet run and the side moves unpanned (03-04-level g1, g233/g234, g302-g315); projected on the reference, our runs read pan within +-0.06 of centre."
   ],
   "notMeasured": [
     "Reliability: one win per night so far, no predeclared cohort.",
     "The level origin is measured from breathing phase (0.44-0.55 s before the first room frame) but the runner still uses the first room frame as its epoch; the panel's clocks are that far off.",
     "Fredbear/Nightmare detection has not heard him yet: no Night 5 has been played.",
-    "The Plushtrap minigame (two hours off the next night) is left by the force-stop and never played."
+    "The Plushtrap minigame (two hours off the next night) is left by the force-stop and never played.",
+    "The teach panel shows each station's last reading without its age (a door can read 'quiet' tens of seconds after its last check); open."
   ],
   "frames": {
     "retained": "~/fnaf-apks/fnaf4-device-runs/<run>/ (regions.ndjson.gz, audio.raw, cues.jsonl, snaps); videos ~/fnaf-apks/fnaf4-videos/",

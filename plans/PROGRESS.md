@@ -1611,3 +1611,13 @@ clock) and the loop and panel have a Fredbear branch that has not met him yet.
 Evidence ID: `fnaf4-nights-1-3-20260925` (`docs/evidence/fnaf4-nights-1-3-20260925.json`); winner
 `tools/device/fnaf4-night3-loop-winner.json`. Consequential: the device wins and the runner. Open:
 Night 4, then Nights 5-7 (Fredbear, Nightmare), the Plushtrap minigame (two hours off), and Night 8.
+
+**2026-09-25 (later): Night 4 is not won; eleven attempts, each a named mechanic.** Chica and Bonnie
+walk up during a listen before they breathe (their steps are in the A2DP mix, and doubt now closes);
+a door hold is shut only 733 ms into it, so 4.2 s holds cover a whole 3000 ms tick; the breathing
+loop has quiet stretches up to 4.5 s, so a listen now lasts until it has covered a breath at the
+game's own loop phase (the level origin), and a quiet verdict without that coverage is doubt; the
+bed waits for both doors cleared within (20 - night - 4) s and the closet is kept due. The teach
+panel's order, clocks (now on the level origin) and hold text were corrected after Pedro called
+them dishonest; its readings still carry no age. Evidence ID: `fnaf4-nights-1-3-20260925` (runs
+n4e-n4k added). Open: Night 4, then 5-7 and Night 8; a model device lane for Night 8's phase route.

@@ -43,9 +43,9 @@ public final class Fnaf4Lesson {
         LISTEN_RIGHT("Listening at the right door",
                 "Breathing means Chica is right outside."),
         HOLD_LEFT("Breathing: holding the left door",
-                "Shut past a 3 s tick, and he walks back."),
+                "Each 3 s tick with it shut can send him back."),
         HOLD_RIGHT("Breathing: holding the right door",
-                "Shut past a 3 s tick, and she walks back."),
+                "Each 3 s tick with it shut can send her back."),
         FLASH_LEFT("Silent: lighting the left hall",
                 "Light sends anyone down the hall home."),
         FLASH_RIGHT("Silent: lighting the right hall",
@@ -57,7 +57,13 @@ public final class Fnaf4Lesson {
         CLOSET_HOLD("Foxy inside: holding the closet shut",
                 "Every second shut sets him back a step."),
         WALK("On the way",
-                "Doors first, then the bed, then the closet."),
+                "The doors, then the closet, then the bed."),
+        STEPS_LEFT("Footsteps: holding the left door",
+                "Someone walking up is not breathing yet: never light."),
+        STEPS_RIGHT("Footsteps: holding the right door",
+                "Someone walking up is not breathing yet: never light."),
+        BED_WAITS("The bed waits: a door still breathes",
+                "Turning to the bed with him there is what kills."),
         FB_HOLD_LEFT("He landed left: holding the left door",
                 "A shut door sends him to the other side on a 3 s tick."),
         FB_HOLD_RIGHT("He landed right: holding the right door",
@@ -80,7 +86,7 @@ public final class Fnaf4Lesson {
         }
     }
 
-    public enum Door { UNKNOWN, CLEAR, BREATH, HALL, SHUT }
+    public enum Door { UNKNOWN, CLEAR, BREATH, STEPS, HALL, SHUT }
 
     public enum Closet { UNKNOWN, EMPTY, FOXY }
 
@@ -126,8 +132,14 @@ public final class Fnaf4Lesson {
     /** The listening meter's bar, in hundredths of the breathing NCC (host's detector, fnaf4-cues.py). */
     public static final int LEVEL_DOUBT = 30;
     public static final int LEVEL_BREATH = 38;
-    /** A held door dismisses on the game's 3000 ms tick (g342). */
-    public static final long DISMISS_MS = 3000;
+    /**
+     * A held door dismisses on the game's 3000 ms tick (g342) only once it
+     * reads shut, which the close animation reaches 733 ms in (g337, the
+     * animation bank): a hold has done its job 3733 ms after it starts.
+     */
+    public static final long DISMISS_MS = 3733;
+    /** The bed is due this long after the last bed light (Freddy's meter, g397). */
+    public static final long BED_DUE_MS = 35000;
 
     private long originNs = -1;
     private Step step = Step.WALK;
@@ -137,6 +149,8 @@ public final class Fnaf4Lesson {
     private Closet closet = Closet.UNKNOWN;
     private Bed bed = Bed.UNKNOWN;
     private int level = -1;
+    private int cover = -1;
+    private long bedLitNs = -1;
     private Fred fred = Fred.OFF;
     private FredAt fredAt = FredAt.UNKNOWN;
     private Heard heard = Heard.NONE;
@@ -153,6 +167,10 @@ public final class Fnaf4Lesson {
     public synchronized void apply(String[] field, int from, long nowNs) {
         if (field.length > from && "fb".equals(field[from])) {
             applyFred(field, from, nowNs);
+            return;
+        }
+        if (field.length == from + 1 && "bedlit".equals(field[from])) {
+            bedLitNs = nowNs;
             return;
         }
         if (field.length > from && "step".equals(field[from])) {
@@ -178,6 +196,15 @@ public final class Fnaf4Lesson {
             case "step":
                 if (field.length != from + 2) throw new IllegalArgumentException("f4-step-usage");
                 step = Step.valueOf(field[from + 1]);
+                return;
+            case "cover":
+                // How much of the breath a quiet verdict needs the listen has covered, 0..100.
+                if (field.length != from + 2) throw new IllegalArgumentException("f4-cover-usage");
+                if ("OFF".equals(field[from + 1])) { cover = -1; return; }
+                if (!field[from + 1].matches("[0-9]{1,3}")) throw new IllegalArgumentException("f4-cover-usage");
+                int covered = Integer.parseInt(field[from + 1]);
+                if (covered > 100) throw new IllegalArgumentException("f4-cover-range");
+                cover = covered;
                 return;
             case "level":
                 if (field.length != from + 2) throw new IllegalArgumentException("f4-level-usage");
@@ -280,6 +307,12 @@ public final class Fnaf4Lesson {
     public synchronized long originNs() { return originNs; }
     public synchronized Step step() { return step; }
     public synchronized int level() { return level; }
+    public synchronized int cover() { return cover; }
+
+    /** Milliseconds until the bed is due, or Long.MIN_VALUE before the first bed light. */
+    public synchronized long bedDueInMs(long nowNs) {
+        return bedLitNs < 0 ? Long.MIN_VALUE : BED_DUE_MS - (nowNs - bedLitNs) / 1_000_000L;
+    }
 
     /** Milliseconds the current step has run at {@code nowNs}, or -1 if unknown. */
     public synchronized long stepMs(long nowNs) {
@@ -289,8 +322,8 @@ public final class Fnaf4Lesson {
     /** The station a step is taken at. */
     public static Station station(Step step) {
         switch (step) {
-            case LISTEN_LEFT: case HOLD_LEFT: case FLASH_LEFT: case FB_HOLD_LEFT: return Station.LEFT;
-            case LISTEN_RIGHT: case HOLD_RIGHT: case FLASH_RIGHT: case FB_HOLD_RIGHT: return Station.RIGHT;
+            case LISTEN_LEFT: case HOLD_LEFT: case FLASH_LEFT: case FB_HOLD_LEFT: case STEPS_LEFT: return Station.LEFT;
+            case LISTEN_RIGHT: case HOLD_RIGHT: case FLASH_RIGHT: case FB_HOLD_RIGHT: case STEPS_RIGHT: return Station.RIGHT;
             case BED: case FB_BED: return Station.BED;
             case CLOSET: case CLOSET_HOLD: case FB_CLOSET: return Station.CLOSET;
             default: return Station.WALK;
@@ -300,7 +333,8 @@ public final class Fnaf4Lesson {
     /** A hold is a step that waits on the game's dismiss tick. */
     public static boolean isHold(Step step) {
         return step == Step.HOLD_LEFT || step == Step.HOLD_RIGHT || step == Step.CLOSET_HOLD
-                || step == Step.FB_HOLD_LEFT || step == Step.FB_HOLD_RIGHT || step == Step.FB_CLOSET;
+                || step == Step.FB_HOLD_LEFT || step == Step.FB_HOLD_RIGHT || step == Step.FB_CLOSET
+                || step == Step.STEPS_LEFT || step == Step.STEPS_RIGHT;
     }
     public synchronized Door door(boolean leftSide) { return leftSide ? left : right; }
     public synchronized Closet closet() { return closet; }
@@ -333,6 +367,7 @@ public final class Fnaf4Lesson {
         switch (door) {
             case CLEAR: return "quiet";
             case BREATH: return "BREATHING";
+            case STEPS: return "FOOTSTEPS";
             case HALL: return "someone down the hall";
             case SHUT: return "held shut";
             default: return "?";

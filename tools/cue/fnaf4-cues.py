@@ -46,6 +46,11 @@ from scipy.signal import fftconvolve, resample_poly
 
 SR = 11025
 HOP_S = 0.1
+# Per-family onset thresholds where the default is too strict for what the
+# family is used for: Chica walking up to the right door while the loop
+# listened matched the step family at 0.36-0.41 and nothing else warned of her
+# (n4e, 80.3-81.7 s); she arrived before she breathed and the flash met her.
+FAMILY_THRESHOLD = {"step": 0.33}
 WIN_S = 0.6
 BREATH_WIN_S = 1.0
 # (family, handle, meaning). A family is what a caller acts on; each handle in
@@ -114,18 +119,50 @@ class Detector:
         self.threshold = threshold
         self.emit = emit
         self.templates = []
+        self.refs = {}
         for family, handle, _ in TEMPLATES:
-            self.templates.append(Template(f"{family}#{handle}", load_ref(refs, handle)))
+            ref = load_ref(refs, handle)
+            self.refs[f"{family}#{handle}"] = ref
+            self.templates.append(Template(f"{family}#{handle}", ref))
         self.breath = Template("breath", load_ref(refs, 22), circular=True, win=int(BREATH_WIN_S * SR))
         self.buf = np.zeros(0)
+        self.buf_l = np.zeros(0)        # the two channels, aligned with buf: the game pans some
+        self.buf_r = np.zeros(0)        # cues hard left/right (channels 9/10, 03-04-level g1)
         self.buf_start = 0              # absolute sample index (at SR) of buf[0]
         self.done = 0                   # absolute index of the next hop's window end
         self.recent: dict[str, list] = {}
         self.hop = int(HOP_S * SR)
 
-    def feed(self, mono_sr: np.ndarray, sample_ms) -> None:
-        """mono_sr: new samples at SR. sample_ms(i) -> host wall ms of absolute sample i."""
+    def envelope(self) -> dict:
+        """The breathing loop's loud stretches (0.1 s RMS within 12 dB of its
+        peak), in loop seconds: a listen that covers none of them can hear no
+        breathing even with someone at the door."""
+        r = self.breath.r[: self.breath.len]
+        w = int(0.1 * SR)
+        n = len(r) // w
+        rms = np.sqrt((r[: n * w].reshape(n, w) ** 2).mean(1))
+        db = 20 * np.log10(rms + 1e-9)
+
+        def spans_above(drop):
+            on_ = db > db.max() - drop
+            out, start = [], None
+            for i, on in enumerate(list(on_) + [False]):
+                if on and start is None:
+                    start = i
+                elif not on and start is not None:
+                    out.append([round(start * 0.1, 2), round(i * 0.1, 2)])
+                    start = None
+            return out
+
+        spans, mid = spans_above(12), spans_above(22)
+        return {"cue": "breath-envelope", "lengthS": round(self.breath.len / SR, 4), "loudS": spans, "midS": mid}
+
+    def feed(self, mono_sr: np.ndarray, sample_ms, left=None, right=None) -> None:
+        """mono_sr: new samples at SR (left/right: the same span per channel).
+        sample_ms(i) -> host wall ms of absolute sample i."""
         self.buf = np.concatenate([self.buf, mono_sr])
+        self.buf_l = np.concatenate([self.buf_l, left if left is not None else mono_sr])
+        self.buf_r = np.concatenate([self.buf_r, right if right is not None else mono_sr])
         need = int(BREATH_WIN_S * SR)
         end_abs = self.buf_start + len(self.buf)
         if self.done == 0:
@@ -139,21 +176,29 @@ class Detector:
                 onset = self.done - t.win - k
                 self._peak(t.name, v, onset, sample_ms)
             v, k = self.breath.match(self.buf[e - self.breath.win:e])
+            # loopStartMs: when, on the host clock, the loop would have started
+            # for this lag (mod its length) -- comparable with the game's own
+            # loop start, which is fixed 1 s into the level (g4).
             self.emit({"cue": "breath", "ncc": round(v, 4), "lag": k,
                        "phase": round(((k - (self.done - self.breath.win)) % self.breath.len) / SR, 3),
+                       "loopStartMs": sample_ms(self.done - self.breath.win - k),
                        "atMs": sample_ms(self.done)})
             self.done += self.hop
-        keep = int(BREATH_WIN_S * SR) + self.hop
-        if len(self.buf) > keep * 4:
+        # Keep 4 s: an onset is published a few hops after it, and its pan is
+        # read from the first 0.4 s of the sample in the retained channels.
+        keep = int(4.0 * SR)
+        if len(self.buf) > keep * 2:
             drop = len(self.buf) - keep
             self.buf = self.buf[drop:]
+            self.buf_l = self.buf_l[drop:]
+            self.buf_r = self.buf_r[drop:]
             self.buf_start += drop
 
     def _peak(self, name, v, onset, sample_ms):
         # One line per detected onset: keep the best NCC among hops whose onset
         # estimates agree within 60 ms, and publish it once it stops improving.
         st = self.recent.get(name)
-        if v >= self.threshold:
+        if v >= FAMILY_THRESHOLD.get(name.partition("#")[0], self.threshold):
             if st and abs(onset - st[1]) <= int(0.06 * SR):
                 if v > st[0]:
                     st[0], st[1] = v, onset
@@ -170,8 +215,25 @@ class Detector:
     def _flush(self, name, sample_ms):
         v, onset, _ = self.recent.pop(name)
         family, _, handle = name.partition("#")
+        # Pan: -1 hard left .. +1 hard right, as the share of the MATCHED
+        # sample in each channel (each channel projected on the reference over
+        # its first 0.4 s), not raw loudness, which the unpanned room ambience
+        # pulls toward 0. Foxy's hall entries and Bonnie/Chica's steps play on
+        # channels 9 (pan -100) and 10 (+100); our run and the side moves are
+        # unpanned.
+        ref = self.refs.get(name)
+        a = onset - self.buf_start
+        n = min(int(0.4 * SR), len(ref) if ref is not None else 0)
+        pan = None
+        if ref is not None and a >= 0 and a + n <= len(self.buf_l) and n > 0:
+            r = ref[:n]
+            rr = float(np.dot(r, r)) + 1e-12
+            al = abs(float(np.dot(self.buf_l[a:a + n], r)) / rr)
+            ar = abs(float(np.dot(self.buf_r[a:a + n], r)) / rr)
+            if al + ar > 1e-6:
+                pan = round((ar - al) / (ar + al), 3)
         self.emit({"cue": family, "handle": int(handle) if handle else None, "ncc": round(v, 4),
-                   "onsetMs": sample_ms(onset)})
+                   "pan": pan, "onsetMs": sample_ms(onset)})
 
 
 def to_mono_sr(block: np.ndarray, rate: int) -> np.ndarray:
@@ -179,14 +241,26 @@ def to_mono_sr(block: np.ndarray, rate: int) -> np.ndarray:
     return resample_poly(mono, SR, rate) if rate != SR else mono
 
 
+def to_channels_sr(block: np.ndarray, rate: int):
+    """(mono, left, right) at SR from an interleaved S16 block."""
+    x = block.astype(np.float64) / 32768.0
+    if x.shape[1] < 2:
+        m = resample_poly(x[:, 0], SR, rate) if rate != SR else x[:, 0]
+        return m, m, m
+    left, right = (resample_poly(x[:, i], SR, rate) if rate != SR else x[:, i] for i in (0, 1))
+    return (left + right) / 2, left, right
+
+
 def run_wav(args, emit) -> None:
     from scipy.io import wavfile
     rate, x = wavfile.read(args.wav)
     det = Detector(args.refs, args.threshold, emit)
-    mono = to_mono_sr(x, rate)
+    emit(det.envelope())
+    mono, left, right = to_channels_sr(x, rate)
     step = int(0.5 * SR)
     for i in range(0, len(mono), step):
-        det.feed(mono[i:i + step], lambda s: round(args.start_wall_ms + s * 1000 / SR, 1))
+        det.feed(mono[i:i + step], lambda s: round(args.start_wall_ms + s * 1000 / SR, 1),
+                 left[i:i + step], right[i:i + step])
 
 
 def run_live(args, emit) -> int:
@@ -209,6 +283,7 @@ def run_live(args, emit) -> int:
     raw = open(args.raw, "wb") if args.raw else None
     pending = b""
     emit({"cue": "start", "rate": rate, "channels": channels, "pcm": args.live, "atMs": time.time() * 1000})
+    emit(det.envelope())
     try:
         while not stop["flag"]:
             chunk = proc.stdout.read1(rate * frame_bytes // 20) if hasattr(proc.stdout, "read1") else proc.stdout.read(4096)
@@ -225,7 +300,8 @@ def run_live(args, emit) -> int:
             cand = now - received * 1000 / rate
             origin = cand if origin is None else min(origin, cand)
             o = origin
-            det.feed(to_mono_sr(block, rate), lambda s, o=o: round(o + s * 1000 / SR, 1))
+            mono, left, right = to_channels_sr(block, rate)
+            det.feed(mono, lambda s, o=o: round(o + s * 1000 / SR, 1), left, right)
     finally:
         os.killpg(proc.pid, signal.SIGTERM)
         proc.wait(timeout=5)

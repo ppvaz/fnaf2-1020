@@ -50,6 +50,10 @@ const AUDIO_LAG_MS = 175;                // cal0: audio onset trails the same ev
 // -- and 9.1-16 at others (n3c). A cut at 6 left that stage unheld; anything
 // above 2 is somebody.
 const OCCUPIED = 2;
+// The level's timers start this long after (negative: before) its first room
+// frame: medians of 65, 88 and 74 breathing-phase reads on Nights 2-4 put it at
+// -0.44..-0.55 s (the loop starts 1 s into the level, g4).
+const LEVEL_ORIGIN_MS = -520;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const stamp = () => new Date().toISOString().replace(/[-:.]/g, '');
@@ -437,7 +441,38 @@ const ARRIVE = {
 
 /** The live audio detector's lines, read by host time (wall ms). */
 class Ears {
-  constructor(cues) { this.cues = cues; }
+  constructor(cues) { this.cues = cues; this.loopOriginWall = null; }
+  /** The game's breathing loop starts 1 s into the level (g4); its audio reaches the host AUDIO_LAG_MS later. */
+  anchor(levelOriginWall) { this.loopOriginWall = levelOriginWall + 1000 + AUDIO_LAG_MS; }
+  get envelope() { return this.cues.events.find((e) => e.cue === 'breath-envelope') ?? null; }
+  /** Seconds of the loop's loud and medium stretches that [fromWall, toWall] covered. */
+  coverage(fromWall, toWall) {
+    const env = this.envelope;
+    if (!env || this.loopOriginWall === null || toWall <= fromWall) return { loud: 0, mid: 0 };
+    const L = env.lengthS;
+    const a = (((fromWall - this.loopOriginWall) / 1000) % L + L) % L;
+    const len = (toWall - fromWall) / 1000;
+    const over = (spans) => {
+      let t = 0;
+      for (const [s0, s1] of spans) for (const k of [0, L]) {
+        const lo = Math.max(a, s0 + k); const hi = Math.min(a + len, s1 + k);
+        if (hi > lo) t += hi - lo;
+      }
+      return t;
+    };
+    return { loud: over(env.loudS), mid: over(env.midS ?? env.loudS) };
+  }
+  /** Hops whose best lag puts the loop where the GAME's loop is (within 300 ms). */
+  gameMatches(hops) {
+    const env = this.envelope;
+    if (!env || this.loopOriginWall === null) return 0;
+    const L = env.lengthS * 1000;
+    return hops.filter((e) => {
+      if (e.ncc < 0.28 || e.loopStartMs === undefined) return false;
+      const d = (((e.loopStartMs - this.loopOriginWall) % L) + L) % L;
+      return Math.min(d, L - d) <= 300;
+    }).length;
+  }
   /** The newest onset of any of `names` after `fromWall`, or null. */
   latest(names, fromWall = 0) {
     for (let i = this.cues.events.length - 1; i >= 0; i -= 1) {
@@ -449,6 +484,7 @@ class Ears {
   breath(fromWall, toWall) {
     const hops = this.cues.events.filter((e) => e.cue === 'breath' && e.atMs >= fromWall && e.atMs <= toWall);
     const max = hops.reduce((m, e) => Math.max(m, e.ncc), 0);
+    const game = this.gameMatches(hops);
     // A real loop keeps its phase: >= 3 hops above 0.30 whose loop phase
     // agrees within 80 ms (circular over the 17.675 s loop).
     const strong = hops.filter((e) => e.ncc >= 0.30).map((e) => e.phase);
@@ -457,7 +493,7 @@ class Ears {
       const near = strong.filter((q) => { const d = Math.abs(p - q) % 17.675; return Math.min(d, 17.675 - d) <= 0.08; }).length;
       consistent = Math.max(consistent, near);
     }
-    return { hops: hops.length, max, consistent };
+    return { hops: hops.length, max, consistent, game };
   }
 }
 
@@ -467,7 +503,7 @@ class Ears {
  * panel's own vocabulary (Fnaf4Lesson.java); lines go out in order and a
  * failed send never touches the night.
  */
-const F4_LINE = /^LESSON [0-9a-f]{32} f4 (origin \d{1,19}|step [A-Z_]+|door [LR] (CLEAR|BREATH|HALL|SHUT)|closet (EMPTY|FOXY)|bed (CLEAR|FREDDLES)|level (\d{1,3}|OFF)|fb mode (OFF|FREDBEAR|NIGHTMARE|NIGHTMARE_MAX)|fb at (UNKNOWN|LEFT|RIGHT|ROOM)|fb heard (RAN_LEFT|RAN_RIGHT|LAUGH)|fb ran|clear)$/;
+const F4_LINE = /^LESSON [0-9a-f]{32} f4 (origin \d{1,19}|step [A-Z_]+|door [LR] (CLEAR|BREATH|STEPS|HALL|SHUT)|closet (EMPTY|FOXY)|bed (CLEAR|FREDDLES)|level (\d{1,3}|OFF)|cover (\d{1,3}|OFF)|bedlit|fb mode (OFF|FREDBEAR|NIGHTMARE|NIGHTMARE_MAX)|fb at (UNKNOWN|LEFT|RIGHT|ROOM)|fb heard (RAN_LEFT|RAN_RIGHT|LAUGH)|fb ran|clear)$/;
 function teachFeed(port, record) {
   const channel = port.openLesson({ timeoutMs: 800, lessonLine: F4_LINE });
   const token = port.endpoint.token;
@@ -485,6 +521,8 @@ function teachFeed(port, record) {
     closet: (word) => say(`closet ${word}`, 'closet'),
     bed: (word) => say(`bed ${word}`, 'bed'),
     level: (ncc) => say(ncc === null ? 'level OFF' : `level ${Math.max(0, Math.min(100, Math.round(ncc * 100)))}`, 'level'),
+    cover: (fraction) => say(fraction === null ? 'cover OFF' : `cover ${Math.max(0, Math.min(100, Math.round(fraction * 100)))}`, 'cover'),
+    bedLit: () => say('bedlit'),
     fbMode: (mode) => say(`fb mode ${mode}`, 'fbMode'),
     fbAt: (where) => say(`fb at ${where}`, 'fbAt'),
     fbHeard: (what) => say(`fb heard ${what}`),
@@ -494,7 +532,7 @@ function teachFeed(port, record) {
 }
 
 /** The panel's words for nothing to say: a loop without --teach. */
-const QUIET = { origin() {}, step() {}, door() {}, closet() {}, bed() {}, level() {}, fbMode() {}, fbAt() {}, fbHeard() {}, fbRan() {}, async clear() {} };
+const QUIET = { origin() {}, step() {}, door() {}, closet() {}, bed() {}, level() {}, cover() {}, bedLit() {}, fbMode() {}, fbAt() {}, fbHeard() {}, fbRan() {}, async clear() {} };
 
 /**
  * The community loop on the handset, stations confirmed by native frames and
@@ -583,39 +621,79 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
     const arrived = await go(side === 'L' ? 'leftDoor' : 'rightDoor', [view], 3600, 'double');
     if (!arrived) return false;
     teach.step(side === 'L' ? 'LISTEN_LEFT' : 'LISTEN_RIGHT');
-    const t0 = wallOf(arrived.imageHostMs) + AUDIO_LAG_MS + 250;
-    // The listening meter follows the detector's hops while the loop listens.
-    const listen = async (ms) => {
-      const until = performance.now() + ms;
-      while (performance.now() < until) {
+    const t0 = wallOf(arrived.imageHostMs) + AUDIO_LAG_MS + 100;
+    // The breathing loop has quiet stretches of up to 4.5 s between breaths
+    // (breath-envelope); with the game's loop phase known (the level origin),
+    // a listen lasts until it has covered 0.5 s of loud or 1.4 s of medium
+    // breath -- n4e/n4g trusted 1.1-1.4 s listens that may have covered
+    // neither. It stops early on breathing that sits at the game's own phase.
+    const listen = async (fromWall, minMs = 900, maxMs = 4500) => {
+      const start = performance.now();
+      for (;;) {
         const hop = ears.cues.events.findLast?.((e) => e.cue === 'breath');
         if (hop) teach.level(hop.ncc);
-        await sleep(150);
+        const now = wallOf(performance.now());
+        const cov = ears.coverage(fromWall - AUDIO_LAG_MS, now - AUDIO_LAG_MS);
+        teach.cover(Math.min(1, Math.max(cov.loud / 0.5, cov.mid / 1.4)));
+        const h = ears.breath(fromWall, now);
+        const elapsed = performance.now() - start;
+        if (elapsed >= minMs && (h.game >= 2 || cov.loud >= 0.5 || cov.mid >= 1.4)) return { ...cov, enough: true };
+        if (elapsed >= maxMs) return { ...cov, enough: h.game >= 2 };
+        await sleep(120);
       }
     };
-    await listen(1400);
+    // A quiet verdict needs a listen that covered a breath: n4k lit the left
+    // hall after a listen that ran out at 60% coverage (the panel said so).
+    const judge = (h, stepsSince, c) => {
+      if (h.game >= 2 || (h.consistent >= 3 && h.max >= 0.45)) return 'BREATH';
+      if (h.game === 1 || h.max >= 0.33 || ears.latest(['step'], stepsSince)) return 'DOUBT';
+      if (c && !c.enough) return 'DOUBT';
+      return 'CLEAR';
+    };
+    let cov = await listen(t0);
     let heard = ears.breath(t0, wallOf(performance.now()));
-    let verdict = heard.consistent >= 3 && heard.max >= 0.38 ? 'BREATH' : heard.max >= 0.30 ? 'DOUBT' : 'CLEAR';
-    await log(`door ${side} listen ${verdict}`, heard);
-    teach.door(side, verdict === 'CLEAR' ? 'CLEAR' : 'BREATH');
-    for (let round = 0; verdict !== 'CLEAR' && round < 3; round += 1) {
-      teach.step(side === 'L' ? 'HOLD_LEFT' : 'HOLD_RIGHT');
+    let verdict = judge(heard, wallOf(arrived.imageHostMs) - 1500, cov);
+    // Footsteps while we walked up or listened are someone arriving who has
+    // not started breathing yet (n4e: Chica's steps at 80.3-81.7 s, a quiet
+    // listen, and the flash met her at hall-near). Doubt closes; it never lights.
+    const steps = ears.latest(['step'], wallOf(arrived.imageHostMs) - 1500);
+    await log(`door ${side} listen ${verdict}`, { ...heard, step: steps ? steps.ncc : null, loudS: +cov.loud.toFixed(2), midS: +cov.mid.toFixed(2) });
+    // What the panel says is why the loop holds: breathing, or footsteps of
+    // someone who is not breathing yet.
+    const why = () => (heard.game >= 1 || heard.max >= 0.33 ? 'BREATH' : 'STEPS');
+    teach.door(side, verdict === 'CLEAR' ? 'CLEAR' : why());
+    // A hold dismisses on the 3000 ms tick (g342) only while the door reads
+    // shut (follow 21, g337), which the close animation reaches 733 ms in
+    // (the animation bank): 3.4 s left 2.67 s shut and n4f's Bonnie sat
+    // through three holds. 4.2 s covers a whole tick shut.
+    for (let round = 0; verdict !== 'CLEAR' && round < 5; round += 1) {
+      teach.step(why() === 'STEPS' ? (side === 'L' ? 'STEPS_LEFT' : 'STEPS_RIGHT') : (side === 'L' ? 'HOLD_LEFT' : 'HOLD_RIGHT'));
       teach.door(side, 'SHUT');
       teach.level(null);
-      await act.hold('closeDoor', pt('closeDoor'), 3400);
+      await act.hold('closeDoor', pt('closeDoor'), 4200);
       stats.closes += 1;
       teach.step(side === 'L' ? 'LISTEN_LEFT' : 'LISTEN_RIGHT');
-      const t1 = wallOf(performance.now()) + AUDIO_LAG_MS + 250;
-      await listen(1100);
+      // The door takes ~0.7 s to open again, and listening is off until it
+      // has (follow 22 -> 10/17): the listen starts after that.
+      const t1 = wallOf(performance.now()) + 700 + AUDIO_LAG_MS;
+      cov = await listen(t1, 1600);
       heard = ears.breath(t1, wallOf(performance.now()));
-      verdict = heard.consistent >= 3 && heard.max >= 0.38 ? 'BREATH' : heard.max >= 0.30 ? 'DOUBT' : 'CLEAR';
-      await log(`door ${side} after close ${verdict}`, heard);
-      teach.door(side, verdict === 'CLEAR' ? 'CLEAR' : 'BREATH');
+      verdict = judge(heard, t1 - AUDIO_LAG_MS, cov);
+      await log(`door ${side} after close ${verdict}`, { ...heard, loudS: +cov.loud.toFixed(2), midS: +cov.mid.toFixed(2) });
+      teach.door(side, verdict === 'CLEAR' ? 'CLEAR' : why());
     }
     teach.level(null);
-    if (verdict !== 'CLEAR') { await log(`door ${side} left without a flash`); return true; }
+    teach.cover(null);
+    if (verdict !== 'CLEAR') {
+      unresolved.add(side);
+      await log(`door ${side} left without a flash, still breathing: no bed turn until it is cleared`);
+      return true;
+    }
+    unresolved.delete(side);
     teach.step(side === 'L' ? 'FLASH_LEFT' : 'FLASH_RIGHT');
     const occ = await flash(350, `${view}-lit`);
+    // A lit, silent hall resets that side's bedroom dwell (g485/g481).
+    lastClearMs[side] = nightMs();
     if (occ > OCCUPIED) stats.occupiedHall += 1;
     teach.door(side, occ > OCCUPIED ? 'HALL' : 'CLEAR');
     await log(`door ${side} flash occupancy ${occ?.toFixed(1)}`);
@@ -634,8 +712,20 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
   // cycle but whenever it is due.
   const BED_EVERY_MS = night >= 6 ? 28000 : 35000;
   let lastBedMs = 0;
-  const bedDue = () => nightMs() - lastBedMs > BED_EVERY_MS;
+  const bedDue = () => nightMs() - lastBedMs > BED_EVERY_MS && unresolved.size === 0;
   const bed = async () => {
+    for (const d of staleDoors()) {
+      await log(`bed waits for the ${d} door (${Math.round((nightMs() - lastClearMs[d]) / 1000)} s since it was cleared)`);
+      teach.step('BED_WAITS');
+      if (d === 'L' && where !== 'roomL' && !await go('panLeft', ['roomL'], 1500, 'hold')) return false;
+      if (d === 'R' && where !== 'roomR' && !await go('panRight', ['roomR'], 1500, 'hold')) return false;
+      if (!await door(d)) return false;
+      const ret = await home(d === 'L' ? 'left' : 'right');
+      if (!ret) return false;
+      if (ret === 'FOXY' && !(await centre(), await closet(nightMs())) ) return false;
+      if (ret === 'FOXY' && !await leaveCloset()) return false;
+    }
+    if (unresolved.size > 0) { teach.step('BED_WAITS'); await log(`bed skipped: ${[...unresolved].join('/')} still breathing`); return true; }
     lastBedMs = nightMs();
     teach.step('WALK');
     const at = await go('bed', ['bed', 'doorR', 'doorL'], 1500);
@@ -649,7 +739,10 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
       if (slice >= 1 && occ <= OCCUPIED) break;
     }
     await log(`bed occupancy ${occ?.toFixed(1)}`);
-    return true;
+    teach.bedLit();
+    // The turn back is part of the bed: a caller never presses back itself,
+    // because from a room the same strip turns TO the bed.
+    return !!await back(ROOM_VIEWS, 1800);
   };
 
   /**
@@ -693,7 +786,26 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
    * he enters with.
    */
   let foxyInside = false;
+  // Foxy climbs one step per passed 5 s roll once inside and kills at 10 from
+  // the 3-7 he enters with (g236, g273): 15 s at the fastest where every roll
+  // passes (Night 6 on). n4j's closet went ~50 s unchecked across two door
+  // episodes. So the closet is also kept due.
+  let lastClosetMs = 0;
+  const CLOSET_EVERY_MS = night >= 6 ? 15000 : 20000;
+  const closetDue = () => nightMs() - lastClosetMs > CLOSET_EVERY_MS;
+  // A door left with someone still breathing at it: the bed turn is what
+  // kills with his bedroom flag (g375/g376), so no bed until it is cleared.
+  const unresolved = new Set();
+  // The bed turn kills if Bonnie or Chica has dwelt at hall-near 20 - night
+  // seconds (g484/g479 -> g375/g376), and a lit silent hall is what resets
+  // it. n4h turned to the bed ~40 s after the left door's last check, while a
+  // right-door episode ran 19 s. So a bed turn needs both doors cleared
+  // within (20 - night - 4) s, and a stale door is checked first.
+  const lastClearMs = { L: -Infinity, R: -Infinity };
+  const FRESH_MS = Math.max(4000, (20 - Math.min(night, 8) - 4) * 1000);
+  const staleDoors = () => ['L', 'R'].filter((d) => nightMs() - lastClearMs[d] > FRESH_MS);
   const closet = async (enteredMs = 0) => {
+    lastClosetMs = nightMs();
     teach.step('WALK');
     const at = await go('closet', ['closet'], 3200, 'double');
     if (!at) return false;
@@ -774,10 +886,15 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
       seen = ears.cues.events.length;
     }, 200);
   };
-  const toDoor = async (side) => {
+  // To a door on his nights, with the door already held when we get there:
+  // a passed roll while we LISTEN at a door teleports him into the room
+  // without a sound (g508-g511: his flag and listening mode), and a hold is a
+  // key down, which keeps listening at 0 (g322/g328). So the close button is
+  // pressed during the run -- at (1990, 900) that touch cannot pan the room,
+  // which only pans below follow 7 (g21-g24), and the run is follow >= 7.
+  const toRoomView = async (side) => {
     const view = side === 'L' ? 'roomL' : 'roomR';
-    if (where !== view && !await go(side === 'L' ? 'panLeft' : 'panRight', [view], 1500, 'hold')) return null;
-    return go(side === 'L' ? 'leftDoor' : 'rightDoor', [side === 'L' ? 'doorL' : 'doorR'], 3600, 'double');
+    return where === view || !!await go(side === 'L' ? 'panLeft' : 'panRight', [view], 1500, 'hold');
   };
   const roomCheck = async (why) => {
     await log(`fredbear room check (${why})`);
@@ -801,27 +918,51 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
     roomCheckWall = wallOf(performance.now());
     return true;
   };
+  // A real laugh -- the teleport into the bed or closet -- only happens on
+  // the room clock, every 30 s (20 s on the shadow nights) of the level's own
+  // time (g3844); the fakes run on a 10 s one (g530). A laugh off the room
+  // clock is a fake and costs no trip.
+  const ROOM_CLOCK_S = night >= 7 ? 20 : 30;
+  const onRoomClock = (laugh) => {
+    const t = (laugh.onsetMs - AUDIO_LAG_MS - wallOf(epochHostMs) - LEVEL_ORIGIN_MS) / 1000;
+    const m = ((t % ROOM_CLOCK_S) + ROOM_CLOCK_S) % ROOM_CLOCK_S;
+    return m < 1.5 || m > ROOM_CLOCK_S - 1.0;
+  };
+  let lastLaughMs = 0;
   const fredStep = async () => {
     const heard = ears.latest(['fb-left', 'fb-right']);
     if (heard) fredSide = heard.cue === 'fb-left' ? 'L' : 'R';
     const laugh = ears.latest(['laugh'], roomCheckWall);
-    if (laugh && laugh.ncc >= LAUGH_MIN) return roomCheck(`laugh ${laugh.handle} ${laugh.ncc}`);
+    if (laugh && laugh.ncc >= LAUGH_MIN && laugh.onsetMs !== lastLaughMs) {
+      lastLaughMs = laugh.onsetMs;
+      if (onRoomClock(laugh)) return roomCheck(`laugh ${laugh.handle} ${laugh.ncc} on the room clock`);
+      await log(`fredbear laugh ${laugh.handle} ${laugh.ncc} off the room clock: a fake`);
+    }
     if (wallOf(performance.now()) - roomCheckWall > 45000) return roomCheck('45 s without one');
     const side = fredSide ?? 'L';
     teach.step('FB_SWITCH');
-    if (!await toDoor(side)) return false;
+    if (!await toRoomView(side)) return false;
+    const control = side === 'L' ? 'leftDoor' : 'rightDoor';
+    await act.double(control, pt(control), c[control].gapMs);
+    teach.fbRan();
     teach.step(side === 'L' ? 'FB_HOLD_LEFT' : 'FB_HOLD_RIGHT');
     teach.door(side, 'SHUT');
     const t0 = wallOf(performance.now());
-    // At most 9 s in one place: standing still arms the black flash at 25 s
-    // on a Fredbear night (g566/g564), and the walk home is what resets it.
-    const r = await act.holdWhile('closeDoor', pt('closeDoor'), 9000, () => {
+    const shutView = side === 'L' ? 'doorL-shut' : 'doorR-shut';
+    let reached = false;
+    // At most ~9 s at the door (plus the run): standing still arms the black
+    // flash at 25 s on a Fredbear night (g566/g564), and the walk home resets it.
+    const r = await act.holdWhile('closeDoor', pt('closeDoor'), 11500, () => {
+      const f = eyes.now();
+      if (f && f.view === shutView) reached = true;
       const e = ears.latest(['fb-left', 'fb-right', 'laugh'], t0 - 200);
       if (!e) return null;
-      if (e.cue === 'laugh') return e.ncc >= LAUGH_MIN ? 'laugh' : null;
+      if (e.cue === 'laugh') return e.ncc >= LAUGH_MIN && onRoomClock(e) ? 'laugh' : null;
       return (e.cue === 'fb-left' ? 'L' : 'R') !== side ? 'moved' : null;
     });
-    await log(`fredbear held ${side} ${Math.round(r.heldMs)} ms: ${r.why}`, { side, fredSide });
+    where = reached ? (side === 'L' ? 'doorL' : 'doorR') : where;
+    await log(`fredbear held ${side} ${Math.round(r.heldMs)} ms: ${r.why}${reached ? '' : ' (never saw the door shut)'}`, { side, fredSide });
+    if (!reached) return !!eyes.now();
     teach.door(side, 'CLEAR');
     if (r.why === 'max') teach.step('FB_MOVE');
     return !!await back(ROOM_VIEWS, 2600);
@@ -846,22 +987,22 @@ async function loopNight({ act, c, record, eyes, ears, epochHostMs, stopAfterMs,
     if (!await door('L')) break;
     let ret = await home('left');
     if (!ret) break;
-    if (bedDue() && (!await bed() || !await back(ROOM_VIEWS, 1800))) break;
-    if ((ret === 'FOXY' || foxyInside) && !await toCloset(ret === 'FOXY' ? nightMs() : 0)) break;
+    if (bedDue() && !await bed()) break;
+    if ((ret === 'FOXY' || foxyInside || closetDue()) && !await toCloset(ret === 'FOXY' ? nightMs() : 0)) break;
     if (where !== 'roomR') {
       if (!await go('panRight', ['roomR'], 1500, 'hold')) break;
     }
     if (!await door('R')) break;
     ret = await home('right');
     if (!ret) break;
-    if (ret !== 'FOXY' && bedDue() && (!await bed() || !await back(ROOM_VIEWS, 1800))) break;
+    if (ret !== 'FOXY' && bedDue() && !await bed()) break;
     // The closet before the bed: Foxy's kill fires as a bed turn finishes
     // (g438), so he is set back right before it (n3a died on that turn).
     await centre();
     if (!await closet(ret === 'FOXY' ? nightMs() : 0)) break;
     if (!await leaveCloset()) break;
+    // bed() checks stale doors first and skips the turn while one breathes.
     if (!await bed()) break;
-    if (!await back(ROOM_VIEWS, 1800)) break;
     stats.cycles += 1;
   }
   if (fredWatch) clearInterval(fredWatch);
@@ -943,12 +1084,16 @@ async function main(argv) {
         try {
           teach = teachFeed(port, record);
           // The origin on the helper's own image clock: the first room frame.
-          teach.origin(first.imageNs);
+          // The level's own clock starts LEVEL_ORIGIN_MS before its first
+          // room frame (breathing phase, Nights 2-4): the panel's bars run on it.
+          teach.origin(first.imageNs + BigInt(LEVEL_ORIGIN_MS) * 1000000n);
           teach.step('WALK');
         } catch (e) { await record.event('teach-error', { message: e.message }); teach = QUIET; }
       }
       record.document.teach = options.teach;
-      record.document.loop = await loopNight({ act, c, record, eyes, ears: new Ears(cues), epochHostMs,
+      const ears = new Ears(cues);
+      ears.anchor(wallOf(epochHostMs) + LEVEL_ORIGIN_MS);
+      record.document.loop = await loopNight({ act, c, record, eyes, ears, epochHostMs,
         stopAfterMs: options.stopAfterMs, night: options.night, teach });
       await teach.clear();
       record.document.night.endedAtNightMs = performance.now() - epochHostMs;

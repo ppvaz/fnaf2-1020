@@ -77,6 +77,14 @@ public final class Fnaf4LessonTest {
                 && Fnaf4Lesson.rollMs(Fnaf4Lesson.Fred.NIGHTMARE_MAX) == 2000);
         check("fredbear steps are stations", Fnaf4Lesson.station(Fnaf4Lesson.Step.FB_HOLD_RIGHT) == Fnaf4Lesson.Station.RIGHT
                 && Fnaf4Lesson.isHold(Fnaf4Lesson.Step.FB_CLOSET));
+        lesson.apply(new String[] {"cover", "40"}, 0);
+        lesson.apply(new String[] {"bedlit"}, 0, 20_000_000_000L);
+        check("cover and bed due", lesson.cover() == 40 && lesson.bedDueInMs(30_000_000_000L) == 25_000
+                && refuses(lesson, "cover", "140"));
+        lesson.apply(new String[] {"door", "R", "STEPS"}, 0);
+        check("footsteps are a door word", lesson.door(false) == Fnaf4Lesson.Door.STEPS
+                && Fnaf4Lesson.station(Fnaf4Lesson.Step.STEPS_LEFT) == Fnaf4Lesson.Station.LEFT
+                && Fnaf4Lesson.isHold(Fnaf4Lesson.Step.STEPS_RIGHT) && Fnaf4Lesson.DISMISS_MS == 3733);
         check("the 5 s roll", Fnaf4Lesson.untilNext(0, Fnaf4Lesson.ROLL_MS) == 5000
                 && Fnaf4Lesson.untilNext(4999, Fnaf4Lesson.ROLL_MS) == 1
                 && Fnaf4Lesson.phase(2500, Fnaf4Lesson.ROLL_MS) == 0.5);

@@ -122,8 +122,15 @@ public final class Fnaf4PanelView extends View {
         if (Fnaf4Lesson.isHold(step)) {
             long held = Math.max(0, lesson.stepMs(now));
             float done = Math.min(1f, held / (float) Fnaf4Lesson.DISMISS_MS);
-            track(canvas, x, 132, barW, "Held", done >= 1f ? INK_SAFE : INK_ALERT, done,
+            track(canvas, x, 132, barW, "Shut+tick", done >= 1f ? INK_SAFE : INK_ALERT, done,
                     done >= 1f ? "tick passed" : String.format(Locale.ROOT, "%.1f s", (Fnaf4Lesson.DISMISS_MS - held) / 1000f));
+        } else if (fred == Fnaf4Lesson.Fred.OFF) {
+            long due = lesson.bedDueInMs(now);
+            if (due != Long.MIN_VALUE) {
+                float left = Math.max(0f, Math.min(1f, due / (float) Fnaf4Lesson.BED_DUE_MS));
+                track(canvas, x, 132, barW, "Bed due", due < 5000 ? INK_ALERT : INK_FREDDY, 1f - left,
+                        due > 0 ? String.format(Locale.ROOT, "in %.0f s", due / 1000f) : "now");
+            }
         }
 
         if (fred != Fnaf4Lesson.Fred.OFF) heard(canvas, 1000, 14, fred, now);
@@ -177,7 +184,7 @@ public final class Fnaf4PanelView extends View {
 
     private static int doorInk(Fnaf4Lesson.Door door, int who) {
         switch (door) {
-            case BREATH: return INK_ALERT;
+            case BREATH: case STEPS: return INK_ALERT;
             case HALL: return who;
             case CLEAR: case SHUT: return INK_SAFE;
             default: return INK_TRACK;
@@ -262,8 +269,12 @@ public final class Fnaf4PanelView extends View {
         fill.setColor(INK_TEXT);
         canvas.drawRect(mx + Fnaf4Lesson.LEVEL_BREATH * scale - 1, my - 4, mx + Fnaf4Lesson.LEVEL_BREATH * scale + 2, my + mh + 4, fill);
         small.setColor(INK_DIM);
-        canvas.drawText(level < 0 ? "not at a door" : level >= Fnaf4Lesson.LEVEL_BREATH ? "breathing: hold"
-                : level >= Fnaf4Lesson.LEVEL_DOUBT ? "unsure: hold" : "quiet: light the hall", mx, my + mh + 22, small);
+        int cover = lesson.cover();
+        String caption = level < 0 ? "not at a door" : level >= Fnaf4Lesson.LEVEL_BREATH ? "breathing: hold"
+                : level >= Fnaf4Lesson.LEVEL_DOUBT ? "unsure: hold"
+                : cover >= 0 && cover < 100 ? String.format(Locale.ROOT, "quiet so far: waiting for a breath (%d%%)", cover)
+                : "quiet through a breath: light the hall";
+        canvas.drawText(caption, mx, my + mh + 22, small);
         Fnaf4Lesson.Door left = lesson.door(true);
         Fnaf4Lesson.Door right = lesson.door(false);
         body.setColor(INK_TEXT);
