@@ -1,0 +1,333 @@
+// Run packs: a live night's text evidence, committable, with its media named by hash.
+//
+// The Plan 12 gate reads a campaign directory, and campaign directories live under gitignored
+// artifacts/ on whichever machine played the night. So a win could only be promoted on that
+// machine, and only while its directory survived: by 2026-09-25 the ten k3 Night 7 cohort
+// campaigns and their videos were gone from the machine that played them, while the committed
+// cohort record still cited them. A campaign directory is four text files (~135 KB) beside ~85
+// observer PNGs (~87 MB), and the gate reads only the text.
+//
+// A pack is that text under docs/evidence/runs/<id>/, plus night-run.sh's derived facts for the
+// run. Every file it does not copy -- video, observer and death frames, raw logcat, the campaign
+// log -- is listed as withheld, by sha256 and size, so custody covers the whole run. Pixel payloads inside the text -- the executor logs the 20x9 grid
+// beside each mask read as `maskCells` -- are replaced by their hash. Machine paths become
+// repository-relative. The publishing boundary (derived facts yes; frames, recordings and game
+// audio never) is enforced by refusal: a pack that still holds a long numeric array, a long
+// hex or base64 run, or a NUL byte is not written, so a new pixel field fails loudly here and
+// is added to PIXEL_KEYS in the diff that decides it.
+//
+// Packing is deterministic -- no timestamps, sorted entries -- so re-packing an unchanged run is
+// a no-op and the pack's sha256 can carry a human's Plan 12 attestation.
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
+import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
+
+export const RUN_PACK_SCHEMA = 'run-pack-v1';
+export const ATTESTATION_SCHEMA = 'plan12-attestation-v1';
+export const ATTESTATION_FILE = 'plan12-attestation.json';
+export const PACKS_DIR = 'docs/evidence/runs';
+
+// What the campaign itself writes; the gate's manifestComplete needs the first three.
+const CAMPAIGN_TEXT = ['result.json', 'events.jsonl', 'request.json', 'observations.jsonl'];
+// night-run.sh's derived facts. campaign.log is left out on purpose: it echoes events.jsonl,
+// pixel arrays included.
+const RUN_TEXT = new RegExp('^(verdict\\.txt|post-run-title\\.txt|video\\.sha256|campaign\\.exit|teardown\\.txt|'
+  + 'cycle-ledger\\.txt|bt-audio-(link|start|stop)\\.txt|[\\w-]+\\.err|(run-report|phase|phase-native|cycle-ledger|prediction|timeline|tickphase|'
+  + 'audio-census|office-seed-bracket|teach-panel|bt-audio|run|probe|audit-live)(-attempt\\d+)?\\.json|'
+  + '(phase|grade)(-attempt\\d+)?\\.log)$');
+const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
+
+/** Keys whose value is pixels. `maskCells` is the 20x9 point grid (180 packed-RGB cells). */
+export const PIXEL_KEYS = new Set(['maskCells']);
+
+// Refusal thresholds. A sha256 is 64 hex characters and the longest legitimate numeric array
+// in a retained run is well under 64 entries; the 20x9 grid is 180.
+const NUMERIC_ARRAY = /\[\s*(?:-?\d+(?:\.\d+)?(?:e[+-]?\d+)?\s*,\s*){63,}-?\d/i;
+const HEX_RUN = /[0-9a-f]{128,}/i;
+const BASE64_RUN = /[A-Za-z0-9+/]{200,}={0,2}/;
+
+const sha256 = data => createHash('sha256').update(data).digest('hex');
+
+/**
+ * Throw unless `text` is free of pixel-shaped payloads.
+ * @param {string} name file name, for the message
+ * @param {string} text
+ */
+export function refuseFrames(name, text) {
+  if (text.includes('\0')) throw new Error(`${name}: binary content is never packed`);
+  if (NUMERIC_ARRAY.test(text))
+    throw new Error(`${name}: a numeric array of 64+ entries looks like pixels; redact its key (PIXEL_KEYS) or drop the file`);
+  if (HEX_RUN.test(text)) throw new Error(`${name}: a 128+ character hex run looks like encoded pixels`);
+  if (BASE64_RUN.test(text)) throw new Error(`${name}: a 200+ character base64 run looks like encoded media`);
+}
+
+/** Replace this machine's repository root and home directory with portable prefixes. */
+function scrubPaths(text, { root, home }) {
+  let paths = 0;
+  const swap = (from, to) => {
+    if (!from) return;
+    const parts = text.split(from);
+    paths += parts.length - 1;
+    text = parts.join(to);
+  };
+  // The root first: it usually sits under the home directory.
+  swap(`${root}/`, '');
+  swap(root, '.');
+  if (home) { swap(`${home}/`, '~/'); swap(home, '~'); }
+  return { text, paths };
+}
+
+function redact(value, counts) {
+  if (Array.isArray(value)) return value.map(item => redact(item, counts));
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => {
+    if (PIXEL_KEYS.has(key) && Array.isArray(item)) {
+      counts.pixelArrays += 1;
+      return [key, { redacted: 'pixels', cells: item.length, sha256: sha256(JSON.stringify(item)) }];
+    }
+    return [key, redact(item, counts)];
+  }));
+}
+
+/**
+ * One text file, made portable and frame-free.
+ * @param {string} name name inside the pack
+ * @param {Buffer} source original bytes
+ * @param {{root: string, home?: string, frames?: Map<string, {sha256: string, bytes: number}>}} context
+ */
+function packText(name, source, context) {
+  const scrubbed = scrubPaths(source.toString('utf8'), context);
+  const counts = { paths: scrubbed.paths, pixelArrays: 0, frameRefs: 0 };
+  let text = scrubbed.text;
+  const parse = (json, where) => {
+    try { return JSON.parse(json); } catch (error) { throw new Error(`${name}${where}: ${error.message}`); }
+  };
+  const rewrite = value => {
+    const before = counts.pixelArrays + counts.frameRefs;
+    const next = redact(value, counts);
+    if (context.frames && typeof next?.frame === 'string' && context.frames.has(next.frame)) {
+      next.frame = { file: next.frame, ...context.frames.get(next.frame) };
+      counts.frameRefs += 1;
+    }
+    return { next, changed: counts.pixelArrays + counts.frameRefs !== before };
+  };
+  if (name.endsWith('.jsonl')) {
+    text = text.split('\n').map((line, index) => {
+      if (!line.trim()) return line;
+      const { next, changed } = rewrite(parse(line, ` line ${index + 1}`));
+      return changed ? JSON.stringify(next) : line;
+    }).join('\n');
+  } else if (name.endsWith('.json')) {
+    const { next, changed } = rewrite(parse(text, ''));
+    if (changed) text = `${JSON.stringify(next, null, 2)}\n`;
+  }
+  refuseFrames(name, text);
+  return {
+    entry: { name, sha256: sha256(text), bytes: Buffer.byteLength(text),
+      source: { sha256: sha256(source), bytes: source.length }, redactions: counts },
+    text,
+  };
+}
+
+const withheldKind = name => IMAGE.test(name) ? 'frame' : /\.(mp4|mkv)$/i.test(name) ? 'video'
+  : /\.(raw|wav|pcm)$/i.test(name) ? 'audio' : /\.(pftrace|perfetto-trace)$/i.test(name) ? 'trace'
+  : /\.logcat$/i.test(name) ? 'log' : 'other';
+const withheldEntry = (name, file) => {
+  const data = readFileSync(file);
+  return { name, sha256: sha256(data), bytes: data.length, kind: withheldKind(name) };
+};
+
+/** @param {string} file */
+const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
+
+/**
+ * The run directory night-run.sh wrote for a campaign, and which attempt that campaign was.
+ * @param {string} root repository root
+ * @param {string} campaign campaign directory name
+ * @returns {{runDir: string, attempt: number} | null}
+ */
+export function findRunDir(root, campaign) {
+  const runs = join(root, 'artifacts', 'runs');
+  if (!existsSync(runs)) return null;
+  for (const label of readdirSync(runs).sort()) {
+    const verdict = join(runs, label, 'verdict.txt');
+    if (!existsSync(verdict)) continue;
+    const text = readFileSync(verdict, 'utf8');
+    const numbered = text.match(new RegExp(`^--- attempt (\\d+) of \\d+: \\S*/${campaign.replace(/\./g, '\\.')}\\s`, 'm'));
+    if (numbered) return { runDir: join(runs, label), attempt: Number(numbered[1]) };
+    if (new RegExp(`^campaign dir \\S*/${campaign.replace(/\./g, '\\.')}$`, 'm').test(text))
+      return { runDir: join(runs, label), attempt: 1 };
+  }
+  return null;
+}
+
+/**
+ * Every campaign directory a pack request names: a campaign directory itself, or a night-run
+ * label whose verdict lists one campaign per attempt.
+ * @param {string} root
+ * @param {string} id
+ * @returns {{campaignDir: string, runDir: string | null, packId: string}[]}
+ */
+export function resolvePackTargets(root, id) {
+  if (!/^[\w.-]+$/.test(id)) throw new Error('a safe RUN_ID is required');
+  const direct = join(root, 'artifacts', id);
+  if (existsSync(join(direct, 'result.json'))) {
+    const run = findRunDir(root, id);
+    const label = run ? basename(run.runDir) : null;
+    return [{ campaignDir: direct, runDir: run?.runDir ?? null,
+      packId: !label ? id : run.attempt > 1 ? `${label}-attempt${run.attempt}` : label }];
+  }
+  const runDir = join(root, 'artifacts', 'runs', id);
+  if (!existsSync(join(runDir, 'verdict.txt'))) throw new Error(`no campaign or night-run directory named ${id}`);
+  const text = readFileSync(join(runDir, 'verdict.txt'), 'utf8');
+  const named = [...text.matchAll(/^--- attempt (\d+) of \d+: (\S+)$/gm)].map(m => [Number(m[1]), m[2]]);
+  const first = text.match(/^campaign dir (\S+)$/m)?.[1];
+  const attempts = named.length ? named : first && first !== 'NONE' ? [[1, first]] : [];
+  if (!attempts.length) throw new Error(`${id} produced no campaign directory; there is nothing the gate could read`);
+  return attempts.map(([attempt, path]) => {
+    const campaignDir = join(root, 'artifacts', basename(path));
+    if (!existsSync(join(campaignDir, 'result.json')))
+      throw new Error(`${id}: campaign ${basename(path)} is not on this machine; pack it where it was played`);
+    return { campaignDir, runDir, packId: attempt > 1 ? `${id}-attempt${attempt}` : id };
+  });
+}
+
+/**
+ * Build a pack in memory. Nothing is written.
+ * @param {{root: string, home?: string, campaignDir: string, runDir?: string | null, packId: string}} options
+ */
+export function buildPack({ root, home = '', campaignDir, runDir = null, packId }) {
+  const wrapper = readJson(join(campaignDir, 'result.json'));
+  if (!isCampaignResult(wrapper)) throw new Error(`${basename(campaignDir)} is not a device campaign`);
+  const entry = campaignEntry(packId, wrapper);
+  const files = [];
+  const texts = new Map();
+  const withheld = [];
+  const frames = new Map();
+  const campaignNames = readdirSync(campaignDir).sort();
+  for (const name of campaignNames) {
+    const file = join(campaignDir, name);
+    if (CAMPAIGN_TEXT.includes(name) || !statSync(file).isFile()) continue;
+    const item = withheldEntry(name, file);
+    withheld.push(item);
+    if (item.kind === 'frame') frames.set(name, { sha256: item.sha256, bytes: item.bytes });
+  }
+  const context = { root, home, frames };
+  for (const name of CAMPAIGN_TEXT.filter(item => campaignNames.includes(item))) {
+    const { entry: fileEntry, text } = packText(name, readFileSync(join(campaignDir, name)), context);
+    files.push(fileEntry);
+    texts.set(name, text);
+  }
+  let bundle = null;
+  if (runDir) {
+    const walk = (dir, prefix) => {
+      for (const name of readdirSync(dir).sort()) {
+        const file = join(dir, name);
+        const inner = `${prefix}${name}`;
+        if (statSync(file).isDirectory()) walk(file, `${inner}/`);
+        else if (prefix === 'run/' && RUN_TEXT.test(name)) {
+          const { entry: fileEntry, text } = packText(inner, readFileSync(file), { root, home });
+          files.push(fileEntry);
+          texts.set(inner, text);
+        } else withheld.push(withheldEntry(inner, file));
+      }
+    };
+    walk(runDir, 'run/');
+    const video = existsSync(join(runDir, 'video.sha256'))
+      ? readFileSync(join(runDir, 'video.sha256'), 'utf8').match(/^([0-9a-f]{64})\s+(\S+)/m) : null;
+    if (video) {
+      const local = join(root, video[2]);
+      withheld.push({ name: basename(video[2]), sha256: video[1],
+        bytes: existsSync(local) ? statSync(local).size : null, kind: 'video' });
+    }
+    const bundlePath = existsSync(join(runDir, 'verdict.txt'))
+      ? readFileSync(join(runDir, 'verdict.txt'), 'utf8').match(/^bundle\s+(\S+)$/m)?.[1] : null;
+    if (bundlePath) {
+      const manifest = join(bundlePath.startsWith('/') ? '' : root, bundlePath, 'manifest.json');
+      bundle = { path: scrubPaths(bundlePath, { root, home }).text,
+        winnerHash: existsSync(manifest) ? readJson(manifest).winnerHash ?? null : null };
+    }
+  }
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  withheld.sort((a, b) => a.name.localeCompare(b.name));
+  const pack = {
+    schema: RUN_PACK_SCHEMA, version: 1, id: packId, campaign: basename(campaignDir),
+    run: runDir ? basename(runDir) : null, outcome: entry.outcome, claimLevel: entry.claimLevel,
+    nights: entry.nights, bundle, files, withheld, packer: 'tools/evidence-pack.mjs',
+  };
+  return { pack, texts };
+}
+
+/** The sha256 a Plan 12 attestation binds to. @param {object} pack */
+export const packDigest = pack => sha256(canonicalJson(pack));
+
+/**
+ * Write a built pack. An identical pack already on disk is left alone; a different one is
+ * refused unless `replace`, because evidence is not edited in place.
+ * @returns {'WRITTEN' | 'UNCHANGED' | 'REPLACED'}
+ */
+export function writePack(dir, { pack, texts }, { replace = false } = {}) {
+  const existing = join(dir, 'pack.json');
+  let status = 'WRITTEN';
+  if (existsSync(existing)) {
+    if (packDigest(readJson(existing)) === packDigest(pack)) return 'UNCHANGED';
+    if (!replace) throw new Error(`${dir} holds a different pack; pass --replace to supersede it`);
+    status = 'REPLACED';
+  }
+  for (const [name, text] of texts) {
+    mkdirSync(join(dir, name, '..'), { recursive: true });
+    writeFileSync(join(dir, name), text);
+  }
+  writeFileSync(existing, `${JSON.stringify(pack, null, 2)}\n`);
+  return status;
+}
+
+/**
+ * Read and verify a pack: every file must match its recorded sha256 and size and still be
+ * frame-free. The attestation, if a person has written one, is returned alongside.
+ * @param {string} dir
+ */
+export function readPack(dir) {
+  const pack = readJson(join(dir, 'pack.json'));
+  if (pack.schema !== RUN_PACK_SCHEMA || pack.version !== 1) throw new Error('not a run-pack-v1');
+  for (const file of pack.files) {
+    if (file.name.startsWith('/') || file.name.split('/').includes('..')) throw new Error(`unsafe pack path ${file.name}`);
+    const data = readFileSync(join(dir, file.name));
+    if (sha256(data) !== file.sha256 || data.length !== file.bytes) throw new Error(`pack integrity mismatch: ${file.name}`);
+    refuseFrames(file.name, data.toString('utf8'));
+  }
+  const wrapper = readJson(join(dir, 'result.json'));
+  if (!isCampaignResult(wrapper)) throw new Error('pack result.json is not a device campaign');
+  const attestationFile = join(dir, ATTESTATION_FILE);
+  return { pack, digest: packDigest(pack), wrapper, files: pack.files.map(file => file.name),
+    attestation: existsSync(attestationFile) ? readJson(attestationFile) : null };
+}
+
+/**
+ * Committed winners by stableHash, the identity bundle manifests record as `winnerHash`.
+ * @param {string} root
+ * @returns {Map<string, string>}
+ */
+export function trackedWinners(root) {
+  const dir = join(root, 'tools', 'device');
+  return new Map(readdirSync(dir).filter(name => name.endsWith('-winner.json'))
+    .map(name => [stableHash(readJson(join(dir, name))), name]));
+}
+
+/**
+ * The campaign gate's four checks for a pack, with the attestation read from the pack's own
+ * attestation file and bound to its digest, plus one more: the winner the bundle was compiled
+ * from is committed, so the night can be re-run from a clean checkout.
+ * @param {ReturnType<typeof readPack>} loaded
+ * @param {Map<string, string>} winners
+ */
+export function packPromotionChecks({ pack, digest, wrapper, files, attestation }, winners) {
+  return {
+    ...campaignPromotionChecks(wrapper, files),
+    plan12Attestation: attestation?.schema === ATTESTATION_SCHEMA && attestation.status === 'PASS'
+      && attestation.packSha256 === digest,
+    winnerCommitted: Boolean(pack.bundle?.winnerHash && winners.has(pack.bundle.winnerHash)),
+  };
+}

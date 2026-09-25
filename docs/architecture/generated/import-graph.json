@@ -2152,14 +2152,26 @@
       ]
     },
     {
+      "file": "tools/evidence-pack.mjs",
+      "imports": [
+        "./evidence-campaign.mjs",
+        "@fnaf2-1020/core/contracts",
+        "node:crypto",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
       "file": "tools/evidence.js",
       "imports": [
         "./device/bundle.mjs",
         "./evidence-campaign.mjs",
+        "./evidence-pack.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/research",
         "@fnaf2-1020/runtime",
         "node:fs/promises",
+        "node:os",
         "node:path",
         "node:url"
       ]
@@ -2714,6 +2726,19 @@
       "imports": [
         "./evidence-campaign.mjs",
         "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/test-evidence-pack.mjs",
+      "imports": [
+        "./evidence-campaign.mjs",
+        "./evidence-pack.mjs",
+        "@fnaf2-1020/core/contracts",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
       ]
     },
     {

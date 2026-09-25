@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/device/test-fnaf1-menu-probe.mjs && python3 tools/device/test-fnaf1-menus.py && node tools/device/test-fnaf1-night-run.mjs && python3 tools/device/test-fnaf1-door-light.py && python3 tools/cue/test-bt-audio-collector.py && python3 tools/device/test-fnaf1-teach-overlay.py && python3 tools/device/test-sensor.py && node tools/test-fnaf1-census.mjs && node tools/test-fnaf1-device-lane.mjs && node tools/device/test-native-regions.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle && node tools/test.mjs --gates",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/policyequivalencetest.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-control-anchor.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-anchor-aim-band.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/test-evidence-pack.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && python3 tools/dump/test-nightmap.py && node tools/test-night-models.mjs && node tools/device/test-fnaf1-menu-probe.mjs && python3 tools/device/test-fnaf1-menus.py && node tools/device/test-fnaf1-night-run.mjs && python3 tools/device/test-fnaf1-door-light.py && python3 tools/cue/test-bt-audio-collector.py && python3 tools/device/test-fnaf1-teach-overlay.py && python3 tools/device/test-sensor.py && node tools/test-fnaf1-census.mjs && node tools/test-fnaf1-device-lane.mjs && node tools/device/test-native-regions.mjs && node tools/test-fnaf3-census.mjs && node tools/test-fnaf4-census.mjs && npm run test:chronicle && node tools/test.mjs --gates",
       "lifecycle": "supported"
     },
     {
@@ -850,6 +850,18 @@
     {
       "id": "tools/test-evidence-campaign.mjs",
       "invocation": "tools/test-evidence-campaign.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/evidence-pack.mjs",
+      "invocation": "tools/evidence-pack.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-evidence-pack.mjs",
+      "invocation": "tools/test-evidence-pack.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },

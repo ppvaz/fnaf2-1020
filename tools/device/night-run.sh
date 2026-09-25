@@ -96,7 +96,7 @@ TRACE_TOOL="tools/device/atrace-input.sh"
 for path in "$BUNDLE/manifest.json" "$QUALIFICATION" "$TITLE_MODEL_PATH" \
             tools/device/phase-reconstruct.mjs tools/device/run-timeline.py \
             tools/device/title-observe.py tools/device/inputtrace.py \
-            "$TRACE_TOOL" apps/device/src/cli.js; do
+            "$TRACE_TOOL" apps/device/src/cli.js tools/evidence.js; do
   [ -e "$path" ] || die "missing required input: $path"
 done
 command -v adb >/dev/null || die "adb is not on PATH"
@@ -497,6 +497,17 @@ analyze() {
   else
     printf 'night-run: no retained video; every video instrument was skipped\n' >&2
     printf 'video        NONE RETAINED\n' >> "$OUTDIR/verdict.txt"
+  fi
+
+  # Custody that outlives artifacts/: the campaign's text evidence and this run's
+  # derived facts go to docs/evidence/runs/, and every recording and frame is
+  # named there by sha256 only (tools/evidence-pack.mjs). The Plan 12 gate reads
+  # that directory on any checkout; commit it. Its log goes to captures/, not to
+  # $OUTDIR, because a file written into the run directory while it is packed
+  # would change the pack. A later regrade that adds files needs --replace.
+  if [ "${#ATTEMPT_DIRS[@]}" -gt 0 ]; then
+    say "evidence pack"
+    node tools/evidence.js pack "$RUNID" 2>&1 | tee "captures/$RUNID-pack.log" || true
   fi
 
   say "verdict"

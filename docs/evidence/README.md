@@ -56,6 +56,40 @@ binds all ten Custom Night dial controls to measured readback boxes. A local
 executor completing its schedule is therefore still `UNVERIFIED` until the
 terminal and save ports provide positive observations.
 
+**Run packs: custody without frames.** A campaign directory lives under gitignored `artifacts/` on the machine that
+played the night, and is ~135 KB of text beside ~85 MB of observer frames. The
+gate reads only the text, so the text is what the repository keeps:
+
+```sh
+npm run evidence -- pack night6-n6h2-01-20260920T024030Z   # a night-run label or a campaign id
+npm run evidence -- promote night6-n6h2-01-20260920T024030Z
+```
+
+`pack` writes `docs/evidence/runs/<run>/`: the campaign's `result.json`,
+`events.jsonl`, `request.json` and `observations.jsonl`, and under `run/` the
+derived facts `night-run.sh` kept (verdict, run report, phase, grade log,
+anchor notes). `pack.json` records each file's sha256 and size, the original's
+sha256, and what was redacted; the executor's 20x9 `maskCells` grid becomes
+`{cells, sha256}` and machine paths become repository-relative. Every file it
+does not copy — the video, observer and death frames, raw logcat,
+`campaign.log` — is listed under `withheld` by sha256 and size, so the media
+can be matched later wherever it is kept. The packer refuses a long numeric
+array, a long hex or base64 run, or a NUL byte instead of publishing it.
+`night-run.sh` packs every campaign it ran; commit the directory it names.
+
+`list`, `show` and `promote` read packs on any checkout. For a pack, `promote`
+adds a fifth check, `winnerCommitted`: the bundle's `winnerHash` must match a
+committed `tools/device/*-winner.json`, or the night cannot be re-run from the
+tree. The attestation is a person's file beside the pack,
+`plan12-attestation.json`:
+
+```json
+{ "schema": "plan12-attestation-v1", "status": "PASS", "packSha256": "<from promote>", "attestedBy": "...", "at": "..." }
+```
+
+It binds one exact pack: re-packing a run that changed, or editing any packed
+file, changes the sha256 and voids it. Agents never write it.
+
 The architecture generator also emits
 `docs/architecture/generated/reverse-links.json`. It is a navigational index
 from stable IDs to source, test, fixture, and evidence references; it does not

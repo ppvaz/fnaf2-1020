@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Inspect retained session/result bundles without re-entering measurements. */
 import { readdir, readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalJson, stableHash, validateArtifactRef } from '@fnaf2-1020/core/contracts';
@@ -8,12 +9,16 @@ import { validateManifest } from '@fnaf2-1020/runtime';
 import { replayModelResult } from '@fnaf2-1020/research';
 import { BUNDLE_SCHEMA, validateBundle } from './device/bundle.mjs';
 import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
+import { PACKS_DIR, resolvePackTargets, buildPack, writePack, readPack, packPromotionChecks,
+  trackedWinners } from './evidence-pack.mjs';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const ARTIFACTS = join(ROOT, 'artifacts');
+const PACKS = join(ROOT, PACKS_DIR);
 const SESSION_RESULT_SCHEMAS = new Set(['device-run-result-v1', 'experiment-result-v1']);
 const CLAIM_LEVELS = new Set(['MODEL_ONLY', 'FIXTURE', 'DEVICE_MEASURED']);
-const help = () => console.log('Usage: npm run evidence -- <list|show|diff|replay|why|promote> [RUN_ID]');
+const help = () => console.log('Usage: npm run evidence -- <list|show|diff|replay|why|promote> [RUN_ID]\n'
+  + '       npm run evidence -- pack <CAMPAIGN_ID|NIGHT_RUN_LABEL> [--replace]');
 
 async function readVerifiedArtifact(base, ref) {
   const artifact = validateArtifactRef(ref);
@@ -81,13 +86,25 @@ async function loadCampaign(run) {
   return { kind: 'device-campaign', entry: campaignEntry(run, wrapper), wrapper, files: await readdir(base) };
 }
 
+// A committed run pack (tools/evidence-pack.mjs): the same campaign facts, verified against
+// the pack's own hashes, readable on any checkout.
+function loadPack(run) {
+  if (!run || !/^[\w.-]+$/.test(run)) throw new Error('a safe RUN_ID is required');
+  const packed = readPack(join(PACKS, run));
+  return { kind: 'device-campaign', entry: campaignEntry(run, packed.wrapper), wrapper: packed.wrapper,
+    files: packed.files, packed };
+}
+
 async function loadAny(run) {
   try { return { ...(await load(run)), kind: 'session' }; }
   catch (sessionError) {
     try { return await loadDeviceBundle(run); }
     catch {
       try { return await loadCampaign(run); }
-      catch { throw sessionError; }
+      catch {
+        try { return loadPack(run); }
+        catch { throw sessionError; }
+      }
     }
   }
 }
@@ -146,7 +163,35 @@ async function list() {
       runs.push({ id: entry.name, kind: 'unindexed', outcome: 'UNRECOGNIZED_ARTIFACT' });
     }
   }
+  let packs = [];
+  try { packs = await readdir(PACKS, { withFileTypes: true }); } catch { /* no packs committed yet */ }
+  for (const pack of packs.filter(item => item.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+    try {
+      const { packed, entry } = loadPack(pack.name);
+      runs.push({ ...entry, source: 'pack', campaign: packed.pack.campaign, packSha256: packed.digest });
+    } catch (error) {
+      runs.push({ id: pack.name, kind: 'run-pack', outcome: 'INVALID_PACK', reason: error.message });
+    }
+  }
   console.log(JSON.stringify({ schema: 'evidence-index-v1', runs }, null, 2));
+}
+
+// Build a frame-free run pack for every campaign the id names and write it under PACKS_DIR.
+function pack(id, replace) {
+  const results = resolvePackTargets(ROOT, id).map(target => {
+    const built = buildPack({ root: ROOT, home: homedir(), ...target });
+    const status = writePack(join(PACKS, target.packId), built, { replace });
+    const { pack: made } = built;
+    const redactions = made.files.reduce((sum, file) => ({
+      paths: sum.paths + file.redactions.paths, pixelArrays: sum.pixelArrays + file.redactions.pixelArrays,
+      frameRefs: sum.frameRefs + file.redactions.frameRefs }), { paths: 0, pixelArrays: 0, frameRefs: 0 });
+    return { id: made.id, status, dir: `${PACKS_DIR}/${made.id}`, outcome: made.outcome, claimLevel: made.claimLevel,
+      nights: made.nights, files: made.files.length, bytes: made.files.reduce((sum, file) => sum + file.bytes, 0),
+      withheld: made.withheld.length, withheldBytes: made.withheld.reduce((sum, item) => sum + (item.bytes ?? 0), 0),
+      redactions, winnerHash: made.bundle?.winnerHash ?? null,
+      winnerCommitted: Boolean(made.bundle?.winnerHash && trackedWinners(ROOT).has(made.bundle.winnerHash)) };
+  });
+  console.log(JSON.stringify({ schema: 'run-pack-result-v1', packs: results }, null, 2));
 }
 
 const stable = value => canonicalJson(value);
@@ -154,6 +199,7 @@ const stable = value => canonicalJson(value);
 async function main([operation = 'help', first, second]) {
   if (operation === 'help' || operation === '--help') return help();
   if (operation === 'list') return list();
+  if (operation === 'pack') return pack(first, second === '--replace');
   if (operation === 'show') {
     const loaded = await loadAny(first);
     if (loaded.kind === 'device-campaign')
@@ -191,14 +237,19 @@ async function main([operation = 'help', first, second]) {
   if (operation === 'promote') {
     const loaded = await loadAny(first);
     if (loaded.kind === 'device-campaign') {
-      const checks = campaignPromotionChecks(loaded.wrapper, loaded.files);
+      const checks = loaded.packed
+        ? packPromotionChecks(loaded.packed, trackedWinners(ROOT))
+        : campaignPromotionChecks(loaded.wrapper, loaded.files);
       const accepted = Object.values(checks).every(Boolean);
       return console.log(JSON.stringify({
         schema: 'plan12-promotion-gate-v1', evidenceId: first, kind: 'device-campaign',
+        source: loaded.packed ? 'pack' : 'artifacts', ...(loaded.packed ? { packSha256: loaded.packed.digest } : {}),
         nights: loaded.entry.nights, outcome: loaded.entry.outcome,
         authority: 'plans/12-end-to-end-evidence-campaign.md', accepted, checks,
         status: accepted ? 'READY_FOR_REVIEW' : 'REFUSED',
-        reason: accepted ? null : 'Plan 12 requires external evidence, a passing terminal result, and an explicit gate attestation',
+        reason: accepted ? null : loaded.packed
+          ? `Plan 12 requires a passing terminal, a committed winner, and a person's attestation bound to pack sha256 ${loaded.packed.digest}`
+          : 'Plan 12 requires external evidence, a passing terminal result, and an explicit gate attestation',
       }, null, 2));
     }
     if (loaded.kind === 'device-bundle') {
