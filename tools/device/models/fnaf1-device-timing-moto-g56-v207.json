@@ -1,0 +1,67 @@
+{
+  "schema": "fnaf1-device-timing-v1",
+  "id": "fnaf1-device-timing-moto-g56-v207",
+  "claimLevel": "MIXED: each value carries its own claim; the lane built on it is MODEL_ONLY",
+  "target": {
+    "package": "com.scottgames.fivenightsatfreddys",
+    "build": "2.0.7+40",
+    "device": "ZF525F5BH5"
+  },
+  "values": {
+    "contactMs": {
+      "value": 160,
+      "claim": "DEVICE_MEASURED",
+      "source": "controls-fnaf1-moto-g56-v207.json contactRule; fnaf1-night1-community-loop-a-20260922T043341216Z input.requested->released 160-163 ms over 85 presses"
+    },
+    "pressLatencyMs": {
+      "min": 8,
+      "mode": 27,
+      "max": 52,
+      "claim": "DEVICE_MEASURED",
+      "appliesTo": "controls that act on touch-down: the monitor tab (g270/g271), the camera map",
+      "source": "artifacts/runs/fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z: monitor-down press start -> first native frame whose cam_label region changed, n=10: 8.1-51.7 ms, median ~27. Image time, so it includes the game's input and composition latency."
+    },
+    "panHoldMs": {
+      "value": 310,
+      "claim": "DEVICE_MEASURED floor + named margin",
+      "source": "plans/26: 270 ms saturates 5/5 (260 ms 4/5); 310 ms is the route's hold, 40 ms over the floor"
+    },
+    "renderLagMs": {
+      "min": 17,
+      "mode": 33,
+      "max": 106,
+      "claim": "DEVICE_MEASURED on the FNaF 1 title, not yet in-night",
+      "source": "native-regions.mjs latency, 200 REGION reads of the 7713-sample night set on the FNaF 1 title (2026-09-24): frame age at the helper's reply p50 41.9 / p95 82.1 / max 111.3 ms; minus half the round trip it is the lag of the frame a read returns behind the moment it was asked, ~33 / 73 / 106 ms. The floor is one 60 Hz frame. Re-measure in-night."
+    },
+    "readMs": {
+      "min": 8,
+      "mode": 18,
+      "max": 48,
+      "claim": "DEVICE_MEASURED",
+      "source": "Same run: host round trip over one adb forward, p50 18.1 / p95 28.1 / max 47.9 ms for a full-set REGION read (~46 KiB line)."
+    },
+    "epochErrorMs": {
+      "max": 50,
+      "claim": "ESTIMATE from one night",
+      "source": "Onset detection at one ~33 ms capture frame plus the one-night origin offset; the lane is also swept at 100 and 200 ms."
+    },
+    "releaseLandingMs": {
+      "min": 166,
+      "mode": 228,
+      "max": 247,
+      "claim": "DEVICE_MEASURED",
+      "appliesTo": "controls that act on touch-up: both lights and both doors (the Multiple Touch release rules, g176-g228)",
+      "source": "artifacts/runs/fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z: light-on press start -> first frame whose doorway region changed, n=10 (5 per side, door open): 165.7-246.9 ms, median ~228. With the 160 ms contact that is release + 6..87 ms."
+    },
+    "nightOriginMs": {
+      "offsetFromOfficeOnset": -97,
+      "claim": "DEVICE_MEASURED (n=1)",
+      "source": "artifacts/runs/fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z: the hour text read 1 AM 89.92 s after the first office frame; the clock rule puts 1 AM 90.017 s after the origin (90 x 1000 ms plus the first-reach load), so the origin is ~97 ms before the first office frame on the helper's image clock. One night: re-anchor on the observed 1 AM in every run."
+    }
+  },
+  "sources": [
+    "tools/device/models/controls-fnaf1-moto-g56-v207.json",
+    "plans/26-second-target-fnaf-1-3-4.md",
+    "docs/device/ONE-PIXEL-VISION.md"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "schema": "evidence-record-v1",
+  "id": "fnaf1-420-first-6am-20260925",
+  "claimLevel": "DEVICE_MEASURED",
+  "date": "2026-09-25",
+  "target": {
+    "game": "FNaF 1",
+    "package": "com.scottgames.fivenightsatfreddys",
+    "build": "2.0.7+40",
+    "device": "moto g56 5G / ZF525F5BH5",
+    "profile": "HID contacts; Cue Helper MediaProjection native frames (REGION, SNAP); no screencap anywhere in the three runs"
+  },
+  "question": "Can the phone clear FNaF 1's hardest mode, Custom Night 20/20/20/20 (4/20), with a route priced at this handset's measured timings?",
+  "answer": "Yes, once: the first 4/20 attempt reached 6 AM and the title gained its third star.",
+  "runs": {
+    "calibration": {
+      "run": "fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z",
+      "dials": "0/0/0/0",
+      "what": "Open-loop choreography of every route control (both lights with each door open and shut, both doors, the monitor, CAM 4B, both pans) while every native-region frame was recorded on the host clock. Nothing moves before the 2 AM row, so no input could be unsafe.",
+      "measured": {
+        "officeAfterReadyMs": 5822,
+        "oneAmAfterFirstOfficeFrameMs": 89920,
+        "nightOriginFromFirstOfficeFrameMs": -97,
+        "originNote": "The clock puts 1 AM 90 x 1000 ms plus the 17 ms first-reach load after the origin; the hour text read 1 AM 89.92 s after the first office frame, so the origin is ~97 ms before that frame on the helper's image clock. One night.",
+        "touchDownLatencyMs": { "control": "monitor down", "n": 10, "min": 8.1, "median": 27, "max": 51.7, "meaning": "press start to the first native frame whose region changed (image time)" },
+        "touchUpLatencyMs": { "control": "door lights (door open)", "n": 10, "min": 165.7, "median": 228, "max": 246.9, "meaning": "lights and doors act on touch-UP: the 160 ms contact plus 6-87 ms" },
+        "regionReadMs": { "rttP50": 18.1, "rttP95": 28.1, "rttMax": 47.9, "frameAgeAtReplyP50": 41.9, "frameAgeAtReplyP95": 82.1, "frameAgeAtReplyMax": 111.3, "n": 200, "where": "FNaF 1 title, full 7713-sample night set, one adb forward" },
+        "staticRoom": "Consecutive native frames of a still office are pixel-identical (frame-to-frame p50 0 in every region), so a region is compared with the template of the state the room is in.",
+        "flicker": "The door lights flicker: 10 of 61 lit left-doorway frames of the EMPTY room rendered as the unlit room."
+      }
+    },
+    "positiveControl": {
+      "run": "fnaf1-custom-grid420-posctl1-20260925T024010402Z",
+      "dials": "0/20/20/0",
+      "stoppedAtMs": 150000,
+      "result": "Alive at the stop. Bonnie was read at the door four times (30.3, 65.3, 95.7, 130.3 s: about 450 ms after his roll each time) and Chica three times, and each door was shut and reopened around the right roll.",
+      "detector": "occupied read 8.93 (left) and 7.31 (right) from the lit empty template; the empty lit scene read <= 2.71; threshold 4",
+      "defectFound": "A flickering lit frame with Bonnie at the door matched the UNLIT empty room (2.71) and read 'clear'. Fixed before the 4/20 run: only the LIT empty template is 'clear'; a frame matching the unlit room is 'flicker', which no rule acts on."
+    },
+    "fourTwenty": {
+      "run": "fnaf1-custom-grid420-420-a-20260925T024452598Z",
+      "dials": "20/20/20/20",
+      "officeAfterReadyMs": 5671,
+      "inputs": 839,
+      "regionFrames": 12528,
+      "ended": "STOP_AFTER at 538.0 s of night time (the route's bound), not LEFT_OFFICE",
+      "terminal": "SNAP frames after the night read the hour text rolling '5 AM' -> '6 AM'; the title read after the title-gated restart showed three stars where it had shown two",
+      "route": {
+        "flicks": 107,
+        "leftChecks": 64,
+        "rightChecks": 91,
+        "leftDoorPresses": 56,
+        "rightDoorPresses": 24,
+        "monitorPresses": 418,
+        "panHolds": 206
+      },
+      "detector": "occupied min 5.54, clear max 1.72 against threshold 4 (Freddy and Chica on CAM 4B narrowed the occupied side from 7.31 to 5.54)",
+      "foxy": "Never looked at. A CAM 4B flick ending ~300 ms before each of his 5010 ms rolls re-sets his hold to >= 50 frames (833 ms) [g460], so every roll fails [g321] and he never leaves the cove; the same raised view keeps Freddy out of the office [g556: viewing <> 42]."
+    }
+  },
+  "findings": [
+    "The sourced night is the one the phone runs: the hour lasts 90 s (1 AM at 89.92 s after the first office frame), not the 60 s a background-contaminated read first suggested.",
+    "FNaF 1's lights and doors act on touch-up and its monitor on touch-down, so the 160 ms contact is paid in full on every light and door press. The device lane now models both (releaseLandingMs 166-247, pressLatencyMs 8-52).",
+    "The game vibrated 20 times during the 4/20 night, each within ~0.12 s of a light press on the phone's clock (host and phone clocks were not aligned). Candidate reading: FNaF 1 vibrates when the light reveals someone at a door -- a vision-independent occupancy sensor. UNKNOWN(not-tested): not correlated against the detector's per-press verdicts yet."
+  ],
+  "notMeasured": [
+    "Reliability: one 4/20 night is one night, not a cohort.",
+    "The night origin offset (-97 ms) is from one calibration night; the route does not yet re-anchor on the observed 1 AM.",
+    "Power at 6 AM on the phone: no power reader exists; the model's prediction for this route is min 24 / median 71 units (typical lane).",
+    "Whether a contact shorter than 160 ms is taken by FNaF 1's touch-up rules."
+  ],
+  "frames": {
+    "retained": [
+      "~/fnaf-apks/fnaf1-device-runs/fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z",
+      "~/fnaf-apks/fnaf1-device-runs/fnaf1-custom-grid420-posctl1-20260925T024010402Z",
+      "~/fnaf-apks/fnaf1-device-runs/fnaf1-custom-grid420-420-a-20260925T024452598Z"
+    ],
+    "runRecords": "artifacts/runs/<run>/ (probe.json, events.jsonl), gitignored",
+    "tracked": false,
+    "note": "Game frames and region pixels are never committed (docs/evidence/README.md publishing boundary). This record is the derived reading; the winner binding is tools/device/fnaf1-custom-night7-420-grid420-winner.json."
+  },
+  "rung": "A DEVICE_MEASURED 6 AM for FNaF 1 4/20 on its own terminal. No Plan 12 promotion edge is recorded, and the evidence CLI does not read FNaF 1 run records yet.",
+  "plan": "plans/26-second-target-fnaf-1-3-4.md"
+}

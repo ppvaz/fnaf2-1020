@@ -30,6 +30,28 @@ export const MS_PER_FRAME = 1000 / FPS;
 // open left door at AV0 = 0, g344 turns Bonnie back at AV0 = 2].
 export const DOOR_OPEN = 0;
 export const DOOR_SHUT = 2;
+// The two animation states a pressed door passes through [SOURCED: g168 sets
+// 1 and plays `User defined 1`, g160 sets 2 when it finishes; g190 sets 4 and
+// plays `User defined 3`, g161 sets 0 when it finishes]. Neither the kill
+// (g343, AV0 = 0) nor the turn-back (g344, AV0 = 2) matches 1 or 4, so a
+// character at a moving door neither dies nor leaves -- he waits.
+export const DOOR_CLOSING = 1;
+export const DOOR_OPENING = 4;
+
+// Frame counts of the input rules, at the app's 60 Hz.
+export const INPUT = {
+  // g168-g228 set `click cooldown` to 10 on every door and light press, and
+  // every one of those presses requires it at 0; g166 takes 1 per frame.
+  clickCooldownFrames: 10,
+  // Both door animations are 16 frames at speed 50 [animation bank, objects
+  // 60/61]: 16 * 100 / (50 * 60) s = 0.533 s = 32 frames.
+  doorAnimFrames: 32,
+  // g846/g848 add 1 per frame to the flip animation's AV0, and g5/g6 fire at
+  // >= 22.9 -- so the 23rd frame after the press. The drawn animation is
+  // 11 frames at speed 50 (0.367 s); the counter, not the drawing, gates.
+  monitorFlipFrames: 23,
+  source: 'g5,g6,g33,g160,g161,g166,g168,g190,g213-g228,g270,g271,g290,g291,g357,g453,g846,g848',
+};
 
 // Bonnie's graph [SOURCED: g331-g344], keyed by where he is and his branch
 // alterable 0, which g329 redraws as `Random(2) + 1` every 1000 ms.
@@ -125,6 +147,21 @@ export class Fnaf1Sim {
     this.leftLight = 0;
     this.rightLight = 0;
 
+    // Input-rule state, touched only through `press` and `selectCamera`. A
+    // policy that writes the fields above directly bypasses all of it -- that
+    // is the idealised lane, which prices no animation and no cooldown.
+    this.clickCooldown = 0;   // g166
+    this.leftDoorAnim = 0;    // frames into a door animation
+    this.rightDoorAnim = 0;
+    this.flip = null;         // null | { dir: 'up' | 'down', frames }
+    // `last clicked` is what a raised monitor shows [g5 -> g33]. Its frame
+    // default is not in the dump text: UNKNOWN(counter-default). A route
+    // selects its camera explicitly, so nothing here depends on the guess.
+    this.lastClicked = 1;
+    this.lightsResetPending = false;
+    this.pendingView = 0;
+    this.inputLog = null;     // set to [] to record accepted/refused presses
+
     this.timers = {
       bonnie: new Every(ROLLS.bonnie.everyMs),
       chica: new Every(ROLLS.chica.everyMs),
@@ -151,12 +188,106 @@ export class Fnaf1Sim {
   }
 
   get usage() {
-    // g313: 1 + camera + both doors + both lights.
+    // g313: 1 + camera + both doors + both lights. A door's slot is set on
+    // reaching 2 and cleared on reaching 0 (g305-g308, NotAlways), so it
+    // costs while shut and while opening, and not while closing.
+    const doorCost = (door) => (door === DOOR_SHUT || door === DOOR_OPENING ? 1 : 0);
     return POWER.usageBase
       + (this.viewing > 0 ? 1 : 0)
-      + (this.leftDoor === DOOR_SHUT ? 1 : 0)
-      + (this.rightDoor === DOOR_SHUT ? 1 : 0)
+      + doorCost(this.leftDoor)
+      + doorCost(this.rightDoor)
       + this.leftLight + this.rightLight;
+  }
+
+  /**
+   * A touch on one control, applied the frame it lands, under the event
+   * sheet's own acceptance rules. Returns whether the game took it; a refused
+   * press does nothing at all, which is what the phone shows too.
+   *
+   * @param {'leftLight'|'rightLight'|'leftDoor'|'rightDoor'|'monitor'} control
+   */
+  press(control) {
+    const accepted = this.acceptPress(control);
+    this.inputLog?.push({ frame: this.frame, control, accepted });
+    return accepted;
+  }
+
+  acceptPress(control) {
+    if (this.over || this.blackout) return false;          // `power down = 0` on every rule
+    if (control === 'monitor') {
+      if (this.flip) return false;                          // g270/g271: `flip it = 0`
+      if (this.viewing === 0) {
+        if (this.foxProgress === 5) return false;           // g270
+        this.flip = { dir: 'up', frames: 0 };
+        return true;
+      }
+      this.putDown();                                       // g271 -> g453
+      return true;
+    }
+    // Every door and light rule needs the monitor down and the cooldown out.
+    if (this.viewing !== 0 || this.clickCooldown > 0) return false;
+    if (control === 'leftLight' || control === 'rightLight') {
+      if (this.foxProgress === 5) return false;             // g221/g227
+      const left = control === 'leftLight';
+      // g213/g215: add 1 (g236/g237 wrap 2 to 0) and put the other one out.
+      if (left) { this.leftLight = this.leftLight ? 0 : 1; this.rightLight = 0; }
+      else { this.rightLight = this.rightLight ? 0 : 1; this.leftLight = 0; }
+      this.clickCooldown = INPUT.clickCooldownFrames;
+      return true;
+    }
+    if (control === 'leftDoor' || control === 'rightDoor') {
+      if (this.foxProgress === 5) return false;             // charChica AV14 guards every door rule
+      const key = control;
+      const animKey = control === 'leftDoor' ? 'leftDoorAnim' : 'rightDoorAnim';
+      if (this[key] === DOOR_OPEN) this[key] = DOOR_CLOSING;       // g168/g188
+      else if (this[key] === DOOR_SHUT) this[key] = DOOR_OPENING;  // g190/g205
+      else return false;                                   // mid-animation: no rule matches
+      this[animKey] = 0;
+      this.clickCooldown = INPUT.clickCooldownFrames;
+      return true;
+    }
+    throw new Error(`unknown FNaF 1 control ${control}`);
+  }
+
+  /** A camera-map tap: only a raised monitor has a map [g290/g291, g299/g300]. */
+  selectCamera(view) {
+    if (this.over || this.blackout || this.viewing === 0) return false;
+    this.lastClicked = view;
+    this.pendingView = view;                                // `set viewing to`, read by g33 next frame
+    return true;
+  }
+
+  /** g453: the monitor goes down now, and its animation locks the flip. */
+  putDown() {
+    this.viewing = 0;
+    this.pendingView = 0;
+    this.flip = { dir: 'down', frames: 0 };
+    this.lightsResetPending = true;                         // g357, NotAlways on viewing = 0
+  }
+
+  /** The input rules' own clocks: cooldown, door animations, the flip. */
+  stepInputs() {
+    if (this.lightsResetPending) {
+      this.lightsResetPending = false;
+      if (this.viewing === 0) { this.leftLight = 0; this.rightLight = 0; }
+    }
+    if (this.pendingView) { this.viewing = this.pendingView; this.pendingView = 0; }   // g33
+    if (this.flip) {
+      if (this.flip.frames >= INPUT.monitorFlipFrames) {                              // g5/g6
+        if (this.flip.dir === 'up') this.viewing = this.lastClicked;
+        this.flip = null;
+      } else {
+        this.flip.frames += 1;                                                        // g846/g848
+      }
+    }
+    for (const [door, anim] of [['leftDoor', 'leftDoorAnim'], ['rightDoor', 'rightDoorAnim']]) {
+      if (this[door] !== DOOR_CLOSING && this[door] !== DOOR_OPENING) continue;
+      this[anim] += 1;
+      if (this[anim] >= INPUT.doorAnimFrames) {                                       // g160/g161
+        this[door] = this[door] === DOOR_CLOSING ? DOOR_SHUT : DOOR_OPEN;
+        this[anim] = 0;
+      }
+    }
   }
 
   /** True while a character stands at the door, which is what a light shows. */
@@ -177,6 +308,10 @@ export class Fnaf1Sim {
     if (this.over) return this.over;
     this.frame += 1;
     const ms = MS_PER_FRAME;
+
+    // g5/g6, g33 and the animation-finished rules all sit ahead of the rolls.
+    this.stepInputs();
+    if (this.clickCooldown > 0) this.clickCooldown -= 1;                          // g166
 
     // --- g318/g319: Bonnie and Chica roll for a move.
     if (this.timers.bonnie.tick(ms) && this.roll(ROLLS.bonnie.bound, this.levels.bonnie)) {
@@ -216,7 +351,8 @@ export class Fnaf1Sim {
       this.moveWho = 0;
       if (this.bonnie === 'door') {
         if (this.leftDoor === DOOR_OPEN) this.die('bonnie');     // g343
-        else this.bonnie = 'cam1B';                              // g344
+        else if (this.leftDoor === DOOR_SHUT) this.bonnie = 'cam1B';   // g344
+        // A moving door matches neither rule: he stays at it.
       } else {
         const next = BONNIE[this.bonnie]?.[this.branch.bonnie];
         if (next) this.bonnie = next;
@@ -228,7 +364,7 @@ export class Fnaf1Sim {
       this.moveWho = 0;
       if (this.chica === 'door') {
         if (this.rightDoor === DOOR_OPEN) this.die('chica');     // g375
-        else this.chica = 'cam4A';                               // g376
+        else if (this.rightDoor === DOOR_SHUT) this.chica = 'cam4A';   // g376
       } else {
         const next = CHICA[this.chica]?.[this.branch.chica];
         if (next) this.chica = next;
@@ -264,9 +400,9 @@ export class Fnaf1Sim {
     } else { this.foxStage4 = 0; }
     if (this.foxProgress === 5) {
       // g452: the run forces the monitor down before it resolves.
-      this.viewing = 0;
+      if (this.viewing > 0 || this.pendingView) this.putDown();
       if (this.leftDoor === DOOR_OPEN) this.die('foxy');                        // g454
-      else {
+      else if (this.leftDoor === DOOR_SHUT) {
         // g455: blocked. He resets to Random(2) -- 0 or 1 -- and the block
         // costs 10 + 50 per previous bang.
         this.foxProgress = this.rng.int(0, 1);
@@ -324,6 +460,7 @@ export class Fnaf1Sim {
       // like a second safe park, which it is not.
       if (this.viewing === 0 || this.viewing === 42) return;
       if (this.rightDoor === DOOR_OPEN) { this.die('freddy'); return; }         // g556
+      if (this.rightDoor !== DOOR_SHUT) return;                                 // g557 needs AV0 = 2
       if (this.viewing === 4) return;                                           // g557 excludes 4
       this.freddyIndex = FREDDY_PATH.indexOf('cam4A');                          // g557
       this.freddyState = 0;

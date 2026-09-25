@@ -11,7 +11,8 @@
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
 import { connect } from 'node:net';
-import { parseCueResponse } from '@fnaf2-1020/adapters/transports/cue-helper';
+import { writeFileSync } from 'node:fs';
+import { parseCueResponse, parseRegionRead, regionSetLine, REGION_LIMITS } from '@fnaf2-1020/adapters/transports/cue-helper';
 const HELPER_PACKAGE = 'com.ppvaz.fnafcompanion';
 const READY_DEVICE = 'FNAF Timed Touch';
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -34,8 +35,8 @@ export function parseCueHelperEndpoint(text) {
 }
 
 /** @param {string} adb @param {string[]} args @param {{timeout?: number, input?: string, encoding?: any}} options */
-function runSync(adb, args, { timeout = 5000, input, encoding = 'utf8' } = {}) {
-  const output = execFileSync(adb, args, { encoding, input, timeout, maxBuffer: 1024 * 1024 });
+function runSync(adb, args, { timeout = 5000, input, encoding = 'utf8', maxBuffer = 1024 * 1024 } = {}) {
+  const output = execFileSync(adb, args, { encoding, input, timeout, maxBuffer });
   return encoding === null ? output : output.replace(/\r/g, '');
 }
 
@@ -100,7 +101,7 @@ function timedExchange(hostPort, line, timeoutMs) {
  * @param {number} hostPort @param {string} line @param {number} timeoutMs
  * @returns {Promise<string>}
  */
-function lineExchange(hostPort, line, timeoutMs) {
+function lineExchange(hostPort, line, timeoutMs, maxChars = 4096) {
   return new Promise((resolvePromise, rejectPromise) => {
     const socket = connect({ host: '127.0.0.1', port: hostPort });
     let text = '';
@@ -121,7 +122,7 @@ function lineExchange(hostPort, line, timeoutMs) {
       text += chunk.toString('utf8');
       const newline = text.indexOf('\n');
       if (newline >= 0) settle(null, text.slice(0, newline).trim());
-      else if (text.length > 4096) settle(new Error('cue-helper reply is oversized'));
+      else if (text.length > maxChars) settle(new Error('cue-helper reply is oversized'));
     });
     socket.on('error', error => settle(error));
     socket.on('end', () => settle(text ? null : new Error('cue-helper closed the exchange without a reply'), text.trim()));
@@ -229,6 +230,79 @@ export class AdbCueHelperPort {
         try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
       },
     };
+  }
+
+  /**
+   * The native-region channel: one forward, REGION lines only. `set` registers
+   * a rectangle of native display pixels, `read` returns every registered
+   * region's raw pixels from the newest copied frame with that frame's image
+   * time, and the host time the exchange was sent and answered -- so a caller
+   * can place the frame on its own clock to within half the round trip.
+   * @param {{timeoutMs?: number}} [options]
+   */
+  openRegions({ timeoutMs = 1000 } = {}) {
+    const endpoint = this.endpoint ?? this.discover();
+    const forwarded = runSync(this.adb, ['-s', this.serial, 'forward', 'tcp:0', `tcp:${endpoint.port}`]).trim().split(/\s+/).at(-1);
+    if (!/^\d+$/.test(forwarded ?? '')) throw new Error('cue-helper regions: adb forward returned no host port');
+    let closed = false;
+    const exchange = async (line) => {
+      if (closed) throw new Error('cue-helper region channel is closed');
+      const sentAt = performance.now();
+      const reply = await lineExchange(Number(forwarded), line, timeoutMs, REGION_LIMITS.lineChars);
+      return { reply, sentAt, receivedAt: performance.now() };
+    };
+    return {
+      /** @param {string} name @param {{x:number,y:number,width:number,height:number,step?:number}} rect */
+      set: async (name, rect) => {
+        const { reply } = await exchange(regionSetLine(endpoint.token, name, rect));
+        if (!reply.startsWith('OK')) throw new Error(`cue-helper region ${name}: ${reply}`);
+        return reply;
+      },
+      clear: async () => {
+        const { reply } = await exchange(`REGION ${endpoint.token} clear`);
+        if (!reply.startsWith('OK')) throw new Error(`cue-helper region clear: ${reply}`);
+      },
+      read: async () => {
+        const { reply, sentAt, receivedAt } = await exchange(`REGION ${endpoint.token} read`);
+        const parsed = parseRegionRead(reply);
+        const deviceMs = Number(parsed.snapshotNs) / 1e6;
+        const offsetMs = (sentAt + receivedAt) / 2 - deviceMs;      // host ms = device ms + offset
+        const imageHostMs = parsed.imageNs !== null && parsed.imageNs >= 0n
+          ? Number(parsed.imageNs) / 1e6 + offsetMs : null;
+        return { ...parsed, sentAt, receivedAt, rttMs: receivedAt - sentAt, offsetMs, imageHostMs };
+      },
+      close: () => {
+        if (closed) return;
+        closed = true;
+        try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
+      },
+    };
+  }
+
+  /**
+   * One whole native frame from the helper's projection, as a PNG on the
+   * host: SNAP writes it under the helper's files/frames, and it is pulled
+   * with run-as and removed. For title, menu and calibration screens; a
+   * night reads openRegions() instead.
+   * @param {string} label @param {string} target @param {{timeoutMs?: number}} [options]
+   */
+  async snap(label, target, { timeoutMs = 5000 } = {}) {
+    if (!/^[A-Za-z0-9._-]{1,48}$/.test(label)) throw new TypeError('snap label must be 1..48 of [A-Za-z0-9._-]');
+    const endpoint = this.endpoint ?? this.discover();
+    const forwarded = runSync(this.adb, ['-s', this.serial, 'forward', 'tcp:0', `tcp:${endpoint.port}`]).trim().split(/\s+/).at(-1);
+    try {
+      const reply = await lineExchange(Number(forwarded), `SNAP ${endpoint.token} ${label}`, timeoutMs);
+      const fields = parseCueResponse(reply);
+      if (fields.path !== `files/frames/${label}.png`) throw new Error(`cue-helper snap wrote an unexpected path: ${reply}`);
+      const bytes = runSync(this.adb, ['-s', this.serial, 'exec-out', 'run-as', HELPER_PACKAGE, 'cat', fields.path],
+        { timeout: 10000, encoding: null, maxBuffer: 64 * 1024 * 1024 });
+      if (!bytes || bytes.length < 1000) throw new Error('cue-helper snap pulled an empty frame');
+      writeFileSync(target, bytes);
+      try { runSync(this.adb, ['-s', this.serial, 'shell', 'run-as', HELPER_PACKAGE, 'rm', '-f', fields.path]); } catch { /* next snap overwrites */ }
+      return { path: target, imageNs: BigInt(fields.imageNs), snapshotNs: BigInt(fields.snapshotNs), bytes: bytes.length };
+    } finally {
+      try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
+    }
   }
 
   /** One offset measurement on a short-lived forward. @param {{samples?: number, spacingMs?: number, timeoutMs?: number}} [options] */

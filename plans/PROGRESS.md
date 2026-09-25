@@ -1498,3 +1498,31 @@ Result record: [`FOUR-GAME-NIGHTS.md`](../docs/research/FOUR-GAME-NIGHTS.md) and
 **none** — this was a host model run and no device was touched. Open: resolve the model's
 `UNKNOWN(walk-cadence)`, `UNKNOWN(listen-pair)` and timing assumptions, find a held-out route for
 Nights 5–8, then complete the dry-run/device path before any Plan 12 promotion.
+
+**2026-09-25: FNaF 1 4/20 reached 6 AM on the phone, on the first attempt.** Custom Night 20/20/20/20,
+the hardest mode FNaF 1 has: the night ran to its end, the helper's native frames read `5 AM` rolling
+to `6 AM`, and the title came back with a third star. Evidence
+[`fnaf1-420-first-6am-20260925`](../docs/evidence/fnaf1-420-first-6am-20260925.json); binding
+[`fnaf1-custom-night7-420-grid420-winner.json`](../tools/device/fnaf1-custom-night7-420-grid420-winner.json).
+One night, not a cohort, and no Plan 12 edge.
+
+What it took, in order. The FNaF 1 census had been scoring policies that write simulator state
+(a one-frame light, a free pan across a 2780 px door gap), so `Fnaf1Sim.press` now applies the event
+sheet's input rules and `tools/fnaf1-device-lane.mjs` drives it at the handset's costs; the
+idealised 3000/3000 is relabelled in `FOUR-GAME-NIGHTS.md`. The route `grid420` is the 2026
+community 4/20 line (CAM 4B flicks for Freddy and Foxy, light checks, Chica only via 4B) put on the
+three roll grids, with Pedro's play folded in: the reopen is decided by the light through the shut
+door. Observation moved off screencap and luma entirely: the Companion gained `REGION` (raw
+pixels of registered native rectangles, every frame) and `SNAP` (a native frame for menus), and
+a 0/0/0/0 calibration night measured what the route then used -- lights and doors act on
+touch-up (166-247 ms), the monitor on touch-down (8-52 ms), the hour is 90 s, the origin is the
+first office frame minus ~97 ms, and a still room renders identical frames. A 0/20/20/0
+positive-control night then caught one real defect before 4/20 did: a flickering lit frame with
+Bonnie in it matched the unlit empty room and read clear; only the lit empty template is `clear`
+now. Device lane at the measured timings: 1000/1000 typical, 947/1000 all-maxima worst.
+
+Open: a cohort; re-anchoring the origin on the observed 1 AM; a power reader; whether a shorter
+contact is taken by the touch-up rules; the vibration channel (20 game vibrations, each at a light
+press -- a candidate occupancy sensor, not yet tested); converting FNaF 2's grid/luma detectors
+to native regions; the FNaF 1 teach overlay inside the Companion. Evidence ID:
+`fnaf1-420-first-6am-20260925`.

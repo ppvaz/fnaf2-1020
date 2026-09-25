@@ -38,12 +38,15 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
+import android.graphics.Bitmap;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -288,6 +291,17 @@ public final class CaptureService extends Service {
     private boolean snapshotGridValid;
     private final PixelWatch.Spec watchSpec = PixelWatch.defaultSpec();
     private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
+    // Raw native pixels of reader-registered regions, copied every native
+    // frame (REGION verb). The observation primitive for new detectors.
+    private final NativeRegions nativeRegions =
+            new NativeRegions(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT);
+    private long regionSequence;
+    // One whole native frame on request (SNAP verb): the menu and title
+    // readers' input, replacing the full-display screencap. Copied on the
+    // capture thread, encoded on the control thread.
+    private volatile CountDownLatch snapRequest;
+    private int[] snapPixels;
+    private long snapImageNs;
     private final int[] snapshotWatchValues = new int[PixelWatch.MAX_ENTRIES];
     private final PanAnchor.Workspace panAnchorWorkspace = new PanAnchor.Workspace();
     private final PanAnchor.Result framePanAnchor = new PanAnchor.Result();
@@ -1108,6 +1122,17 @@ public final class CaptureService extends Service {
             ByteBuffer buffer = plane.getBuffer();
             watchFrame.set(buffer, captureWidth, captureHeight,
                     plane.getRowStride(), plane.getPixelStride());
+            if (captureWidth == PixelWatch.NATIVE_WIDTH
+                    && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                nativeRegions.capture(watchFrame, ++regionSequence,
+                        image.getTimestamp(), System.nanoTime());
+                CountDownLatch snap = snapRequest;
+                if (snap != null && snap.getCount() > 0) {
+                    copySnap(buffer, plane.getRowStride(), plane.getPixelStride(),
+                            image.getTimestamp());
+                    snap.countDown();
+                }
+            }
             // The bulb anchor is measured from the same native frame as the
             // watchlist. It is an observation only: ROI transformation still
             // requires a separately calibrated camera-position mapping.
@@ -2741,6 +2766,99 @@ public final class CaptureService extends Service {
         }
     }
 
+    /** Capture thread: the whole native frame as ARGB, for one SNAP. */
+    private void copySnap(ByteBuffer buffer, int rowStride, int pixelStride, long imageNs) {
+        int width = captureWidth;
+        int height = captureHeight;
+        int[] out = new int[width * height];
+        byte[] row = new byte[rowStride];
+        ByteBuffer view = buffer.duplicate();
+        for (int y = 0; y < height; y++) {
+            view.position(y * rowStride);
+            view.get(row, 0, Math.min(rowStride, view.remaining()));
+            for (int x = 0; x < width; x++) {
+                int at = x * pixelStride;
+                out[y * width + x] = 0xff000000 | ((row[at] & 0xff) << 16)
+                        | ((row[at + 1] & 0xff) << 8) | (row[at + 2] & 0xff);
+            }
+        }
+        snapPixels = out;
+        snapImageNs = imageNs;
+    }
+
+    /**
+     * {@code SNAP <token> <label>}: write the next native frame to
+     * {@code files/frames/<label>.png}. For screens where latency does not
+     * matter (title, menus, calibration); a night reads REGION instead.
+     */
+    private String snapControl(String[] field) {
+        if (field.length != 3 || !validFrameTraceLabel(field[2])) return "ERROR snap-usage";
+        if (captureWidth != PixelWatch.NATIVE_WIDTH || captureHeight != PixelWatch.NATIVE_HEIGHT) {
+            return "ERROR snap-native-resolution-required";
+        }
+        CountDownLatch latch = new CountDownLatch(1);
+        snapRequest = latch;
+        try {
+            if (!latch.await(2000, TimeUnit.MILLISECONDS)) return "ERROR snap-no-frame";
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            return "ERROR snap-interrupted";
+        } finally {
+            snapRequest = null;
+        }
+        int[] pixels = snapPixels;
+        long imageNs = snapImageNs;
+        snapPixels = null;
+        File directory = new File(getFilesDir(), "frames");
+        if (!directory.isDirectory() && !directory.mkdirs()) return "ERROR snap-directory";
+        File file = new File(directory, field[2] + ".png");
+        Bitmap bitmap = Bitmap.createBitmap(pixels, captureWidth, captureHeight,
+                Bitmap.Config.ARGB_8888);
+        try (FileOutputStream stream = new FileOutputStream(file)) {
+            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) return "ERROR snap-encode";
+        } catch (IOException error) {
+            return "ERROR snap-write";
+        } finally {
+            bitmap.recycle();
+        }
+        return "OK path=files/frames/" + file.getName() + " imageNs=" + imageNs
+                + " snapshotNs=" + System.nanoTime();
+    }
+
+    /**
+     * {@code REGION <token> set <name> <x> <y> <w> <h> <step>},
+     * {@code REGION <token> clear}, {@code REGION <token> read}. A read carries
+     * the helper's clock at reply time as {@code snapshotNs}, beside the
+     * copied frame's {@code imageNs}, so a host can place both on its own clock.
+     */
+    private String regionControl(String[] field) {
+        if (field.length < 3) return "ERROR region-usage";
+        if (captureWidth != PixelWatch.NATIVE_WIDTH || captureHeight != PixelWatch.NATIVE_HEIGHT) {
+            return "ERROR region-native-resolution-required capture="
+                    + captureWidth + "x" + captureHeight;
+        }
+        switch (field[2]) {
+            case "set": {
+                if (field.length != 9) return "ERROR region-set-usage";
+                int[] v = new int[5];
+                try {
+                    for (int i = 0; i < 5; i++) v[i] = Integer.parseInt(field[4 + i]);
+                } catch (NumberFormatException error) {
+                    return "ERROR region-number";
+                }
+                String refused = nativeRegions.set(field[3], v[0], v[1], v[2], v[3], v[4]);
+                return refused == null ? "OK regions=" + nativeRegions.size() : "ERROR " + refused;
+            }
+            case "clear":
+                nativeRegions.clear();
+                return "OK regions=0";
+            case "read":
+                return "OK " + nativeRegions.read() + " snapshotNs=" + System.nanoTime();
+            default:
+                return "ERROR region-usage";
+        }
+    }
+
     private String dispatchControl(String[] field) {
         switch (field[0]) {
             case "GET":
@@ -2780,6 +2898,10 @@ public final class CaptureService extends Service {
                     return "ERROR read-usage";
                 }
                 return currentWatch();
+            case "REGION":
+                return regionControl(field);
+            case "SNAP":
+                return snapControl(field);
             case "TRACE":
                 if (field.length < 3) {
                     return "ERROR trace-usage";

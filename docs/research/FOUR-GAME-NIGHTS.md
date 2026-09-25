@@ -113,6 +113,13 @@ sites, and correctly does not call g822 timer-forced because it is a
 
 ## FNaF 1: a seed census
 
+> **Read this section as the idealised lane (2026-09-25).** Both policies below
+> write simulator state directly: a light lit for one frame, a camera up with no
+> 383 ms flip, two doors 2780 px apart moved in the same frame. The phone does
+> none of that. The device lane in [the FNaF 1 device section](#fnaf-1-on-the-phones-clock-and-4-20-won-on-device)
+> prices every touch at its measured cost, and it is what cleared 4/20 on the
+> handset.
+
 The simulator runs at 60 Hz in ascending group order — which is the order the
 runtime evaluates in, and therefore the order the RNG is consumed in. Both
 policies are **observation-limited**: they may read a door light, a camera and
@@ -413,7 +420,43 @@ Nights 7 and 8 switch to the shadow schedules' Fredbear phase at 4 AM; the
 published loop has no 3000-seed winner there. These are ceilings of the current
 model, not a device result or a promotion candidate.
 
-### FNaF 1 — 3000/3000 on all six nights and 4/20, community loop
+### FNaF 1 on the phone's clock, and 4/20 won on device
+
+**2026-09-25.** The idealised census above was withdrawn as a device figure: a
+one-frame light and a free pan do not exist. `Fnaf1Sim.press` now applies the
+event sheet's own input rules -- the 10-frame click cooldown on every light and
+door press [g166, g168-g228], the 23-frame monitor flip that locks the tab and
+keeps `viewing` 0 until it completes [g5/g6, g270/g271, g846], doors that take 32
+frames to close or open and during which nobody dies or leaves [g160/g161,
+g343/g344], lights put out by the put-down [g357], and door power charged while
+shut and opening but not while closing [g305-g308]. `tools/fnaf1-device-lane.mjs`
+drives it through the handset's measured costs: a 160 ms contact, a 310 ms pan
+hold, controls reachable only at their own pan, and reads that return a frame
+that is already old.
+
+Two of those costs were measured by the device itself on a 0/0/0/0 calibration
+night, and both changed the route: **lights and doors act on touch-UP** (166-247
+ms after the touch starts) while the monitor acts on touch-down (8-52 ms), and
+**a still office renders pixel-identical frames**, so a doorway is read against
+the empty template of the state the panel names. The hour is 90 s on the phone
+too (1 AM read 89.92 s after the first office frame).
+
+The route, `grid420`, is the 2026 community 4/20 line placed on the roll grids
+([`bl8E4wZySWY`, "How FNAF 1's AI actually works"] plus Pedro's own play):
+CAM 4B is selected once and one flick lands inside the 733 ms before each of
+Foxy's 5010 ms rolls, which holds Foxy and Freddy with certainty; the left light
+is read once after each of Bonnie's 4970 ms rolls he could have arrived on, the
+right after each of Chica's; a door is shut just ahead of the roll that will
+turn its occupant back and opened after it, once the light through the shut
+door shows him gone. Device lane, measured timings: **1000/1000 typical** (seeds
+0-999), 947/1000 in the all-maxima worst lane.
+
+On the phone it **reached 6 AM on the first 4/20 attempt** and the title gained
+its third star ([`fnaf1-420-first-6am-20260925`](../evidence/fnaf1-420-first-6am-20260925.json);
+binding [`fnaf1-custom-night7-420-grid420-winner.json`](../../tools/device/fnaf1-custom-night7-420-grid420-winner.json)).
+One night, not a cohort.
+
+### FNaF 1 — the idealised 3000/3000 (superseded as a device claim)
 
 See the table below. What made it reachable was measuring where the 999 units
 go rather than sweeping knobs: on Night 5, **713 of the reserve is spent before

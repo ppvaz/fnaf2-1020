@@ -48,6 +48,12 @@ on 2026-09-18, both k3 losses to Foxy on the first office frame after a mask-off
 A single clear and a reliability claim are different claims, and
 [Plan 12](plans/12-end-to-end-evidence-campaign.md) owns the ladder between them.
 
+**A second game: FNaF 1 4/20 won on the phone (2026-09-25).** Custom Night
+20/20/20/20 reached 6 AM on the first attempt, read entirely through the Cue
+Helper's native-frame regions and driven by a route priced at the handset's
+measured touch costs ([`fnaf1-420-first-6am`](docs/evidence/fnaf1-420-first-6am-20260925.json)).
+One night, not a cohort.
+
 **All ten Custom Night presets are viable — in the model.** Night 7 here had only
 ever meant canonical 10/20; the other nine menu presets are different AI vectors
 on the same night-7 rules and had never been asked. On 2026-09-17 all ten cleared

@@ -536,3 +536,8 @@ async function main(argv) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 2; });
 }
+
+// The measured menu steps, for a runner that goes on past Ready. Everything a
+// caller needs to reach a set Custom Night the same way the probe does.
+export { ProbeRecord, ensureTitle, titleRead, titleConsensus, waitForTitle, settleCustomNight, setDials,
+  restartToTitle, launch, readDials, DIALS, PACKAGE, BUILD, LEAVE_WAIT_MS };

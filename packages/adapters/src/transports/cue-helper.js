@@ -58,6 +58,62 @@ export function parseCueGrid(line) {
   return Object.freeze({ grid: '20x9', seq: Number(tokens[1].slice(4)), cells: Object.freeze(cells) });
 }
 
+/** A REGION read is one line of at most 16 regions and 8192 samples (NativeRegions.java). */
+export const REGION_LIMITS = Object.freeze({ regions: 16, samples: 8192, step: 64, lineChars: 65536 });
+const REGION_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+
+/**
+ * A native region request: `REGION <token> set <name> <x> <y> <w> <h> <step>`.
+ * Coordinates are native display pixels (2400x1080 on the moto g56).
+ * CONTRACT:cue-helper-control-v1.
+ */
+export function regionSetLine(token, name, { x, y, width, height, step = 1 }) {
+  if (!/^[0-9a-f]{32}$/.test(token)) throw new TypeError('region token must be the 32-hex session token');
+  if (!REGION_NAME.test(name)) throw new TypeError(`region name ${name} is not [a-z][a-z0-9_]{0,31}`);
+  for (const [key, value] of Object.entries({ x, y, width, height, step })) {
+    if (!Number.isInteger(value) || value < 0) throw new TypeError(`region ${name}: ${key} must be a non-negative integer`);
+  }
+  if (width < 1 || height < 1 || step < 1 || step > REGION_LIMITS.step) throw new RangeError(`region ${name} is empty or its step is out of range`);
+  return `REGION ${token} set ${name} ${x} ${y} ${width} ${height} ${step}`;
+}
+
+/**
+ * Parse `OK seq=N imageNs=T copiedNs=C captured=K regions=R name=x,y,w,h,step:HEX ... snapshotNs=S`.
+ * Each region comes back as its own raw pixels: `pixels[i]` is 0xRRGGBB of
+ * native pixel (x + (i % cols) * step, y + floor(i / cols) * step). `seq`
+ * is -1 until a frame has been copied since the regions were set.
+ * CONTRACT:cue-helper-control-v1.
+ */
+export function parseRegionRead(line) {
+  if (typeof line !== 'string' || line.length > REGION_LIMITS.lineChars) throw new TypeError('region read is missing or oversized');
+  const text = line.trim();
+  if (!text.startsWith('OK ')) throw new Error(text.startsWith('ERROR ') ? text : 'region read is not OK');
+  const out = { seq: null, imageNs: null, copiedNs: null, snapshotNs: null, captured: null, regions: {} };
+  for (const token of text.slice(3).split(/\s+/)) {
+    const eq = token.indexOf('=');
+    if (eq <= 0) continue;
+    const key = token.slice(0, eq);
+    const value = token.slice(eq + 1);
+    if (['seq', 'imageNs', 'copiedNs', 'snapshotNs', 'captured', 'regions'].includes(key)) {
+      if (!/^-?\d+$/.test(value)) throw new Error(`region read field ${key} is not an integer`);
+      if (key !== 'regions') out[key] = key.endsWith('Ns') ? BigInt(value) : Number(value);
+      continue;
+    }
+    const match = /^(\d+),(\d+),(\d+),(\d+),(\d+):([0-9a-f]*)$/.exec(value);
+    if (!REGION_NAME.test(key) || !match) throw new Error(`region read has a malformed region ${key}`);
+    const [x, y, width, height, step] = match.slice(1, 6).map(Number);
+    const cols = Math.ceil(width / step);
+    const rows = Math.ceil(height / step);
+    const hex = match[6];
+    if (hex.length !== cols * rows * 6) throw new Error(`region ${key} carries ${hex.length / 6} samples, expected ${cols * rows}`);
+    const pixels = new Uint32Array(cols * rows);
+    for (let i = 0; i < pixels.length; i += 1) pixels[i] = parseInt(hex.slice(i * 6, i * 6 + 6), 16);
+    out.regions[key] = Object.freeze({ x, y, width, height, step, cols, rows, pixels });
+  }
+  if (out.seq === null) throw new Error('region read has no seq');
+  return Object.freeze(out);
+}
+
 export class CueHelperControlTransport {
   /** @param {any} options */
   constructor({ request, token, maxAgeUs = 500000 } = {}) {

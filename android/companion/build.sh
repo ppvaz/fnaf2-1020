@@ -78,6 +78,7 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/PhaseClock.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/CueDetector.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/PixelWatch.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/NativeRegions.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/PanAnchor.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/ScreenIdentity.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/NightOnsetLatch.java" \

@@ -76,6 +76,27 @@ winner is not. `UNTRACKED_WINNER_DEBT` stands at 13 of its ceiling of 13, so the
 next untracked winner fails `test-fact-register.mjs`. Recovering those bundles is
 the first step of any promotion, not a chore after it.
 
+## Sensors and on-device code (Pedro, 2026-09-24/25 — start here, not with the old sensors)
+
+- **A detector reads small regions of native frames.** The Cue Helper copies
+  registered rectangles' raw pixels out of every MediaProjection frame
+  (`REGION`, `NativeRegions.java`; host `openRegions()`, `native-regions.mjs`)
+  and whole native frames on request (`SNAP`, `native-frame.mjs`) for title and
+  menu screens. The rule that decides lives on the host, over those pixels.
+- **Discontinued, never a starting point:** luma/mean-luma reducers, the 20x9
+  point-sampled grid (`GRID`, `ScreenStats`, grid-fitted rules), and full-display
+  `screencap`. Existing users are to be converted (FNaF 2's pipeline after
+  recalibration), not extended.
+- **Where they are still justified**, and only there: a luminance change IS the
+  phenomenon (blackout, fade, a flash's timing) — computed over native region
+  pixels, never the grid; per-pixel brightness thresholds for text glyphs; reading
+  the 20x9 `grid_hex` already retained in old evidence; `screencap` only while the
+  helper cannot run (before consent, after a crash) or as an independent witness.
+- **Everything that runs on the phone lives in the Companion**
+  (`android/companion`). No separate APKs; a new on-device feature is a Companion
+  feature. `tools/device/cue-helper-setup.sh` drives install and projection
+  consent by named UI controls.
+
 ## Mistake register (2026-09-06 — check before acting; never repeat)
 
 Each entry below cost a live attempt or a false diagnosis on 2026-09-06.
