@@ -1501,3 +1501,38 @@ left open was retired in `6d78c7e` by a concurrent session.
 No step moved and no device was touched. Evidence ID: none. Open: S1 needs Pedro's
 `plan12-attestation.json` for the two packed wins and the peer machine's packs of Night 5
 `contact-final`, Night 6 `h` and Night 7 `k2`; the next physical test is S2a, the same-phase twin.
+
+**2026-09-25 (late): the distillation's remaining points.** Pedro asked for the project in its
+leanest, most capable and legible form, then for every point of that list to be finished. What
+landed after the entries above, each in its own commit:
+
+- **Cohorts from packs, FNaF 1 packs, event clocks.** `npm run evidence -- cohort` computes a
+  `cohort-result-v2` from the committed packs under the predeclared rule (executor `sixam` and video
+  `clear`; a sixam the video never graded is `UNGRADED`, not a win). FNaF 1 runner directories pack
+  too, and the first FNaF 1 4/20 6 AM is packed. `core/telemetry/event-clocks.js` declares the clock
+  of every timestamp field a campaign writes, and `test-event-clocks.mjs` refuses a packed event
+  whose field is undeclared or implausible for its clock (668 events in 7 packs).
+- **The device executor, split.** `hid-schedule.js`, `device-shell.js` and `control-effect.js`
+  moved out of `adb-device-local-executor.js` verbatim: the compiled schedule, body and script of
+  every committed winner night hash the same before and after (24 characterizations). The machine
+  compatibility executor, which nothing constructed after the service path left, was removed
+  (LEG-004 is now PARTIAL).
+- **Tool indexes per directory.** `tools/TOOLS.md` became `tools/README.md`, `tools/device/`,
+  `tools/cue/` and `tools/dump/README.md`; `test-docs.mjs` holds each script to the index of its own
+  directory. The cue tools had been filed under "source-dump tools".
+- **One night entry point.** `npm run night -- fnaf2|fnaf1|fnaf1-custom ...` runs that game's runner
+  with its arguments untouched and packs the FNaF 1 runs a night created, however it ends.
+- **Stale architecture pages dated, not rewritten**: the 2026-08-26 audit gains an appended status
+  (other pages cite it by line), the duplicate map a 2026-09-25 outcome row, and Plan 27 a move map
+  for the four-game layout (FNaF 2's cartridge sits behind the `mechanics` and `control` barrels,
+  which 77 and 26 files import, so it can move with no consumer edited).
+
+No step moved and no device was touched. Evidence ID: `fnaf1-custom-grid420-420-a-20260925T024452598Z`
+(the FNaF 1 pack, `2810edce…`). Session ratio, consequential:bookkeeping, 2:16 -- the packs of the
+seven 2026-09-20 campaigns with the Night 5 winner (`87202ed`) and the FNaF 1 6 AM pack (`2e1be2b`)
+against the rest. Open, and not an agent's to close: S1's `plan12-attestation.json` for
+`night5-n5-armblock` (pack `4c9ea13a…`) and `night6-n6h2-01` (pack `20c626f9…`); where the k3
+cohort's media lives; and `npm run evidence -- pack <label>` on the peer machine for Night 5
+`contact-final`, Night 6 `h` and Night 7 `k2`. Also open: the artifact executor class itself
+(~1100 lines) and `modern-campaign-ports.js` under LEG-004, and Plan 27's moves, which wait for S1's
+first promotion edge and a quiet window.

@@ -93,7 +93,8 @@ This is the part that actually makes the repo multi-game, and it is small:
    FNaF 1/3/4 share only `monitor`. A game module supplies its own vocabulary;
    the contract becomes parametric over it.
 2. **Return leaked game rules to core.** `apps/device/src/service.js:32-33`
-   decides which controls need the monitor up or down;
+   decided which controls need the monitor up or down (removed with the fixture
+   service path on 2026-09-25);
    `apps/device/src/artifact-executor.js:107-121` pins `camdrop` and
    `observe-left` to specific FNaF 2 controls. Both are mechanics living in a
    transport layer, which the charter forbids.
@@ -105,6 +106,43 @@ This is the part that actually makes the repo multi-game, and it is small:
    definition that names its target.
 5. **Reframe README and PROJECT-CHARTER** from "a FNaF 2 bot" to "a method for
    playing Clickteam night games under evidence, demonstrated on four".
+
+## The move map (measured 2026-09-25)
+
+Commit D's layout, written down so the quiet window is spent moving files, not
+deciding where they go. The counts are from the tree at `18684d8`.
+
+**The FNaF 2 cartridge already has a door.** 77 files import
+`@fnaf2-1020/core/mechanics` and 26 import `@fnaf2-1020/core/control`; only 13
+import a FNaF 2 module by its file path (8 of them `config.js`). Everything
+behind the `mechanics` barrel except `rng.js` is FNaF 2. So the cartridge can
+move behind the barrels first, with no consumer edited, and consumers can be
+repointed at `games/fnaf2` afterwards, one import at a time.
+
+| Today | After the move | Why |
+|---|---|---|
+| `core/src/mechanics/{plant-model,config,reduced-model,plant,seed-recovery}.js` (3626 lines) | `core/src/games/fnaf2/` | FNaF 2's plant, table and seed recovery: 368, 156, 61 and 20 FNaF 2 terms respectively |
+| `core/src/mechanics/rng.js` | stays | the Fusion 16-bit RNG, shared by all four games |
+| `core/src/control/{vocabulary,night-policy,controller,cycle-library,cycle-planner,cycle-controller}.js` | `core/src/games/fnaf2/control/` | the FNaF 2 control enum (pivot 1) and the Minus Toys cycle machinery |
+| `core/src/control/{policy-ir,observation-language,ports}.js` | stays | the policy language: one FNaF 2 term between them, and the per-game vocabulary is what pivot 1 injects |
+| `core/src/mechanics/games/{fnaf1,sim-fnaf1,policy-fnaf1}.js` + `graphs/fnaf1.json` | `core/src/games/fnaf1/{night,sim,policy}.js` + `graph.json` | one directory per game; FNaF 3 and 4 the same way |
+| `core/src/mechanics/games/fnaf2.js` | `core/src/games/fnaf2/night.js` | FNaF 2's night in the shared shape; it already holds no numbers of its own |
+| `core/src/mechanics/games/{index,night-model}.js` | `core/src/games/{index,night-model}.js` | the cross-game registry stays the one place a cross-game claim is checked |
+| `adapters/src/{calibration-state-rule,button-strokes,control-exclusion}.js` | FNaF 2 data under the profile's game dimension (pivot 3) | FNaF 2 controls in the transport layer: 55, 16 and 15 FNaF 2 terms |
+| `apps/device/src/artifact-executor.js:107-121` | the FNaF 2 cartridge's action table | the `camdrop` and `observe-left` pins (pivot 2); the other half of that leaked rule, `service.js:32-33`, left with the fixture service path on 2026-09-25 |
+| the 26 `tools/device/*fnaf1*` files (7 of them models under `models/`) | `tools/device/fnaf1/` | FNaF 1's device lane, beside FNaF 2's rather than interleaved with it; owned by the FNaF 1 session, so it moves in the quiet window and not before |
+
+Undecided, and named so the move does not decide them by accident:
+`core/src/sensing/observer.js` (44 FNaF 2 terms: the watchlist is FNaF 2's
+office), `estimation/estimator.js` (15) and `timing/phase-clock.js` (18) are
+generic machinery written against FNaF 2's facts. They move only when a second
+game's observer or estimator exists to show which half is generic.
+
+Order inside Commit D: move the FNaF 2 files and leave the barrels
+re-exporting them (the semantic traces are unchanged by construction: no line
+of code changes), run every lane, then repoint consumers, then make the barrels
+per-game. The vocabulary becomes a parameter last, because it is the one step
+that changes code and not only paths.
 
 ## Sequencing, and the honest tradeoff
 
