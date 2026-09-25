@@ -21,12 +21,18 @@ const scratch = mkdtempSync(join(tmpdir(), 'fnaf2-vault-'));
 const repo = join(scratch, 'repo');
 const vault = join(scratch, 'vault');
 
+// Never the caller's repository. A GIT_DIR inherited from a git hook points
+// every git command below at the real repository whatever the cwd: on
+// 2026-09-25 this test's `git init` ran under push-gate's pre-push hook and
+// reinitialised the real repository as bare (core.bare=true), and its
+// `commit -m root` landed on the pushing worktree's branch.
+const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')));
 const run = args => execFileSync(process.execPath, [TOOL, ...args], {
   cwd: repo,
   encoding: 'utf8',
   // Expected refusals are assertions here, not output; keep them off the parent's stderr.
   stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, FNAF2_REPO: repo, FNAF2_VAULT_DIR: vault },
+  env: { ...gitEnv, FNAF2_REPO: repo, FNAF2_VAULT_DIR: vault },
 });
 
 function refused(args) {
@@ -61,9 +67,9 @@ const objectCount = () => (existsSync(join(vault, 'objects'))
 
 try {
   mkdirSync(join(repo, 'docs', 'evidence'), { recursive: true });
-  execFileSync('git', ['init', '-q'], { cwd: repo });
+  execFileSync('git', ['init', '-q'], { cwd: repo, env: gitEnv });
   execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q',
-    '--allow-empty', '-m', 'root'], { cwd: repo });
+    '--allow-empty', '-m', 'root'], { cwd: repo, env: gitEnv });
 
   write('captures/run-a-video.mp4', Buffer.from('a video payload'));
   write('captures/run-a.hid', Buffer.from('hid report stream'));

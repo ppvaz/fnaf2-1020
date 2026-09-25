@@ -113,7 +113,7 @@ function linkDependencies(worktree) {
     === readFileSync(join(worktree, 'package-lock.json'), 'utf8');
   if (!same) {
     console.log('  the lockfile differs from the working tree; running npm ci');
-    execFileSync('npm', ['ci'], { cwd: worktree, stdio: 'inherit' });
+    execFileSync('npm', ['ci'], { cwd: worktree, stdio: 'inherit', env: withoutGit(process.env) });
     return;
   }
   mkdirSync(join(worktree, 'node_modules'), { recursive: true });
@@ -164,10 +164,21 @@ function ciPythonEnv(dir) {
     .filter(([n]) => !['pip', 'setuptools', 'wheel'].includes(n)));
   const same = JSON.stringify(Object.entries(installed).sort()) === JSON.stringify(Object.entries(pins).sort());
   if (!same) return { why: `${CI_PYTHON} has ${JSON.stringify(installed)}, ci.yml pins ${JSON.stringify(pins)}; ${build}` };
-  return { env: { ...process.env, PATH: `${dirname(CI_PYTHON)}:${process.env.PATH}` } };
+  return { env: { ...withoutGit(process.env), PATH: `${dirname(CI_PYTHON)}:${process.env.PATH}` } };
 }
 
-let LANE_ENV = process.env;
+// git runs a hook with the repository in its environment (GIT_DIR, and more),
+// and every lane inherited it. CI's runner has none of it. On 2026-09-25
+// vaulttest.mjs's `git init` in a temp directory therefore reinitialised the
+// real repository -- core.bare=true, which stopped every checkout of it from
+// working as one -- and its `commit -m root` landed on the pushing worktree's
+// branch. A lane gets CI's environment: no GIT_* variables.
+/** @param {NodeJS.ProcessEnv} env */
+function withoutGit(env) {
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !name.startsWith('GIT_')));
+}
+
+let LANE_ENV = withoutGit(process.env);
 
 // --- Running the lanes -----------------------------------------------------
 
@@ -289,7 +300,7 @@ function validate(sha, subject) {
       LANE_ENV = python.env;
       console.log(`  python3 for every lane: ${CI_PYTHON} (the ci.yml version and pins, nothing else)`);
     } else {
-      LANE_ENV = process.env;
+      LANE_ENV = withoutGit(process.env);
       console.log(`  SKIP CI Python dependencies (${python.why}); the lanes run on this machine's python3, which may hold packages CI does not`);
       skipped.push('CI Python dependencies');
     }
