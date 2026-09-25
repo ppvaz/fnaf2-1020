@@ -798,6 +798,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/cue/fnaf4-cues.py",
+      "invocation": "tools/cue/fnaf4-cues.py --refs DIR --live PCM [--raw OUT] [--events OUT.jsonl] \\| --wav REC --start-wall-ms MS",
+      "kind": "detector",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/cue/test-bt-audio-collector.py",
       "invocation": "tools/cue/test-bt-audio-collector.py",
       "kind": "check",
@@ -1749,6 +1755,30 @@
       "id": "tools/device/fnaf1-custom-run.mjs",
       "invocation": "tools/device/fnaf1-custom-run.mjs",
       "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf4-run.sh",
+      "invocation": "tools/device/fnaf4-run.sh --dry-run \\| --live --confirm-live --mode calibrate\\|loop [--detectors FILE] [--teach] [--video] [--stop-after-ms MS] [--label NAME]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf4-run.mjs",
+      "invocation": "tools/device/fnaf4-run.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf4-detectors.py",
+      "invocation": "tools/device/fnaf4-detectors.py build --run RUN --out FILE",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/explore-step.mjs",
+      "invocation": "tools/device/explore-step.mjs --session NAME snap\\|tap X Y\\|double X Y\\|hold X Y [SNAP_AT_MS]\\|launch PKG/ACT\\|stop PKG [--confirm-live]",
+      "kind": "device action",
       "lifecycle": "supported"
     },
     {
