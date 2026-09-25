@@ -2,15 +2,33 @@
   "schema": "fnaf1-route-winner-v1",
   "id": "fnaf1-custom-night7-420-grid420",
   "game": "FNaF 1",
-  "target": { "package": "com.scottgames.fivenightsatfreddys", "build": "2.0.7+40", "device": "ZF525F5BH5" },
-  "night": { "mode": "Custom Night", "dials": { "freddy": 20, "bonnie": 20, "chica": 20, "foxy": 20 }, "lengthMs": 535000 },
+  "target": {
+    "package": "com.scottgames.fivenightsatfreddys",
+    "build": "2.0.7+40",
+    "device": "ZF525F5BH5"
+  },
+  "night": {
+    "mode": "Custom Night",
+    "dials": {
+      "freddy": 20,
+      "bonnie": 20,
+      "chica": 20,
+      "foxy": 20
+    },
+    "lengthMs": 535000
+  },
   "won": {
     "run": "fnaf1-custom-grid420-420-a-20260925T024452598Z",
     "evidence": "docs/evidence/fnaf1-420-first-6am-20260925.json",
     "terminal": "helper native frames read '5 AM' rolling to '6 AM' after 535 s; the title then showed a third star (two before)"
   },
   "command": "tools/device/fnaf1-custom-run.sh --live --confirm-live --dials 20,20,20,20 --mode grid420 --detectors ~/fnaf-apks/fnaf1-detectors/cal0.json --label 420-a",
-  "resolvedOptions": { "policy": "grid420", "chicaByCamera": false, "originOffsetMs": -97, "stopAfterMs": 538000 },
+  "resolvedOptions": {
+    "policy": "grid420",
+    "chicaByCamera": false,
+    "originOffsetMs": -97,
+    "stopAfterMs": 538000
+  },
   "policy": {
     "module": "tools/fnaf1-device-lane.mjs",
     "export": "grid420",
@@ -26,7 +44,14 @@
     "tools/device/models/custom-night-fnaf1-moto-g56-v207.json": "ca6e4e2e27bdb8218b9dfdd3a5f644e6bca495c3169c4d1ca085addfb0c97d4b",
     "android/companion/src/com/ppvaz/fnafcompanion/NativeRegions.java": "ea121d995b1ceaea3ae9b3df01e0f96d352043f0cfeae3dde7a3b9f3e6cf6635"
   },
-  "helperApk": { "built": "android/companion/build.sh", "sha256": "e2c74b335531a66f866941194697c1999fd1084e8be384f078022f4c6cd44dc6", "verbs": ["REGION", "SNAP"] },
+  "helperApk": {
+    "built": "android/companion/build.sh",
+    "sha256": "e2c74b335531a66f866941194697c1999fd1084e8be384f078022f4c6cd44dc6",
+    "verbs": [
+      "REGION",
+      "SNAP"
+    ]
+  },
   "detectors": {
     "file": "~/fnaf-apks/fnaf1-detectors/cal0.json",
     "sha256": "9cfabc89291c01312422aa6fe94fd11be26286f8587fc7deaeeadde02cf270c4",
@@ -38,5 +63,7 @@
     ],
     "builtFrom": "fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z"
   },
-  "model": "MODEL_ONLY device lane at the measured timings, before the run: 1000/1000 typical (seeds 0-999, power at 6 AM min 24), 947/1000 in the all-maxima worst lane. One device night is one device night: no cohort, no reliability claim."
+  "model": "MODEL_ONLY device lane at the measured timings, before the run: 1000/1000 typical (seeds 0-999, power at 6 AM min 24), 947/1000 in the all-maxima worst lane. One device night is one device night: no cohort, no reliability claim.",
+  "sourcesAtCommit": "3aaf02c",
+  "sourcesNote": "The hashes are the files as they ran on 2026-09-25 and as committed in 3aaf02c. Later route changes (confirm-then-retouch doors, bounded monitor waits, stale-frame refusal) are new code on top of this binding, not this binding."
 }

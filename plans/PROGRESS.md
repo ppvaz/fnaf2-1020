@@ -1526,3 +1526,21 @@ contact is taken by the touch-up rules; the vibration channel (20 game vibration
 press -- a candidate occupancy sensor, not yet tested); converting FNaF 2's grid/luma detectors
 to native regions; the FNaF 1 teach overlay inside the Companion. Evidence ID:
 `fnaf1-420-first-6am-20260925`.
+
+**2026-09-25 (later): three more 4/20 nights, the teach panel in the Companion, and a recording
+that kills.** `420-b` reached 6 AM again, narrated all night by the Companion's new FNaF 1 teach
+panel (`fnaf1-custom-run.sh --teach`: the step and why, Bonnie/Chica/Foxy's clocks filling toward
+their next tick, each door and its last light reading; English, the game's HUD face). The two
+nights that also recorded the screen for a demonstration video died -- `420-c` to Chica at 75 s
+(full-size screenrecord), `420-d` to Bonnie at ~226 s (1200x540, 2 Mbps) -- and the measurement
+that explains both: any screenrecord halves the helper's distinct frames (75 -> 37 of 150 reads),
+and the night's capture ran at ~10/s with ~2 s gaps. Under that starvation the door setter
+touched a door again when a confirmation was late, undoing the first touch, and a monitor wait
+held the finger through a tick. Fixed in the route: a door is touched again only if a frame
+rendered 1.2 s after the touch still shows the old state (the panel names the new state the
+frame the touch lands, 205-235 ms, measured on cal0); each monitor transition is bounded at 1.8 s;
+a frame older than 400 ms answers no read. 4/20 stands at 2 of 4, 2 of 2 without a recording.
+The README carries the FNaF 1 GIF (one Bonnie visit, `420-d` at 12 AM) beside FNaF 2's, which
+Pedro asked to restore. Open: a Companion-side recorder that encodes the frames the helper
+already has, so a video does not cost the night; the evidence pack adapter for FNaF 1 runs.
+Evidence ID: `fnaf1-420-first-6am-20260925`.

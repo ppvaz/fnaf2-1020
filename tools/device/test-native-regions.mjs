@@ -72,6 +72,21 @@ const read = (regions) => ({ regions: { cam_label: fill(N, 0), ...regions } });
   ok('someone in the lit window behind a shut door is occupied', chica.right === 'occupied' && chica.rightDoor === 2);
 }
 
+// --- 2b. the FNaF 1 teach panel clears every region the route reads ---------------
+{
+  const { readFileSync } = await import('node:fs');
+  const java = readFileSync(new URL('../../android/companion/src/com/ppvaz/fnafcompanion/Fnaf1Lesson.java', import.meta.url), 'utf8');
+  const constant = (name) => Number(new RegExp(`int ${name} = (\\d+);`).exec(java)?.[1]);
+  const panel = { left: constant('LEFT'), top: constant('TOP'), right: constant('RIGHT'), bottom: constant('BOTTOM'), guard: constant('GUARD_PX') };
+  ok('panel constants read', Object.values(panel).every(Number.isFinite));
+  const model = JSON.parse(readFileSync(new URL('./models/regions-fnaf1-moto-g56-v207.json', import.meta.url), 'utf8'));
+  for (const [name, r] of Object.entries(model.sets.night)) {
+    const apart = r.x >= panel.right + panel.guard || r.x + r.width <= panel.left - panel.guard
+      || r.y >= panel.bottom + panel.guard || r.y + r.height <= panel.top - panel.guard;
+    ok(`teach panel clears ${name} by ${panel.guard} px`, apart);
+  }
+}
+
 // --- 3. runner refusals ------------------------------------------------------------
 throws('live needs both flags', () => parseArgs(['--live', '--dials', '0,0,0,0', '--mode', 'calibrate-empty']));
 throws('calibration is only safe at 0/0/0/0',

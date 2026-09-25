@@ -92,6 +92,9 @@ the first step of any promotion, not a chore after it.
   pixels, never the grid; per-pixel brightness thresholds for text glyphs; reading
   the 20x9 `grid_hex` already retained in old evidence; `screencap` only while the
   helper cannot run (before consent, after a crash) or as an independent witness.
+- **A screenrecord costs the helper half its frames** (75 -> 37 distinct of 150
+  REGION reads even at 1200x540, 2 Mbps; 2026-09-25). A closed-loop night that
+  records itself must survive a starved capture; `420-c` did not at full size.
 - **Everything that runs on the phone lives in the Companion**
   (`android/companion`). No separate APKs; a new on-device feature is a Companion
   feature. `tools/device/cue-helper-setup.sh` drives install and projection

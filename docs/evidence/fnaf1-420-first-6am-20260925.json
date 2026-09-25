@@ -11,7 +11,7 @@
     "profile": "HID contacts; Cue Helper MediaProjection native frames (REGION, SNAP); no screencap anywhere in the three runs"
   },
   "question": "Can the phone clear FNaF 1's hardest mode, Custom Night 20/20/20/20 (4/20), with a route priced at this handset's measured timings?",
-  "answer": "Yes, once: the first 4/20 attempt reached 6 AM and the title gained its third star.",
+  "answer": "Yes: 2 of 4 4/20 nights reached 6 AM -- both nights that ran without a screen recording (a, b). Both nights that recorded the screen died (c at 75 s to Chica, d at ~226 s to Bonnie) with the helper's capture starved to ~10 frames/s.",
   "runs": {
     "calibration": {
       "run": "fnaf1-custom-calibrate-empty-cal0-20260925T022808813Z",
@@ -22,9 +22,32 @@
         "oneAmAfterFirstOfficeFrameMs": 89920,
         "nightOriginFromFirstOfficeFrameMs": -97,
         "originNote": "The clock puts 1 AM 90 x 1000 ms plus the 17 ms first-reach load after the origin; the hour text read 1 AM 89.92 s after the first office frame, so the origin is ~97 ms before that frame on the helper's image clock. One night.",
-        "touchDownLatencyMs": { "control": "monitor down", "n": 10, "min": 8.1, "median": 27, "max": 51.7, "meaning": "press start to the first native frame whose region changed (image time)" },
-        "touchUpLatencyMs": { "control": "door lights (door open)", "n": 10, "min": 165.7, "median": 228, "max": 246.9, "meaning": "lights and doors act on touch-UP: the 160 ms contact plus 6-87 ms" },
-        "regionReadMs": { "rttP50": 18.1, "rttP95": 28.1, "rttMax": 47.9, "frameAgeAtReplyP50": 41.9, "frameAgeAtReplyP95": 82.1, "frameAgeAtReplyMax": 111.3, "n": 200, "where": "FNaF 1 title, full 7713-sample night set, one adb forward" },
+        "touchDownLatencyMs": {
+          "control": "monitor down",
+          "n": 10,
+          "min": 8.1,
+          "median": 27,
+          "max": 51.7,
+          "meaning": "press start to the first native frame whose region changed (image time)"
+        },
+        "touchUpLatencyMs": {
+          "control": "door lights (door open)",
+          "n": 10,
+          "min": 165.7,
+          "median": 228,
+          "max": 246.9,
+          "meaning": "lights and doors act on touch-UP: the 160 ms contact plus 6-87 ms"
+        },
+        "regionReadMs": {
+          "rttP50": 18.1,
+          "rttP95": 28.1,
+          "rttMax": 47.9,
+          "frameAgeAtReplyP50": 41.9,
+          "frameAgeAtReplyP95": 82.1,
+          "frameAgeAtReplyMax": 111.3,
+          "n": 200,
+          "where": "FNaF 1 title, full 7713-sample night set, one adb forward"
+        },
         "staticRoom": "Consecutive native frames of a still office are pixel-identical (frame-to-frame p50 0 in every region), so a region is compared with the template of the state the room is in.",
         "flicker": "The door lights flicker: 10 of 61 lit left-doorway frames of the EMPTY room rendered as the unlit room."
       }
@@ -56,6 +79,38 @@
       },
       "detector": "occupied min 5.54, clear max 1.72 against threshold 4 (Freddy and Chica on CAM 4B narrowed the occupied side from 7.31 to 5.54)",
       "foxy": "Never looked at. A CAM 4B flick ending ~300 ms before each of his 5010 ms rolls re-sets his hold to >= 50 frames (833 ms) [g460], so every roll fails [g321] and he never leaves the cove; the same raised view keeps Freddy out of the office [g556: viewing <> 42]."
+    },
+    "fourTwentyB": {
+      "run": "fnaf1-custom-grid420-420-b-teach-20260925T031606369Z",
+      "dials": "20/20/20/20",
+      "teachPanel": true,
+      "result": "6 AM: SNAP frames read 5 AM rolling to 6 AM; the Companion's FNaF 1 teach panel narrated the whole night with no send error",
+      "inputs": 847,
+      "regionFrames": 12539,
+      "powerAt5AM": "16% on the HUD in a screenrecord of the last 110 s (the only power read of any run)"
+    },
+    "fourTwentyC": {
+      "run": "fnaf1-custom-grid420-420-c-video-20260925T032833258Z",
+      "dials": "20/20/20/20",
+      "teachPanel": true,
+      "result": "DEAD at ~75 s: Game Over, Chica (Pedro's reading of the run, and the policy log agrees)",
+      "cause": "A full-size screenrecord (2400x1080, 8 Mbps) ran alongside the helper for a demonstration video. The helper's region frames fell from ~23 to ~10 per second with gaps up to 3.7 s. The right-door setter then touched the door four times in 1.5 s -- a late landing read as a lost touch, the third touch reopened a shut door -- and the next right check stalled 6.6 s in a monitor wait while Chica arrived.",
+      "measured": "Any screenrecord halves the helper's distinct frames: 75 -> 37 (1200x540, 2 Mbps) and 35 (full size, 8 Mbps) of 150 REGION reads on the FNaF 1 title.",
+      "fixes": [
+        "A door is touched again only if a frame rendered 1.2 s after the touch still shows the old state (the panel names the new state the frame the touch lands, 205-235 ms after it starts, cal0).",
+        "Each monitor transition is bounded at 1.8 s, retries included.",
+        "A frame older than 400 ms answers no read.",
+        "Video, when asked for, is 1200x540 at 2 Mbps, chained per segment on the host so a stop never cuts a file mid-write."
+      ]
+    },
+    "fourTwentyD": {
+      "run": "fnaf1-custom-grid420-420-d-video-20260925T033659207Z",
+      "dials": "20/20/20/20",
+      "teachPanel": true,
+      "video": "1200x540, 2 Mbps screenrecord chained per segment on the host (local only)",
+      "result": "DEAD at ~226 s (2 AM), Bonnie (jumpscare in the run's video)",
+      "cause": "The helper delivered 10.0 region frames/s over the night with ~2 s gaps every ~5 s, against ~23/s in a and b. The right door took four touches in 5.6 s (a confirmation never arrived inside 1.2 s, so the touch was repeated), and no left check ran across Bonnie's ticks at 218.7 and 223.7 s.",
+      "conclusion": "screenrecord and a closed-loop night do not mix on this handset at any size tried. Demonstration video has to come from the Companion's own frames, not from a second virtual display."
     }
   },
   "findings": [
@@ -64,7 +119,7 @@
     "The game vibrated 20 times during the 4/20 night, each within ~0.12 s of a light press on the phone's clock (host and phone clocks were not aligned). Candidate reading: FNaF 1 vibrates when the light reveals someone at a door -- a vision-independent occupancy sensor. UNKNOWN(not-tested): not correlated against the detector's per-press verdicts yet."
   ],
   "notMeasured": [
-    "Reliability: one 4/20 night is one night, not a cohort.",
+    "Reliability: four nights, 2/2 without screenrecord and 0/2 with it; no predeclared cohort.",
     "The night origin offset (-97 ms) is from one calibration night; the route does not yet re-anchor on the observed 1 AM.",
     "Power at 6 AM on the phone: no power reader exists; the model's prediction for this route is min 24 / median 71 units (typical lane).",
     "Whether a contact shorter than 160 ms is taken by FNaF 1's touch-up rules."
@@ -80,5 +135,9 @@
     "note": "Game frames and region pixels are never committed (docs/evidence/README.md publishing boundary). This record is the derived reading; the winner binding is tools/device/fnaf1-custom-night7-420-grid420-winner.json."
   },
   "rung": "A DEVICE_MEASURED 6 AM for FNaF 1 4/20 on its own terminal. No Plan 12 promotion edge is recorded, and the evidence CLI does not read FNaF 1 run records yet.",
-  "plan": "plans/26-second-target-fnaf-1-3-4.md"
+  "plan": "plans/26-second-target-fnaf-1-3-4.md",
+  "media": {
+    "readmeGif": "docs/img/fnaf1-420-teach-panel-bonnie.gif (420-d, one Bonnie visit at 12 AM, before its capture failed)",
+    "made": "tools/device/fnaf1-teach-media.py --only gif"
+  }
 }

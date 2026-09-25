@@ -927,7 +927,7 @@
     },
     {
       "id": "tools/device/cue-helper-setup.sh",
-      "invocation": "tools/device/cue-helper-setup.sh [--install] [--probe] [--screen menu\\|night] [--stop] [--wait SECONDS]",
+      "invocation": "tools/device/cue-helper-setup.sh [--install] [--probe] [--restart-capture] [--target fnaf2\\|fnaf1] [--screen menu\\|night] [--stop] [--wait SECONDS]",
       "kind": "device action/check",
       "lifecycle": "supported"
     },
@@ -1761,7 +1761,7 @@
     },
     {
       "id": "tools/device/fnaf1-custom-run.sh",
-      "invocation": "tools/device/fnaf1-custom-run.sh --dry-run \\| --live --confirm-live --dials F,B,C,X --mode calibrate-empty\\|grid420 [--detectors FILE] [--stop-after-ms MS] [--label NAME]",
+      "invocation": "tools/device/fnaf1-custom-run.sh --dry-run \\| --live --confirm-live --dials F,B,C,X --mode calibrate-empty\\|grid420 [--detectors FILE] [--teach] [--video] [--stop-after-ms MS] [--label NAME]",
       "kind": "**device action**",
       "lifecycle": "supported"
     },
@@ -1798,6 +1798,12 @@
     {
       "id": "tools/fnaf1-device-lane.mjs",
       "invocation": "tools/fnaf1-device-lane.mjs [--seeds N] [--start S] [--lane typical\\|worst\\|best] [--policy grid420\\|flick4b] [--opt.key value]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/fnaf1-teach-media.py",
+      "invocation": "tools/device/fnaf1-teach-media.py --run DIR --video FILE.mp4 --out DIR [--only gif\\|all]",
       "kind": "report",
       "lifecycle": "supported"
     },

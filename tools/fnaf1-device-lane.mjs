@@ -66,6 +66,7 @@ function laneRng(seed) {
 function drawer(rng, lane) {
   return (band) => {
     if (lane === 'worst') return band.max;
+    if (lane === 'starved') return band.max * (1 + 3 * rng());   // a capture at a third of its rate
     if (lane === 'best') return band.min;
     const { min, max } = band;
     const mode = band.mode ?? (min + max) / 2;
@@ -415,6 +416,8 @@ export function* grid420(ctx) {
     // starts, plus up to ~106 ms of frame lag and ~48 ms of read.
     releaseConfirmMs: 450,
     landingMaxMs: 260,     // the latest a touch-up control has been seen to land (247 ms) + a frame
+    retapAfterMs: 1200,    // a touch not seen landed by then is treated as lost
+    monitorBudgetMs: 1800, // the most one monitor transition may take, retries included
     lightOff: true,
     ...ctx.options,
   };
@@ -444,9 +447,12 @@ export function* grid420(ctx) {
     log(`tap ${control}`);
     yield { tap: control };
   };
+  // Bounded as a whole: a monitor that will not settle must not hold the
+  // finger for seconds while a door needs it.
   const monitorTo = function* (want) {
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const f = yield* waitFor((x) => x.monitor !== 'flipping');
+    const giveUp = ctx.now() + o.monitorBudgetMs;
+    for (let attempt = 0; attempt < 6 && ctx.now() < giveUp; attempt += 1) {
+      const f = yield* waitFor((x) => x.monitor !== 'flipping', Math.max(50, giveUp - ctx.now()));
       if (!f) return null;
       if (f.monitor === want) return f;
       yield { tap: 'monitor' };
@@ -542,8 +548,20 @@ export function* grid420(ctx) {
         if (want === DOOR_SHUT) d.shutSeenMs = f.frame * MS_PER_FRAME;
         return f;
       }
+      const tapAt = ctx.now();
       yield* cooldownTap(key(side));
-      notBefore = ctx.now() + o.landingMaxMs;
+      // The panel names the new state the frame the touch lands (~205-235 ms,
+      // cal0). Wait for it; only a frame rendered well after that, still
+      // showing the old state, means the touch was lost -- touching again on
+      // a merely late landing undoes it (420-c: four right-door touches in
+      // 1.5 s under a starved capture left the door open for Chica).
+      const moved = yield* waitFor((x) => x.frame * MS_PER_FRAME >= tapAt + o.landingMaxMs
+        && x[key(side)] === want, o.retapAfterMs);
+      if (moved) {
+        if (want === DOOR_SHUT) d.shutSeenMs = moved.frame * MS_PER_FRAME;
+        return moved;
+      }
+      notBefore = tapAt + o.retapAfterMs;
     }
     return null;
   };

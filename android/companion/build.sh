@@ -98,6 +98,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlaySnapshotRetention.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/CycleLesson.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/TeachPanel.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/Fnaf1Lesson.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/Fnaf1PanelView.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/TeachPanelView.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayView.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayController.java" \

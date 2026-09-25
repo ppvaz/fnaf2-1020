@@ -24,6 +24,10 @@ from cue_helper_device_lock import DeviceBusy, DeviceLock
 ROOT = Path(__file__).resolve().parents[2]
 HELPER_PACKAGE = "com.ppvaz.fnafcompanion"
 TARGET_PACKAGE = "com.scottgames.fnaf2"
+# The other targets the Companion serves. The helper has a screen identity
+# only for FNaF 2; for these the setup ends when the game is launched, and the
+# caller's own title gate (a SNAP read by its title model) says where it is.
+OTHER_TARGETS = {"fnaf1": "com.scottgames.fivenightsatfreddys"}
 OVERLAY_SUPPRESSION_PERMISSION = "android.permission.HIDE_NON_SYSTEM_OVERLAY_WINDOWS"
 UI_REMOTE = "/sdcard/cue-helper-setup-ui.xml"
 UI_ALLOWED = {
@@ -314,6 +318,8 @@ def main() -> int:
     parser.add_argument("--screen", choices=("menu", "night"), default="menu",
                         help="screen identity to wait for after setup (default: menu)")
     parser.add_argument("--wait", type=float, default=20.0, help="screen wait timeout in seconds")
+    parser.add_argument("--target", choices=("fnaf2", *OTHER_TARGETS), default="fnaf2",
+                        help="game to launch after setup (only fnaf2 has a helper screen check)")
     args = parser.parse_args()
     if args.wait <= 0 or args.wait > 300:
         parser.error("--wait must be between 0 and 300 seconds")
@@ -343,11 +349,12 @@ def main() -> int:
                 adb("install", "-r", str(apk), timeout=60.0)
                 print(f"INSTALL helper={package_build(HELPER_PACKAGE)}")
 
+            target_package = OTHER_TARGETS.get(args.target, TARGET_PACKAGE)
             helper_build = package_build(HELPER_PACKAGE)
-            target_build = package_build(TARGET_PACKAGE)
-            target_launcher = launcher(TARGET_PACKAGE)
+            target_build = package_build(target_package)
+            target_launcher = launcher(target_package)
             print(f"BUILD helper={helper_build} target={target_build} launcher={target_launcher}")
-            target_dump = adb("shell", "dumpsys", "package", TARGET_PACKAGE)
+            target_dump = adb("shell", "dumpsys", "package", target_package)
             print("TARGET_SUPPRESSION status="
                   f"{overlay_suppression_status(target_dump)} "
                   f"permission={OVERLAY_SUPPRESSION_PERMISSION}")
@@ -360,6 +367,10 @@ def main() -> int:
             if args.probe:
                 start_probe()
             start(target_launcher)
+            if args.target != "fnaf2":
+                print(f"SETUP PASS capture ready; {args.target} launched "
+                      "(no helper screen identity for it: the caller's SNAP title gate reads it)")
+                return 0
             try:
                 snapshot = wait_for_screen(args.screen, args.wait)
             except SetupHold as error:

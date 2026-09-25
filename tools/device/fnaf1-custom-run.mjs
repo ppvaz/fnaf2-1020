@@ -23,7 +23,8 @@
  */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, existsSync } from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
 import { createGzip } from 'node:zlib';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -48,6 +49,7 @@ const REGIONS_PATH = join(HERE, 'models/regions-fnaf1-moto-g56-v207.json');
 const CONTACT_MS = 160;
 const MODES = Object.freeze(['calibrate-empty', 'grid420']);
 const NIGHT_MS = 535000;                 // 90 s + 5 x 89 s (fnaf1.js CLOCK)
+const STALE_FRAME_MS = 400;              // frame age p95 82 ms, max 111 ms measured; 400 is a stall
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const stamp = () => new Date().toISOString().replace(/[-:.]/g, '');
@@ -56,7 +58,7 @@ function fail(message) { throw new Error(`fnaf1-custom-run: ${message}`); }
 
 export function parseArgs(argv) {
   const o = { live: false, confirmLive: false, dryRun: false, dials: null, mode: null, label: null,
-    detectors: null, stopAfterMs: NIGHT_MS + 3000, originOffsetMs: -97, chicaByCamera: false };
+    detectors: null, stopAfterMs: NIGHT_MS + 3000, originOffsetMs: -97, chicaByCamera: false, teach: false, video: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--live') o.live = true;
@@ -70,6 +72,8 @@ export function parseArgs(argv) {
     } else if (a === '--mode') o.mode = argv[++i];
     else if (a === '--label') o.label = argv[++i];
     else if (a === '--detectors') o.detectors = argv[++i];
+    else if (a === '--teach') o.teach = true;
+    else if (a === '--video') o.video = true;
     else if (a === '--stop-after-ms') o.stopAfterMs = Number(argv[++i]);
     else fail(`unknown argument ${a}`);
   }
@@ -151,6 +155,55 @@ async function hold(hid, record, control, point, durationMs) {
   await record.event('input.released', { control, hostMs: performance.now() });
 }
 
+/**
+ * A demonstration video of the night: screenrecord segments chained on the
+ * phone (its own limit is 180 s), started at Ready, stopped after the night,
+ * pulled and joined with ffmpeg. Local only (~/fnaf-apks/fnaf1-videos): game
+ * frames never enter the repository. Nothing reads it during the night.
+ */
+function startVideo(serial, id) {
+  const segments = [];
+  let stopped = false;
+  let current = null;
+  // One adb shell per segment, chained on the host: the chain can be stopped
+  // without killing an adb client, which would cut the running screenrecord
+  // off before it writes its moov atom (420-c lost its segment that way).
+  const next = () => {
+    if (stopped || segments.length >= 6) return;
+    const path = `/sdcard/Movies/${id}-${segments.length + 1}.mp4`;
+    segments.push(path);
+    // Light on purpose: any screenrecord halves the helper's distinct frames
+    // (75 -> 37 of 150 reads, measured 2026-09-25), and a full-size one
+    // starved 420-c into a death. Half size and 2 Mbps is enough to watch.
+    current = spawn('adb', ['-s', serial, 'shell', 'screenrecord', '--time-limit', '170',
+      '--size', '1200x540', '--bit-rate', '2000000', path], { stdio: 'ignore' });
+    current.once('exit', () => { current = null; next(); });
+  };
+  next();
+  return {
+    async stop(outDir) {
+      stopped = true;
+      try { execFileSync('adb', ['-s', serial, 'shell', 'pkill', '-INT', 'screenrecord'], { timeout: 10000 }); } catch { /* none running */ }
+      for (let i = 0; i < 40 && current; i += 1) await sleep(250);
+      const pulled = [];
+      for (const remote of segments) {
+        const local = join(outDir, remote.split('/').pop());
+        try {
+          execFileSync('adb', ['-s', serial, 'pull', remote, local], { timeout: 120000, stdio: 'ignore' });
+          if (existsSync(local)) pulled.push(local);
+          execFileSync('adb', ['-s', serial, 'shell', 'rm', '-f', remote], { timeout: 10000 });
+        } catch { /* a segment that never started */ }
+      }
+      if (pulled.length === 0) return null;
+      const list = join(outDir, `${id}-segments.txt`);
+      await writeFile(list, pulled.map((p) => `file '${p}'`).join('\n'));
+      const out = join(outDir, `${id}.mp4`);
+      execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], { timeout: 300000 });
+      return out;
+    },
+  };
+}
+
 /** The 0/0/0/0 choreography: every route control, open-loop, timestamped. */
 async function calibrateEmpty({ hid, record, bridge, controls, snapTo }) {
   const c = controls.controlMap;
@@ -221,7 +274,41 @@ async function waitForOffice(recorder, classify, boundMs) {
  * the newest native-region frame, classified. Time is the night's own: 0 is
  * the origin placed from the first office frame.
  */
-async function runPolicy({ policy, options, hid, record, controls, recorder, classify, epochHostMs, stopAfterMs }) {
+/**
+ * The Companion's FNaF 1 teach panel, fed from the route: the step each
+ * policy task names, and each side's door and last lit reading when they
+ * change. Words are the panel's own vocabulary (Fnaf1Lesson.java); lines are
+ * sent in order and a failed send never touches the night.
+ */
+const F1_LINE = /^LESSON [0-9a-f]{32} f1 (origin \d{1,19}|step [A-Z_]+|seen [LR] (CLEAR|OCCUPIED)|door [LR] (OPEN|SHUT)|clear)$/;
+function teachFeed(port, record) {
+  const channel = port.openLesson({ timeoutMs: 800, lessonLine: F1_LINE });
+  const token = port.endpoint.token;
+  let chain = Promise.resolve();
+  const last = {};
+  const say = (words, key = null) => {
+    if (key !== null) { if (last[key] === words) return; last[key] = words; }
+    chain = chain.then(() => channel.send(`LESSON ${token} f1 ${words}`))
+      .catch((e) => record.event('teach-error', { words, message: e.message }).catch(() => {}));
+  };
+  const STEP = [[/ flick /, 'FLICK'], [/run check-left/, 'CHECK_LEFT'], [/run check-right/, 'CHECK_RIGHT'],
+    [/run (pull-)?close-left/, 'CLOSE_LEFT'], [/run (pull-)?close-right/, 'CLOSE_RIGHT'],
+    [/run reopen-left/, 'REOPEN_LEFT'], [/run reopen-right/, 'REOPEN_RIGHT'], [/run task$/, 'WAIT']];
+  return {
+    origin: (ns) => say(`origin ${ns}`),
+    policyLog: (m) => { for (const [re, step] of STEP) if (re.test(m)) { say(`step ${step}`, 'step'); return; } },
+    frame: (f, pan) => {
+      const side = pan === 0 ? 'L' : 'R';
+      const seen = pan === 0 ? f.left : f.right;
+      if (seen === 'occupied' || seen === 'clear') say(`seen ${side} ${seen.toUpperCase()}`, `seen${side}`);
+      const door = pan === 0 ? f.leftDoor : f.rightDoor;
+      if (f.monitor === 'down' && (door === 0 || door === 2)) say(`door ${side} ${door === 2 ? 'SHUT' : 'OPEN'}`, `door${side}`);
+    },
+    clear: async () => { say('clear'); await chain; channel.close(); },
+  };
+}
+
+async function runPolicy({ policy, options, hid, record, controls, recorder, classify, epochHostMs, stopAfterMs, teach = null }) {
   const c = controls.controlMap;
   const point = (control, pan) => {
     const p = c[control];
@@ -233,7 +320,7 @@ async function runPolicy({ policy, options, hid, record, controls, recorder, cla
     now: () => performance.now() - epochHostMs,
     epochErrorMs: 0,
     believedRollMs: (period, k) => k * period,
-    options: { ...options, debug: (m) => { record.event('policy', { m }).catch(() => {}); } },
+    options: { ...options, debug: (m) => { record.event('policy', { m }).catch(() => {}); teach?.policyLog(m); } },
   };
   const it = policy(ctx);
   let value; let send;
@@ -246,6 +333,9 @@ async function runPolicy({ policy, options, hid, record, controls, recorder, cla
     if ('read' in value) {
       const r = recorder.latest;
       if (!r) { await sleep(10); continue; }
+      // A frame older than this is not the room now: answer nothing and let
+      // the rule poll again, rather than act on it.
+      if (performance.now() - r.imageHostMs > STALE_FRAME_MS) { send = null; continue; }
       const f = classify(samples(r), pan);
       f.frame = (r.imageHostMs - epochHostMs) / (1000 / 60);
       f.seq = r.seq;
@@ -253,6 +343,7 @@ async function runPolicy({ policy, options, hid, record, controls, recorder, cla
       // 6 AM screen) is the end of the night, not a state to act on.
       if (r.seq !== lastSeq) { lastSeq = r.seq; stale = f.monitor === 'flipping' ? stale + 1 : 0; }
       if (stale > 150) { await record.event('night-left-office', { atMs: ctx.now() }); return 'LEFT_OFFICE'; }
+      teach?.frame(f, pan);
       send = f;
       continue;
     }
@@ -307,7 +398,7 @@ async function main(argv) {
   const bridge = new HelperFrameBridge(serial, port, adbBridge);
   const snapTo = async (name) => { const png = await bridge.capturePng(); await record.capture(name, png); };
   let hidProcess = null; let hid = null; let recorder = null; let channel = null;
-  let entered = false; let error = null;
+  let entered = false; let error = null; let video = null;
   try {
     await ensureTitle(bridge, record, { requireHid: true });
     hidProcess = new AdbHidProcess({ serial });
@@ -334,6 +425,7 @@ async function main(argv) {
     recorder = new RegionRecorder(channel, join(captureDir, 'regions.ndjson.gz'));
     recorder.start();
     await sleep(500);
+    if (options.video) video = startVideo(serial, id);
     await press(hid, record, 'ready', { x: ready[0], y: ready[1] });
     record.document.readyHostMs = performance.now();
     await record.save('NIGHT');
@@ -353,8 +445,20 @@ async function main(argv) {
         epochHostMs, originOffsetMs: options.originOffsetMs };
       await record.event('night-origin', record.document.night);
       await record.save('NIGHT_RUNNING');
+      let teach = null;
+      if (options.teach) {
+        try {
+          teach = teachFeed(port, record);
+          // The origin on the helper's own image clock: the office frame's
+          // imageNs plus the calibrated offset.
+          teach.origin(office.imageNs + BigInt(Math.round(options.originOffsetMs * 1e6)));
+          teach.policyLog('run task');
+        } catch (e) { await record.event('teach-error', { message: e.message }); teach = null; }
+      }
+      record.document.teach = options.teach;
       const ended = await runPolicy({ policy: grid420, options: { chicaByCamera: options.chicaByCamera }, hid, record,
-        controls, recorder, classify, epochHostMs, stopAfterMs: options.stopAfterMs });
+        controls, recorder, classify, epochHostMs, stopAfterMs: options.stopAfterMs, teach });
+      if (teach) await teach.clear();
       record.document.night.ended = ended;
       record.document.night.endedAtNightMs = performance.now() - epochHostMs;
       await record.event('night-ended', { ended, atNightMs: record.document.night.endedAtNightMs });
@@ -372,6 +476,13 @@ async function main(argv) {
     }
     try { await channel?.clear(); } catch { /* the helper drops regions with its session */ }
     channel?.close();
+    if (video) {
+      try {
+        const dir = join(homedir(), 'fnaf-apks', 'fnaf1-videos');
+        await mkdir(dir, { recursive: true });
+        record.document.video = await video.stop(dir);
+      } catch (e) { record.document.video = `FAILED: ${e.message}`; }
+    }
     if (entered) {
       try { await restartToTitle(bridge, record); record.document.recovery = 'TITLE_CONFIRMED'; }
       catch (e) { record.document.recovery = `FAILED: ${e.message}`; error ??= e; }

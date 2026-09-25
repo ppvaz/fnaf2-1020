@@ -80,6 +80,7 @@ const EXCLUDED = new Map([
   ['fnaf1-detectors.mjs', 'builds FNaF 1 empty-scene templates from a calibration run and classifies REGION reads for the runner; gated by test-native-regions.mjs'],
   ['fnaf1-calibration-analyze.mjs', 'offline reader of a FNaF 1 calibration record (press-to-frame latency, office onset, hour change); a calibration tool, not a night grader'],
   ['test-native-regions.mjs', 'the gate for the REGION codec, the FNaF 1 classifier and the runner refusals; runs in npm run test:unit'],
+  ['fnaf1-teach-media.py', 'cuts a FNaF 1 run video into a README GIF and phone videos; a presentation tool, not a grader'],
   ['camera-calibrate.py', 'native cameraSelected rule builder, gated by test-camera-calibrate.py; labelled calibration frames are inputs, not a night-run artifact'],
   ['monitor-calibrate.py', 'native monitorUp rule builder, gated by test-monitor-calibrate.py; labelled calibration frames are inputs, not a night-run artifact'],
   ['minus-toys-margin.mjs', 'per-instruction timing margin map for the Minus Toys plan -- a model analysis, no run artifact to read; gated by test-minus-toys-margin.mjs'],

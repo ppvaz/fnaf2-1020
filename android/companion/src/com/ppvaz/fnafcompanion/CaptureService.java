@@ -3001,6 +3001,8 @@ public final class CaptureService extends Service {
                 case "status":
                     if (field.length != 3) return "ERROR lesson-usage";
                     return overlayController.teachStatus();
+                case "f1":
+                    return overlayController.f1Command(field, 3);
                 default:
                     return "ERROR lesson-usage";
             }

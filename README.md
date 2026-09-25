@@ -10,20 +10,23 @@ The canonical target is Android. PC equivalence, device-general calibration, and
 a live controller result above its evidence rung are not claimed. Game assets
 and decompiled content are never distributed.
 
-The bot plays the **Minus Toys** cycle on the phone. Minus Toys is
+![One full 10-second Minus Toys cycle of Night 7 at 3 AM, with the teach panel enlarged underneath](docs/img/night7-teach-panel-cycle22.gif)
+
+*The **Minus Toys** cycle, played by the bot on the phone. Minus Toys is
 Zach_Scream's 2025 zero-RNG technique for 10/20
-([the lineage](docs/strategy/MINUS-3-STRATEGY.md)); binding k3's version of it,
-one whole 10-second cycle of Night 7 with all ten dials at 20, runs like this at
-3 AM (cycle 22, 2026-09-18, read from the run's video). A double camera glitch
-leaves the feed on Prize Corner with the marker parked on CAM 09, so every camera flash
+([the lineage](docs/strategy/MINUS-3-STRATEGY.md)); this is binding k3's version
+of it, one whole 10-second cycle of Night 7 with all ten dials at 20, at 3 AM
+(cycle 22, 2026-09-18, from the run's video). A double camera glitch leaves the
+feed on Prize Corner with the marker parked on CAM 09, so every camera flash
 freezes all three Toys on the Show Stage for 6.7 s. The cycle: mask off, a hall
 flash for Foxy, cams up onto that split, the camera flash, three seconds of
 winding for the Puppet, the cams dropped with the light held so it flashes the
-hall, and the mask worn for the remaining 5.25 s. The Cue Helper's teach panel
-(`night-run.sh --teach-overlay`) shows it to someone watching: the ring is the cycle
+hall, and the mask worn for the remaining 5.25 s. The panel at the left, enlarged
+2x in the strip underneath, is the Cue Helper's teach panel
+(`night-run.sh --teach-overlay`) for someone watching: the ring is the cycle
 (outer band: mask, cams or office; inner band: the flashes and the wind; the hand
 is now), the title is the step the schedule is on, and `seen` is what the helper
-reads off the screen, trailing each press by the game's own animation.
+reads off the screen, trailing each press by the game's own animation.*
 
 ## Where this stands — 2026-09-18
 
@@ -52,7 +55,21 @@ A single clear and a reliability claim are different claims, and
 20/20/20/20 reached 6 AM on the first attempt, read entirely through the Cue
 Helper's native-frame regions and driven by a route priced at the handset's
 measured touch costs ([`fnaf1-420-first-6am`](docs/evidence/fnaf1-420-first-6am-20260925.json)).
-One night, not a cohort.
+Four nights so far: both without a screen recording running reached 6 AM, and
+both with one died, because any `screenrecord` halves the helper's frames.
+
+![One Bonnie visit at 4/20: the left light finds him after his tick, the door shuts before his next one and reopens after it, with the teach panel enlarged underneath](docs/img/fnaf1-420-teach-panel-bonnie.gif)
+
+*One Bonnie visit on FNaF 1's 4/20, at 12 AM (`420-d`, 2026-09-25, from the
+run's video). Bonnie, Chica and Foxy each move only on their own clock -- every
+4.97, 4.98 and 5.01 s from the night's first frame -- and the route lives on
+those clocks: a CAM 4B flick just before each of Foxy's ticks holds him and
+keeps Freddy out, each doorway is lit once after a tick that could have brought
+someone to it, and a door is shut ahead of the tick that turns its occupant back
+and reopened once the light through it shows him gone. The panel is the
+Companion's FNaF 1 teach panel (`fnaf1-custom-run.sh --teach`): the step and why,
+the three clocks filling toward their next tick, and each door with what its
+light last showed.*
 
 **All ten Custom Night presets are viable — in the model.** Night 7 here had only
 ever meant canonical 10/20; the other nine menu presets are different AI vectors

@@ -1521,6 +1521,7 @@
         "./fnaf1-detectors.mjs",
         "./fnaf1-menu-probe.mjs",
         "./native-regions.mjs",
+        "node:child_process",
         "node:crypto",
         "node:fs",
         "node:fs/promises",
@@ -2080,7 +2081,8 @@
         "../../packages/adapters/src/transports/cue-helper.js",
         "./fnaf1-custom-run.mjs",
         "./fnaf1-detectors.mjs",
-        "./native-regions.mjs"
+        "./native-regions.mjs",
+        "node:fs"
       ]
     },
     {
