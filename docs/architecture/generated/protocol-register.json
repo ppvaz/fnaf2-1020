@@ -2,12 +2,6 @@
   "schema": "protocol-register-v1",
   "protocols": [
     {
-      "id": "screencheck-process-v1",
-      "owner": "adapters/screencheck",
-      "kind": "process",
-      "validator": "screencheck grammar"
-    },
-    {
       "id": "cue-helper-control-v1",
       "owner": "android/companion",
       "kind": "wire",

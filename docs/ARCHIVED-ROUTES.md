@@ -129,6 +129,25 @@ checked through the artifact runner is checked on `makeExecutorRequest`
 directly. CI's device lane is now a campaign dry run over the committed Night 7
 winner, and `test-winners-rebuild.mjs` compiles every committed winner.
 
+## The adapter hexagon and screencheck (2026-09-25, the same retirement's second half)
+
+With the service gone, nothing that plays a night used the ports-and-adapters
+layer it was built on: the capability registry (`packages/adapters/src/registry.js`,
+`device:bench`, the generated `adapter-registry.json`), the actuator and sensor
+classes (`actuators.js`, `sensors.js`), the core `Actuator`, `Sensor` and
+`Detector` ports (`packages/core/src/actuation/`, `sensing/ports.js`), the
+on-device `screencheck` classifier (`packages/screencheck`, its build, model,
+replay and benchmark tools, `capture-screen-sample.sh`) and the `adb-screencap`
+profile. Seven contracts whose only producers were these are retired:
+`raw-sample-v1`, `measurement-v1`, `detector-v1`, `actuator-v1`,
+`capability-v1`, `calibration-v1`, `screencheck-process-v1`. Restore from
+`6d78c7e`: `git checkout 6d78c7e -- <path>`.
+
+What the campaign does use stays: the HID and Cue Helper transports, clocks,
+night onset, the monitor/mask/camera and calibration-state rules, control
+exclusion, button strokes, the control anchor, and the `fixture-hid-screencap`
+profile the bundle tests compile against.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

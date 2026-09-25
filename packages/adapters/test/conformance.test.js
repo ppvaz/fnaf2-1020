@@ -1,35 +1,10 @@
-/** Shared actuator conformance fixture; backend-specific limits stay visible. */
+/** Adapter conformance: the HID wire, the Cue Helper transport, clocks and the detection rules the campaign reads. */
 import assert from 'node:assert/strict';
-import { FixtureActuator } from '../src/actuators.js';
-import { FixtureRawSensor, FixtureVisualDetector, ScreencapSensor, CueHelperDetector } from '../src/sensors.js';
 import { Clock } from '../src/clocks.js';
-import { getCapability, resolveProfile } from '../src/registry.js';
 import { HID_DESCRIPTOR, HidWireTransport, toRaw, report } from '../src/transports/hid.js';
 import { CueHelperControlTransport, parseCueResponse } from '../src/transports/cue-helper.js';
 
-const actuator = new FixtureActuator({ now: () => 12 });
-const command = { schema: 'control-command-v1', id: 'fixture-1', action: { kind: 'select', control: 'cam:10' }, requestedAt: { clock: 'device-monotonic-ms', value: 0 }, source: { controller: 'conformance' } };
-const result = await actuator.apply(command);
-assert.equal(result.status, 'SENT');
-assert.equal(result.commandId, command.id);
-assert.equal(getCapability('fixture-hid').claimLevel, 'FIXTURE');
-const raw = new FixtureRawSensor({ samples: [] }).sample({ id: 'raw-1', at: 10 });
-assert.equal(new FixtureVisualDetector().detect(raw).state, 'UNKNOWN');
-const frame = new ScreencapSensor({ capture: () => new Uint8Array([0, 0, 0, 255]), dimensions: { width: 1, height: 1 } }).sample({ id: 'frame-1', at: 2 });
-assert.equal(new CueHelperDetector({ read: () => ({ state: 'UNKNOWN', reason: 'helper-timeout' }) }).detect(frame).state, 'UNKNOWN');
 assert.deepEqual(new Clock({ name: 'simulator-frame', read: () => 7 }).now(), { clock: 'simulator-frame', value: 7 });
-assert.throws(() => resolveProfile({ schema: 'device-profile-v1', id: 'bad', targetBuild: 'x', actuator: 'fixture-hid', visualSensor: 'fixture-visual', visualDetector: 'fixture-visual', clock: 'device-monotonic-ms', calibrations: { visual: '' } }), /unbound calibration/);
-const controls = ['mask', 'monitor', 'cameraFeedLight', 'hallLight', 'wind', 'leftVentLight', 'rightVentLight', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'];
-const profile = {
-  schema: 'device-profile-v1', id: 'compatibility-fixture', targetBuild: 'fixture',
-  actuator: 'fixture-hid', visualSensor: 'fixture-visual', visualDetector: 'fixture-detector',
-  clock: 'host-monotonic-ms',
-  calibrations: { geometry: 'fixture-geometry-v1', 'actuator-timing': 'fixture-hid-timing-v1', visual: 'fixture-visual-v1', detector: 'fixture-visual-v1' },
-  controlMap: Object.fromEntries(controls.map(control => [control, { x: 1, y: 1 }])),
-};
-assert.doesNotThrow(() => resolveProfile(profile));
-assert.throws(() => resolveProfile({ ...profile, visualDetector: 'screencheck-detector' }), /sensor format .* cannot consume/);
-assert.throws(() => resolveProfile({ ...profile, calibrations: { ...profile.calibrations, detector: 'other-visual-v1' } }), /incompatible visual\/detector calibrations/);
 assert.deepEqual(toRaw([2275, 685]), [877, 1023], 'HID transform must truncate at the adapter boundary');
 assert.deepEqual(report([{ flags: 3, point: { x: 350, y: 615 } }]).slice(0, 7),
   [1, 1, 3, 9, 4, 157, 0], 'HID report must preserve contact flags and native transform');
@@ -87,22 +62,6 @@ for (const bad of [
 assert.throws(() => cue.visualAcquisition({ snapshotNs: '1', ageUs: '1', seq: '1' }), /invalid/);
 assert.throws(() => cue.visualAcquisition({ snapshotNs: '5000000000',
   visualCaptureNs: '4990000000', ageUs: '1', seq: '12' }), /disagrees/);
-let captureCompleteAt = 30;
-const stamped = await new ScreencapSensor({ now: () => captureCompleteAt, capture: async () => {
-  captureCompleteAt = 55;
-  return { ...raw, id: 'async-frame', source: { sensor: 'screencap', sequence: 12 },
-    acquisition: captureTiming };
-} }).sample({ id: 'request', at: 999 });
-assert.equal(stamped.acquisition.at, 4990, 'request time must not replace source time');
-const stampedMeasurement = new CueHelperDetector({ read: () => ({ value: true }) }).detect(stamped);
-assert.deepEqual(stampedMeasurement.observedAt, { clock: 'device-monotonic-ms', value: 4990 });
-assert.deepEqual(stampedMeasurement.receivedAt, { clock: 'host-monotonic-ms', value: 55 });
-assert.equal(stampedMeasurement.source.sequence, 12);
-const lost = await new ScreencapSensor({ capture: async () => { throw new Error('capture-timeout'); } }).sample();
-let readsOfLostFrames = 0;
-assert.equal(new CueHelperDetector({ read: () => { readsOfLostFrames++; return { value: true }; } })
-  .detect(lost).reason, 'capture-timeout');
-assert.equal(readsOfLostFrames, 0, 'a capture failure cannot become an observed state');
 assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
   cameraSelected: 'cam:5', cameraReason: 'single-camera-highlight' }),
   { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 });
@@ -148,4 +107,4 @@ assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
 assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
   batteryPercent: '110' }),
   { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'sensor-mismatch' });
-console.log('adapter contracts: fixture actuator result and profile refusal pass');
+console.log('adapter contracts: HID wire, Cue Helper transport, clock and detection rules pass');

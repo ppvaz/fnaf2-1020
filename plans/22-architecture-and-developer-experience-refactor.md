@@ -1081,7 +1081,7 @@ missing links but may not infer evidence promotion.
 Keep local explanations in code when proximity matters. Any comment that is
 the only explanation of a cross-package invariant, protocol choice, sourced
 mechanic, safety constraint, calibration assumption, or historical correction
-must carry a stable reference such as `CONTRACT:actuator-v1`,
+must carry a stable reference such as `CONTRACT:hid-executor-v1`,
 `CLAIM:android.g779.empty-hall`, `ADR:0007`, or `EVIDENCE:runtime-gh`.
 The documentation portal generates reverse links from those references:
 

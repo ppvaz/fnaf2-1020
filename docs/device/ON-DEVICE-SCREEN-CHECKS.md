@@ -1,5 +1,10 @@
 # Low-cost visual checks inside the stock device
 
+> **Archived 2026-09-25.** The `screencheck` classifier (`packages/screencheck`) and its build,
+> model, replay and benchmark tools left the tree with the fixture service path that used them;
+> full-display screencap is a discontinued sensor (CLAUDE.md). Restore with
+> `git checkout 6d78c7e -- packages/screencheck`. The record below is kept as history.
+
 *Prototype added 2026-08-23. This is the inexpensive stock-game path between
 the blind adb schedule and a rebuilt/instrumented game.*
 
@@ -14,7 +19,7 @@ stock SurfaceFlinger -> screencap -> 12.4 KiB native helper -> local branch
                                        no image leaves phone
 ```
 
-The helper is [`packages/screencheck/src/screencheck.c`](../../packages/screencheck/src/screencheck.c). The package path is the only native source. It is
+The helper was `packages/screencheck/src/screencheck.c`. The package path is the only native source. It is
 a static, libc-free ARM64/Linux executable, so it does not need an APK, root,
 an Android permission prompt, Python, an NDK runtime, or a writable game
 package. It consumes Android's native 16-byte raw-screencap header and RGBA

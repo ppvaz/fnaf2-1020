@@ -398,12 +398,6 @@ host-side CV loop.
 |---|---|---|
 | packages/screencheck native source | internal source | The one canonical streaming raw RGBA classifier at packages/screencheck/src/screencheck.c for host and freestanding builds. |
 | packages/screencheck native entrypoint | internal source | The one canonical freestanding AArch64 `_start` and syscall exit shim at packages/screencheck/src/screencheck-start.S. |
-| `tools/device/build-screencheck.sh [output]` | build | Cross-builds the static, libc-free AArch64 helper with Apple clang and Rust's bundled `ld.lld`. Default output is ignored `tools/device/fnaf-screencheck`. |
-| `tools/device/test-screencheck.py` | check | Compiles the host form and tests raw/RGBA parsing, stats/count/match, model building/classification/rejection, and replay behavior with synthetic frames. |
-| `tools/device/bench-screencheck.sh [samples] [model]` | device benchmark | Builds and installs the helper at `/data/local/tmp/fnaf-screencheck`, then reports capture, classification, and combined latency distributions. With no model it times full-frame stats. It does not press the game. |
-| `tools/device/capture-screen-sample.sh VIEW LABEL NAME [hold-x hold-y [hold-ms]]` | **device action** | Focus-guarded capture of one labeled raw frame into ignored `captures/screencheck/`. Optional coordinates hold a light/control on-device during capture; it refuses overwrite. |
-| `tools/device/build-screen-model.py --roi X0,Y0,X1,Y1 --output MODEL LABEL=PATH ...` | build/check | Builds an `SCM1` nearest-template model from raw screencaps or PNGs. Directories recurse. `--grid`, `--step`, `--mean-weight`, `--max-score`, and `--min-margin` tune it. Leave-one-out separation fails by default; `--allow-errors` is diagnostic only. PNG input requires Pillow. |
-| `tools/device/replay-screen-model.py MODEL LABEL=PATH ...` | check | Replays independent labeled raw/PNG holdouts through the actual native classifier and fails on misclassification. `--checker PATH` uses an existing host binary. |
 
 The model should have separate calibration and holdout frames, include
 negative/other states, and reject uncertain inputs as `unknown`. Keep models

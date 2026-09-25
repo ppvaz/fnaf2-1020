@@ -9,7 +9,6 @@
     "./mechanics": "./src/mechanics/index.js",
     "./control": "./src/control/index.js",
     "./sensing": "./src/sensing/index.js",
-    "./actuation": "./src/actuation/index.js",
     "./estimation": "./src/estimation/index.js",
     "./timing": "./src/timing/index.js",
     "./telemetry": "./src/telemetry/index.js",

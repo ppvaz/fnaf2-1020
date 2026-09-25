@@ -4,7 +4,6 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ADAPTER_REGISTRY } from '@fnaf2-1020/adapters/registry';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const OUT = join(ROOT, 'docs/architecture/generated');
@@ -51,14 +50,8 @@ const contractEvidence = {
   'policy-program-v1': ['tools/policygrammartest.mjs', 'tools/device/test-policy-ir.mjs'],
   'controller-v1': ['tools/reactivetest.mjs', 'packages/core/test/cycle-controller.test.js'],
   'qualification-v1': ['packages/core/test/contracts.test.js'],
-  'raw-sample-v1': ['packages/adapters/test/conformance.test.js'],
-  'measurement-v1': ['packages/core/test/contracts.test.js', 'packages/adapters/test/conformance.test.js'],
-  'detector-v1': ['packages/adapters/test/conformance.test.js'],
   'state-estimate-v1': ['tools/estimatortest.mjs'],
   'clock-v1': ['tools/phaseclocktest.mjs'],
-  'actuator-v1': ['packages/adapters/test/conformance.test.js'],
-  'capability-v1': ['packages/adapters/test/conformance.test.js'],
-  'calibration-v1': ['packages/adapters/test/conformance.test.js'],
   'device-profile-v1': ['tools/device/test-bundle.mjs'],
   'telemetry-event-v1': ['tools/factlinktest.mjs'],
   'session-manifest-v1': ['tools/device/test-session-manifest.sh'],
@@ -70,7 +63,6 @@ const contractEvidence = {
   'trainer-trace-v1': ['tools/tracereport.mjs'],
   'artifact-ref-v1': ['tools/evidence.js'],
   'claim-evidence-v1': ['tools/evidence.js'],
-  'screencheck-process-v1': ['packages/screencheck/src/screencheck.c', 'packages/screencheck/src/screencheck-start.S'],
   'cue-helper-control-v1': ['tools/cue/test-cue.py'],
   'fact-message-v1': ['packages/core/test/fixtures/fact-message-v1.jsonl'],
   'pcm-udp-v1': ['tools/cue/test-audio-authority.py'],
@@ -337,7 +329,6 @@ const outputs = {
   'contract-register.json': contractRegister,
   'contract-specifications.json': contractSpecifications,
   'protocol-register.json': { schema: 'protocol-register-v1', protocols },
-  'adapter-registry.json': { schema: 'adapter-registry-v1', adapters: Object.values(ADAPTER_REGISTRY) },
   'test-manifest.json': { schema: 'test-manifest-v1', generatedFrom: 'source inventory', tests },
   'duplicate-responsibilities.json': { schema: 'duplicate-responsibility-map-v1', entries: duplicateResponsibilities },
   'legacy-paths.json': { schema: 'legacy-path-map-v1', generatedFrom: 'tools/generate-catalog.js', entries: legacyPaths },

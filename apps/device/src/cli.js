@@ -31,7 +31,6 @@ Commands:
   campaign      validate the campaign chain, bundle and proof gates; with --live --confirm-live, play it
   preflight     inspect one ADB phone without sending game input
   clockmap      measure device->host monotonic clock anchors (read-only, no game input)
-  bench         print registered capability descriptors
   grade RUN_ID  show a retained result
 
 Options:
@@ -66,7 +65,7 @@ Options:
 
 function parse(argv) {
   const [first = 'help', ...tail] = argv;
-  const knownCommands = new Set(['help', 'bench', 'grade', 'preflight', 'campaign', 'clockmap']);
+  const knownCommands = new Set(['help', 'grade', 'preflight', 'campaign', 'clockmap']);
   if (first === '--help' || first === '-h') return { command: 'help', help: true };
   // The fixture dry-run that used to be the default left with the service path
   // on 2026-09-25; options without a command are refused rather than guessed.
@@ -196,10 +195,6 @@ async function campaignTiming(path, nights) {
 async function main(argv = process.argv.slice(2)) {
   const options = parse(argv);
   if (options.command === 'help') return help();
-  if (options.command === 'bench') {
-    const { listAdapters } = await import('@fnaf2-1020/adapters/registry');
-    console.log(JSON.stringify({ schema: 'capability-catalog-v1', adapters: listAdapters() }, null, 2)); return;
-  }
   if (options.command === 'grade') {
     const run = argv[1]; if (!run) throw new Error('grade requires RUN_ID');
     console.log(await readFile(join(ROOT, 'artifacts', run, 'result.json'), 'utf8')); return;

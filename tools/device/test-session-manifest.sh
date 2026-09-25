@@ -265,8 +265,6 @@ grep -q 'fnaf_session_begin "$LABEL"' "$HERE/collect-cue-audio.sh"
 check "collect-cue-audio.sh begins one session for the collection" $?
 grep -q 'fnaf_session_finalize' "$HERE/collect-cue-audio.sh"
 check "collect-cue-audio.sh finalizes its session" $?
-grep -q 'FNAF2_SESSION_RUN' "$HERE/capture-screen-sample.sh"
-check "capture-screen-sample.sh joins an ambient session" $?
 
 echo
 if [ "$failed" -eq 0 ]; then

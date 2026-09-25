@@ -3,7 +3,7 @@
  * portrait-natural coordinate transform; it does not choose a policy, read a
  * clock, or open adb.  The composition root injects a line writer and an
  * InputReader-ready gate.
- * CONTRACT:hid-executor-v1 CONTRACT:actuator-v1.
+ * CONTRACT:hid-executor-v1.
  */
 
 export const HID_DESCRIPTOR = Object.freeze([

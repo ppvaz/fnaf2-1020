@@ -148,15 +148,20 @@ for (const path of operational) {
   assert.doesNotMatch(source, /(?:from\s+|import\s*\()['"][^'"]*(?:^|\/|[-_.])test[^'"]*['"]/i, `${path} imports a test module`);
   assert.doesNotMatch(source, /\bSEARCH_KNOBS(?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\[[^\]]+\])\s*=/, `${path} mutates a process-global search knob`);
 }
-const physicalActuatorOwner = join(ROOT, 'apps/device/src/composition.js');
+// The HID transport presses the phone. Only the device runners compose it:
+// the FNaF 2 campaign ports and the three FNaF 1 runners, each behind its own
+// lease and --confirm-live. A new composer is a new way onto the phone and has
+// to be named here in the diff that adds it.
+const physicalActuatorOwners = new Set(['apps/device/src/modern-campaign-ports.js',
+  'tools/device/fnaf1-night-run.mjs', 'tools/device/fnaf1-custom-run.mjs', 'tools/device/fnaf1-menu-probe.mjs']
+  .map(path => join(ROOT, path)));
 for (const path of [...await files(join(ROOT, 'apps')), ...await files(join(ROOT, 'tools'))]
   .filter(path => !/(?:^|\/)test[^/]*\.(?:js|mjs|ts)$/.test(path) &&
                   !/(?:^|\/)report[^/]*\.(?:js|mjs|ts)$/.test(path) &&
                   path !== fileURLToPath(import.meta.url))) {
   const source = await readFile(path, 'utf8');
-  if (path !== physicalActuatorOwner &&
-      /\b(?:AdbTapActuator|HidActuator)\b/.test(codeOnly(source)))
-    assert.fail(`${path} reaches a physical actuator outside the device composition root`);
+  if (!physicalActuatorOwners.has(path) && /\bHidWireTransport\b/.test(codeOnly(source)))
+    assert.fail(`${path} reaches the HID transport outside the device runners`);
 }
 const cli = await readFile(join(ROOT, 'apps/device/src/cli.js'), 'utf8');
 // The campaign is the only command that touches a phone; its live branch must

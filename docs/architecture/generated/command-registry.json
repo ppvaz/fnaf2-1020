@@ -76,11 +76,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "test:device:bench",
-      "command": "node apps/device/src/cli.js bench",
-      "lifecycle": "supported"
-    },
-    {
       "id": "build:trainer",
       "command": "python3 tools/build.py",
       "lifecycle": "supported"
@@ -138,11 +133,6 @@
     {
       "id": "test:retrieval",
       "command": "node tools/retrieval-benchmark.mjs",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "device:bench",
-      "command": "node apps/device/src/cli.js bench",
       "lifecycle": "supported"
     },
     {
@@ -1859,42 +1849,6 @@
       "id": "tools/device/find-events.py",
       "invocation": "tools/device/find-events.py VIDEO",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/build-screencheck.sh",
-      "invocation": "tools/device/build-screencheck.sh [output]",
-      "kind": "build",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-screencheck.py",
-      "invocation": "tools/device/test-screencheck.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/bench-screencheck.sh",
-      "invocation": "tools/device/bench-screencheck.sh [samples] [model]",
-      "kind": "device benchmark",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/capture-screen-sample.sh",
-      "invocation": "tools/device/capture-screen-sample.sh VIEW LABEL NAME [hold-x hold-y [hold-ms]]",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/build-screen-model.py",
-      "invocation": "tools/device/build-screen-model.py --roi X0,Y0,X1,Y1 --output MODEL LABEL=PATH ...",
-      "kind": "build/check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/replay-screen-model.py",
-      "invocation": "tools/device/replay-screen-model.py MODEL LABEL=PATH ...",
-      "kind": "check",
       "lifecycle": "supported"
     },
     {

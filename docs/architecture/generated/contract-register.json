@@ -33,24 +33,6 @@
       "validator": "validateQualification"
     },
     {
-      "id": "raw-sample-v1",
-      "owner": "adapters",
-      "kind": "data",
-      "validator": "validateRawSample"
-    },
-    {
-      "id": "measurement-v1",
-      "owner": "core/contracts",
-      "kind": "data",
-      "validator": "validateMeasurement"
-    },
-    {
-      "id": "detector-v1",
-      "owner": "adapters",
-      "kind": "port",
-      "validator": "Detector"
-    },
-    {
       "id": "state-estimate-v1",
       "owner": "core/estimation",
       "kind": "data",
@@ -61,24 +43,6 @@
       "owner": "core/timing",
       "kind": "data",
       "validator": "validateClockRef"
-    },
-    {
-      "id": "actuator-v1",
-      "owner": "adapters",
-      "kind": "port",
-      "validator": "validateActuationResult"
-    },
-    {
-      "id": "capability-v1",
-      "owner": "adapters",
-      "kind": "data",
-      "validator": "validateCapability"
-    },
-    {
-      "id": "calibration-v1",
-      "owner": "adapters",
-      "kind": "data",
-      "validator": "validateCalibration"
     },
     {
       "id": "device-profile-v1",
@@ -139,12 +103,6 @@
       "owner": "evidence",
       "kind": "data",
       "validator": "validateClaimEvidence"
-    },
-    {
-      "id": "screencheck-process-v1",
-      "owner": "adapters/screencheck",
-      "kind": "process",
-      "validator": "screencheck grammar"
     },
     {
       "id": "cue-helper-control-v1",

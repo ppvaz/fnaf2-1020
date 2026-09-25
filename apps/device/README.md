@@ -7,7 +7,7 @@ reaches a phone: `cli.js campaign` chooses the profile, composes the ports in
 
 Public surface: the CLI and the Cue Helper MCP (`mcp.js`). Dependencies: core
 and adapters. Commands: `device:campaign`, `device:preflight`,
-`device:clockmap`, `device:bench` and `device:grade`. Artifacts: campaign
+`device:clockmap` and `device:grade`. Artifacts: campaign
 directories under ignored `artifacts/`, which `npm run evidence -- pack` turns
 into committed run packs. The fixture `DeviceControlService`, `composeDevice`,
 `composeModernDevice`, the seam-calibration fixture and the `dry-run`, `live`

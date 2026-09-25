@@ -49,10 +49,11 @@ dependent command.
 
 ### LEG-002 — Enforce capability/action and physical-binding contracts (P0)
 
-**Status:** PARTLY RESOLVED (2026-09-25) -- the runtime supervisor was removed with the fixture
-service path; the adapter registry and actuators below remain and are still open.
+**Status:** RESOLVED BY REMOVAL (2026-09-25) -- the runtime supervisor, the adapter capability
+registry and the actuator classes were removed with the fixture service path; the campaign sends
+through the HID transport, which `tools/architecture-test.js` now confines to the device runners.
 **Owner:** `packages/adapters`
-**Evidence:** `packages/runtime/src/safety/supervisor.js` line 20 (removed), [`registry.js` (line 18)](../../packages/adapters/src/registry.js), [`actuators.js` (line 59)](../../packages/adapters/src/actuators.js)
+**Evidence:** `supervisor.js` line 20, `registry.js` line 18, `actuators.js` line 59 (all removed)
 
 The supervisor checks the requested control but not `action.kind`, although
 the adapter registry declares supported actions. A profile that only declares
@@ -117,7 +118,7 @@ test that rejects new code importing legacy paths.
 
 **Status:** OPEN
 **Owner:** `packages/core`, `packages/adapters`
-**Evidence:** [`types.ts` (line 73)](../../packages/core/src/contracts/types.ts), [`registry.js` (line 69)](../../packages/adapters/src/registry.js), [`index.js` (line 156)](../../packages/core/src/contracts/index.js)
+**Evidence:** [`types.ts` (line 73)](../../packages/core/src/contracts/types.ts), `registry.js` line 69 (removed 2026-09-25), [`index.js` (line 156)](../../packages/core/src/contracts/index.js)
 
 Compile-time types, JavaScript validators, the contract register, and generated
 catalogs do not fully describe the same shapes. `DeviceProfile` omits fields

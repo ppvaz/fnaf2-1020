@@ -52,10 +52,6 @@ const EXCLUDED = new Map([
   ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],
   ['index-observations.py', 'read-only corpus inventory; indexes artifacts rather than grading one run'],
-  ['build-screen-model.py', 'model builder'],
-  ['build-screencheck.sh', 'native classifier builder'],
-  ['replay-screen-model.py', 'validates the classifier against labelled holdouts (test-screencheck.py drives it), not a run'],
-  ['bench-screencheck.sh', 'benchmark'],
   ['actuator.mjs', 'simulator layer, gated by test-actuator.mjs'],
   ['bb-cue-state.mjs', 'pure BB route uncertainty state machine, gated by test-bb-cue-state.mjs'],
   ['gate-worker.mjs', 'pure worker for test-night-matrix.mjs; it simulates gate chunks and has no run artifacts to grade'],
@@ -97,7 +93,6 @@ const EXCLUDED = new Map([
   ['validate-overlay-qualification.py', 'validates retained Plan 23 overlay evidence; it gates a qualification record rather than grading a night, gated by test-overlay-qualification.py'],
   ['overlay-qualification-observe.sh', 'retains paired Plan 23 HUD/off visual latency, draw cadence, resource, and lifecycle telemetry; gated by test-overlay-qualification-observe.sh'],
   ['provision-overlay-qualification.sh', 'installs a reviewed Plan 23 sidecar into app-private storage; a provisioner, not a run grader, and it must never invent device qualification'],
-  ['capture-screen-sample.sh', 'capture helper'],
   ['collect-cue-audio.sh', 'capture helper'],
   ['coords.sh', 'coordinate helper'],
   ['menu.sh', 'the title/menu selector runners source, mock-gated by test-menu.sh'],
@@ -132,7 +127,7 @@ const EXCLUDED = new Map([
   // green about the other 216 scripts, and they are recorded as open gaps in
   // docs/architecture/DUPLICATE-IMPLEMENTATION-MAP.md rather than left to
   // read as covered. Do not extend this block without a reason this specific.
-  ['screen-calibrate.py', 'GAP: screen-class anchor fitter with no gate of its own -- the only one of the five calibrate fitters without one. test-screencheck.py drives build-screen-model.py and replay-screen-model.py, not this. Fits a rule adapters consume on device, so it wants a synthetic-frame gate of its own, modelled on the maskOn fitter\'s'],
+  ['screen-calibrate.py', 'GAP: screen-class anchor fitter with no gate of its own -- the only one of the five calibrate fitters without one. Fits a rule adapters consume on device, so it wants a synthetic-frame gate of its own, modelled on the maskOn fitter\'s'],
   ['validate-session.py', 'Plan 09 session-manifest validator, run by session-manifest.py when a session producer (collect-cue-audio.sh, capture-screen-sample.sh) finalizes; night-run.sh writes no session manifest, so no night has one to grade; gated by test-validate-session.py'],
 ]);
 

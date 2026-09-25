@@ -8,9 +8,6 @@
   },
   "exports": {
     ".": "./src/index.js",
-    "./registry": "./src/registry.js",
-    "./actuators": "./src/actuators.js",
-    "./sensors": "./src/sensors.js",
     "./transports/hid": "./src/transports/hid.js",
     "./transports/cue-helper": "./src/transports/cue-helper.js",
     "./night-onset": "./src/night-onset.js"

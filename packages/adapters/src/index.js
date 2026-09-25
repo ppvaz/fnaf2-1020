@@ -1,7 +1,4 @@
-/** Adapters are selected by profiles at an application composition root. */
-export * from './registry.js';
-export * from './actuators.js';
-export * from './sensors.js';
+/** Adapters: the HID and Cue Helper transports, clocks, and the detection rules the campaign reads. */
 export * from './clocks.js';
 export * from './transports/hid.js';
 export * from './transports/cue-helper.js';

@@ -30,46 +30,6 @@ export interface ControlCommand {
   readonly source: { readonly controller: string; readonly policyHash?: string };
 }
 
-export interface Measurement<T = unknown> {
-  readonly schema: 'measurement-v1';
-  readonly id: string;
-  readonly signal: string;
-  readonly state: 'OBSERVED' | 'UNKNOWN';
-  readonly value?: T;
-  readonly reason?: string;
-  readonly confidence: number;
-  readonly observedAt: ClockRef;
-  readonly receivedAt: ClockRef;
-  readonly validUntil?: ClockRef;
-  readonly source: Record<string, string | null>;
-}
-
-export type ActuationStatus =
-  | 'REQUESTED' | 'SENT' | 'ACCEPTED' | 'VERIFIED'
-  | 'REJECTED' | 'FAILED' | 'UNKNOWN';
-
-export interface ActuationResult {
-  readonly schema: 'actuation-result-v1';
-  readonly commandId: string;
-  readonly status: ActuationStatus;
-  readonly backend: string;
-  readonly sentAt?: ClockRef;
-  readonly verifiedAt?: ClockRef | null;
-  readonly uncertaintyMs: number;
-  readonly reason?: string;
-}
-
-export interface CapabilityDescriptor {
-  readonly schema: 'capability-v1';
-  readonly adapter: string;
-  readonly actions: readonly ControlKind[];
-  readonly controls: readonly string[];
-  readonly clock: ClockName;
-  readonly verification: 'none' | 'external' | 'internal';
-  readonly claimLevel: 'MODEL_ONLY' | 'FIXTURE' | 'DEVICE_MEASURED';
-  readonly limitations: readonly string[];
-}
-
 export interface DeviceProfile {
   readonly schema: 'device-profile-v1';
   readonly id: string;

@@ -366,12 +366,6 @@ const ENGINE = [
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
   // rather than being remembered.
   ['docs', ['test-docs.mjs']],
-  // The on-phone classifier's host-side checks: frame framing, model refusal
-  // bands, and the streaming protocol. It ran NOWHERE before 2026-08-26 --
-  // not here, not in ci.yml -- while four grade-run coverage exclusions named
-  // it as the reason a script was not an instrument. A gate cited as
-  // provenance that nothing executes is worse than no gate.
-  ['screencheck', ['device/test-screencheck.py']],
   // Same story: the transport helper every device runner picks its phone
   // with, whose exclusion reads "gated by test-select-adb.sh".
   ['select-adb', ['device/test-select-adb.sh']],

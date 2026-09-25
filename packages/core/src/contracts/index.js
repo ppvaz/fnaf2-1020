@@ -1,19 +1,18 @@
 /**
  * Runtime validators and immutable plain-data contracts for core boundaries.
  * This module has no Node, DOM, filesystem, subprocess, network, or wall-clock
- * dependency. CONTRACT:semantic-control-v1 CONTRACT:measurement-v1.
+ * dependency. CONTRACT:semantic-control-v1.
  */
 import { DEVICE_CONTROL_NAMES, ALL_GAME_CONTROL_NAMES, MAX_GAME_CAMERA_INDEX }
   from '../control/vocabulary.js';
 
 export const CONTRACTS = Object.freeze([
   'plant-model-v1', 'semantic-control-v1', 'policy-program-v1', 'controller-v1',
-  'qualification-v1', 'raw-sample-v1', 'measurement-v1',
-  'detector-v1', 'state-estimate-v1', 'clock-v1',
-  'actuator-v1', 'capability-v1', 'calibration-v1', 'device-profile-v1',
+  'qualification-v1', 'state-estimate-v1', 'clock-v1',
+  'device-profile-v1',
   'telemetry-event-v1', 'session-manifest-v1', 'experiment-spec-v1',
   'experiment-result-v1', 'winner-v1', 'device-bundle-v1', 'trainer-trace-v1', 'artifact-ref-v1',
-  'claim-evidence-v1', 'screencheck-process-v1', 'cue-helper-control-v1',
+  'claim-evidence-v1', 'cue-helper-control-v1',
   'fact-message-v1', 'pcm-udp-v1', 'hid-executor-v1', 'device-artifact-v1', 'device-executor-v1',
   'device-campaign-v1', 'device-adb-preflight-v1', 'device-campaign-result-v1',
   'campaign-proof-v1', 'custom-night-config-v1', 'custom-night-calibration-v1',
@@ -33,9 +32,6 @@ export const CLOCKS = Object.freeze([
 ]);
 
 export const CONTROL_KINDS = Object.freeze(['press', 'release', 'hold', 'select']);
-export const ACTUATION_STATUSES = Object.freeze([
-  'REQUESTED', 'SENT', 'ACCEPTED', 'VERIFIED', 'REJECTED', 'FAILED', 'UNKNOWN',
-]);
 export const CLAIM_LEVELS = Object.freeze(['MODEL_ONLY', 'FIXTURE', 'DEVICE_MEASURED']);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -104,46 +100,6 @@ export function validateControlCommand(input) {
   return input;
 }
 
-export function validateMeasurement(input) {
-  if (!isRecord(input) || input.schema !== 'measurement-v1') fail('measurement schema mismatch');
-  requiredString(input.id, 'measurement id');
-  requiredString(input.signal, 'measurement signal');
-  if (input.state !== 'OBSERVED' && input.state !== 'UNKNOWN') fail('measurement state is invalid');
-  if (input.state === 'UNKNOWN') {
-    if (Object.hasOwn(input, 'value') || typeof input.reason !== 'string' || input.reason.length === 0)
-      fail('UNKNOWN measurement requires a reason and has no value');
-  } else if (!Object.hasOwn(input, 'value')) fail('OBSERVED measurement requires a value');
-  if (!finite(input.confidence) || input.confidence < 0 || input.confidence > 1)
-    fail('measurement confidence must be between 0 and 1');
-  validateClockRef(input.observedAt, 'observedAt');
-  validateClockRef(input.receivedAt, 'receivedAt');
-  if (input.validUntil !== undefined) validateClockRef(input.validUntil, 'validUntil');
-  if (!isRecord(input.source)) fail('measurement provenance is required');
-  return input;
-}
-
-export function validateActuationResult(input) {
-  if (!isRecord(input) || input.schema !== 'actuation-result-v1') fail('actuation result schema mismatch');
-  requiredString(input.commandId, 'command id');
-  if (!ACTUATION_STATUSES.includes(input.status)) fail('actuation status is invalid');
-  requiredString(input.backend, 'actuation backend');
-  if (input.sentAt !== undefined) validateClockRef(input.sentAt, 'sentAt');
-  if (input.verifiedAt !== undefined && input.verifiedAt !== null) validateClockRef(input.verifiedAt, 'verifiedAt');
-  if (!finite(input.uncertaintyMs) || input.uncertaintyMs < 0) fail('uncertaintyMs is invalid');
-  return input;
-}
-
-export function validateCapability(input) {
-  if (!isRecord(input) || input.schema !== 'capability-v1') fail('capability schema mismatch');
-  requiredString(input.adapter, 'adapter');
-  if (!Array.isArray(input.actions) || input.actions.some(action => !CONTROL_KINDS.includes(action))) fail('capability actions are invalid');
-  if (!Array.isArray(input.controls) || input.controls.some(control => typeof control !== 'string')) fail('capability controls are invalid');
-  if (!CLOCKS.includes(input.clock) || !['none', 'external', 'internal'].includes(input.verification)) fail('capability timing or verification is invalid');
-  if (!CLAIM_LEVELS.includes(input.claimLevel)) fail('capability claim level is invalid');
-  if (!Array.isArray(input.limitations)) fail('capability limitations are required');
-  return input;
-}
-
 export function validateProfile(input) {
   if (!isRecord(input) || input.schema !== 'device-profile-v1') fail('profile schema mismatch');
   for (const field of ['id', 'targetBuild', 'actuator', 'visualSensor', 'visualDetector']) requiredString(input[field], `profile ${field}`);
@@ -152,28 +108,10 @@ export function validateProfile(input) {
   return input;
 }
 
-export function validateRawSample(input) {
-  if (!isRecord(input) || input.schema !== 'raw-sample-v1' || typeof input.id !== 'string' ||
-      typeof input.format !== 'string' || !isRecord(input.acquisition) ||
-      !isRecord(input.dimensions) || !finite(input.dimensions.width) || !finite(input.dimensions.height) ||
-      input.dimensions.width <= 0 || input.dimensions.height <= 0 || !finite(input.rate) || input.rate <= 0 ||
-      !isRecord(input.source) || !isRecord(input.calibration) ||
-      typeof input.source.sensor !== 'string' || typeof input.calibration.profile !== 'string') fail('raw sample is incomplete');
-  validateClockRef({ clock: input.acquisition.clock, value: input.acquisition.at }, 'raw sample acquisition');
-  return input;
-}
-
 export function validateStateEstimate(input) {
   if (!isRecord(input) || input.schema !== 'state-estimate-v1' || typeof input.id !== 'string' ||
       !isRecord(input.at) || !isRecord(input.values)) fail('state estimate is incomplete');
   validateClockRef(input.at, 'state estimate at');
-  return input;
-}
-
-export function validateCalibration(input) {
-  if (!isRecord(input) || input.schema !== 'calibration-v1' || typeof input.id !== 'string' ||
-      typeof input.device !== 'string' || typeof input.implementationHash !== 'string' ||
-      !isRecord(input.uncertainty) || typeof input.validUntil !== 'string') fail('calibration is incomplete');
   return input;
 }
 

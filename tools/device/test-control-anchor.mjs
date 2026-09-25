@@ -14,7 +14,6 @@ import { validateControlAnchor, resolveControlPoint, worldX, unstatedPanDependen
   from '../../packages/adapters/src/control-anchor.js';
 import { GAME_CONTROLS } from '../../packages/core/src/control/vocabulary.js';
 import { validateControlCommand } from '../../packages/core/src/contracts/index.js';
-import { AdbTapActuator } from '../../packages/adapters/src/actuators.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '../..');
@@ -131,42 +130,27 @@ assert.deepEqual(unstatedByProfile, {
 }, 'the FNaF 2 profile still binds four pan-dependent controls to coordinates valid only at pan 0');
 
 
-// -- the press record. Before this, a coordinate in a bundle was not wrong so
-//    much as unreadable: nothing said which view it assumed. Every accepted
-//    press now carries the offset it resolved at, and a press that cannot be
-//    resolved is REJECTED with the cause instead of landing somewhere.
-const taps = [];
-const transport = { tap: (x, y) => { taps.push({ x, y }); }, abort: () => {}, releaseAll: () => {} };
-const press = control => ({ schema: 'control-command-v1', id: `cmd-${control}`, action: { kind: 'press', control },
-  requestedAt: { clock: 'host-monotonic-ms', value: 0 }, source: { controller: 'test' } });
+// -- the press record. A coordinate in a bundle was not wrong so much as
+//    unreadable: nothing said which view it assumed. Resolution now states the
+//    offset it resolved at, and a control that cannot be resolved is refused
+//    with the cause instead of landing somewhere. (Checked through the
+//    AdbTapActuator until that fixture class was retired on 2026-09-25; the
+//    resolver is where the rule lives.)
+const atRest = resolveControlPoint('leftDoor', map.controlMap.leftDoor);
+assert.deepEqual({ x: atRest.x, y: atRest.y, viewOffset: atRest.viewOffset, anchor: atRest.anchor },
+  { x: 106, y: 495, viewOffset: 0, anchor: 'world' });
 
-const atRest = new AdbTapActuator({ transport, controlMap: map.controlMap });
-const restResult = await atRest.apply(press('leftDoor'));
-assert.equal(restResult.status, 'SENT');
-assert.deepEqual(restResult.view, { offsetPx: 0, anchor: 'world' });
-assert.deepEqual(taps.at(-1), { x: 106, y: 495 });
-
-const panned = new AdbTapActuator({ transport, controlMap: map.controlMap, view: { viewOffset: MAX_PAN } });
-const pannedResult = await panned.apply(press('rightDoor'));
-assert.equal(pannedResult.status, 'SENT');
-assert.deepEqual(pannedResult.view, { offsetPx: MAX_PAN, anchor: 'world' });
-assert.deepEqual(taps.at(-1), { x: 2286, y: 520 },
+const panned = resolveControlPoint('rightDoor', map.controlMap.rightDoor, { viewOffset: MAX_PAN });
+assert.deepEqual({ x: panned.x, y: panned.y, viewOffset: panned.viewOffset }, { x: 2286, y: 520, viewOffset: MAX_PAN },
   'the right door is pressed at its measured coordinate only when the office is panned there');
 
-const before = taps.length;
-const blind = new AdbTapActuator({ transport, controlMap: { hallLight: { x: 900, y: 540 } },
-  view: { viewOffset: 300 } });
-const blindResult = await blind.apply(press('hallLight'));
-assert.equal(blindResult.status, 'REJECTED', 'an unstated control at a pan is refused, not pressed');
-assert.match(blindResult.reason, /has no anchor kind/);
-assert.equal(blindResult.view.viewOffset, 300);
-assert.equal(taps.length, before, 'and nothing reached the transport');
+assert.throws(() => resolveControlPoint('hallLight', { x: 900, y: 540 }, { viewOffset: 300 }), /has no anchor kind/,
+  'an unstated control at a pan is refused, not pressed');
 
-// The same actuator at rest presses exactly as it always has, which is what
+// At rest an unstated control resolves exactly as it always has, which is what
 // keeps every shipped FNaF 2 profile and its bound bundles behaving identically.
-const legacy = new AdbTapActuator({ transport, controlMap: { hallLight: { x: 900, y: 540 } } });
-assert.equal((await legacy.apply(press('hallLight'))).status, 'SENT');
-assert.deepEqual(taps.at(-1), { x: 900, y: 540 });
+const legacy = resolveControlPoint('hallLight', { x: 900, y: 540 });
+assert.deepEqual({ x: legacy.x, y: legacy.y }, { x: 900, y: 540 });
 
 console.log(`control anchor: ${Object.keys(map.controlMap).length} FNaF 1 controls, doors ${separation} px apart ` +
   `on a ${SCREEN} px screen, and 4 FNaF 2 controls still unstated`);

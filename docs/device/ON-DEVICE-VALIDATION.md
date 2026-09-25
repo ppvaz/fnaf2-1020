@@ -354,7 +354,7 @@ reason is unchanged.
   and [`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
 - **A minimal stock-device visual path now exists.**
-  [`packages/screencheck/src/screencheck.c`](../../packages/screencheck/src/screencheck.c) builds to a
+  `packages/screencheck/src/screencheck.c` (archived 2026-09-25) built to a
   12,680-byte static ARM64 helper and reduces raw `screencap` to color features,
   `match`/`clear`, or a compact nearest-template class entirely inside one
   device shell. No frame crosses USB and no APK/root/runtime dependency is
