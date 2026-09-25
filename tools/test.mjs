@@ -184,11 +184,9 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
-  ['hid transition probe', ['device/test-hid-transition-probe.mjs']],
   // A calibration is not stable because one gap landed once. This pools only
   // independent structured grades, refuses invalid/desynchronised samples,
   // and exposes the statistical floor before a timing can become a rule.
-  ['calibration stability', ['device/test-calibration-stability.py']],
   // The device pilot's cycle recipes and their budgets: contact lengths above
   // the phone's floor, camera spacing it has actually landed, a hall flash per
   // cycle, wind above break-even, the flashlight inside night 6's 3000 frames,
@@ -294,7 +292,6 @@ const ENGINE = [
   // plans/10 package 0: an interaction must be distinguishable from a dropped
   // contact and from a pan. Two nights were lost to a finger that missed a
   // light hitbox and landed in the pan band, and nothing in the run noticed.
-  ['interaction classifier', ['device/test-region-classify.py']],
   // The alive/dead authority, and the regression that made it one: the New Game
   // newspaper cutscene read as `night` because it is bright everywhere, and no
   // route had ever pressed New Game so the gap had never been reachable.
@@ -440,7 +437,6 @@ const ENGINE = [
   // Same story: the transport helper every device runner picks its phone
   // with, whose exclusion reads "gated by test-select-adb.sh".
   ['select-adb', ['device/test-select-adb.sh']],
-  ['frame clock', ['device/test-frame-clock.py']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason -- and
   // every test- gate is actually reachable from this list or from ci.yml.

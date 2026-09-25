@@ -32,7 +32,7 @@
     },
     {
       "id": "test:device:calibration",
-      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && python3 tools/device/test-input-frame-align.py && python3 tools/device/test-actuation-frame-metric.py && node tools/device/test-intersection-state-gate.mjs && node tools/device/test-hid-intersection-probe.mjs && node tools/device/test-hid-monitorraise-probe.mjs && node tools/device/test-hid-maskraise-probe.mjs && node tools/device/test-hid-transition-probe.mjs",
+      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-inputtrace.py && python3 tools/device/test-input-frame-align.py && python3 tools/device/test-actuation-frame-metric.py && node tools/device/test-intersection-state-gate.mjs && node tools/device/test-hid-intersection-probe.mjs",
       "lifecycle": "supported"
     },
     {
@@ -467,42 +467,6 @@
       "id": "tools/minustoys/cycle.mjs",
       "invocation": "tools/minustoys/cycle.mjs",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/hid-maskraise-probe.mjs",
-      "invocation": "tools/device/hid-maskraise-probe.mjs [gap ...]",
-      "kind": "generator",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/hid-monitorraise-probe.mjs",
-      "invocation": "tools/device/hid-monitorraise-probe.mjs [gap ...]",
-      "kind": "generator",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-hid-maskraise-probe.mjs",
-      "invocation": "tools/device/test-hid-maskraise-probe.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-hid-monitorraise-probe.mjs",
-      "invocation": "tools/device/test-hid-monitorraise-probe.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/maskraise-grade.py",
-      "invocation": "tools/device/maskraise-grade.py VIDEO HID [--json-out FILE]",
-      "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/monitorraise-watch.py",
-      "invocation": "tools/device/monitorraise-watch.py [--observe-only --seconds N]",
-      "kind": "read-only telemetry",
       "lifecycle": "supported"
     },
     {
@@ -1352,12 +1316,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/hid-sweep-probe.sh",
-      "invocation": "tools/device/hid-sweep-probe.sh [spacing ...]",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/hid-intersection-probe.mjs",
       "invocation": "tools/device/hid-intersection-probe.mjs",
       "kind": "generator",
@@ -1367,42 +1325,6 @@
       "id": "tools/device/hid-intersection-probe.sh",
       "invocation": "tools/device/hid-intersection-probe.sh",
       "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/hid-transition-probe.mjs",
-      "invocation": "tools/device/hid-transition-probe.mjs",
-      "kind": "generator",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/calibration-stability.py",
-      "invocation": "tools/device/calibration-stability.py [grade.json ...]",
-      "kind": "report/check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-calibration-stability.py",
-      "invocation": "tools/device/test-calibration-stability.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-monitorraise-watch.py",
-      "invocation": "tools/device/test-monitorraise-watch.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-hid-transition-probe.mjs",
-      "invocation": "tools/device/test-hid-transition-probe.mjs",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-maskraise-grade.py",
-      "invocation": "tools/device/test-maskraise-grade.py",
-      "kind": "check",
       "lifecycle": "supported"
     },
     {
@@ -1418,18 +1340,6 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/frame-clock.py",
-      "invocation": "tools/device/frame-clock.py VIDEO [--json] [--bugreport]",
-      "kind": "module/report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-frame-clock.py",
-      "invocation": "tools/device/test-frame-clock.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/input-frame-align.py",
       "invocation": "tools/device/input-frame-align.py INPUT.pftrace FRAME.tsv [--trace-processor PATH] [--json]",
       "kind": "report",
@@ -1438,12 +1348,6 @@
     {
       "id": "tools/device/intersection-state-gate.mjs",
       "invocation": "tools/device/intersection-state-gate.mjs --target office\\|monitor-up [--timeout-ms N] [--poll-ms N] [--log FILE]",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/touch-contamination-guard.sh",
-      "invocation": "tools/device/touch-contamination-guard.sh RUN -- COMMAND [ARGS...]",
       "kind": "**device action**",
       "lifecycle": "supported"
     },
@@ -1838,57 +1742,9 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/hid-raise-probe.mjs",
-      "invocation": "tools/device/hid-raise-probe.mjs",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/pan-probe.sh",
-      "invocation": "tools/device/pan-probe.sh",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/pan-path-capture.py",
-      "invocation": "tools/device/pan-path-capture.py",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/pan-path-capture.sh",
-      "invocation": "tools/device/pan-path-capture.sh",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
       "id": "tools/device/pan-shift.py",
       "invocation": "tools/device/pan-shift.py before.png after.png",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/region-probe.sh",
-      "invocation": "tools/device/region-probe.sh",
-      "kind": "**device action**",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/region-classify.py",
-      "invocation": "tools/device/region-classify.py pre.png during.png post.png",
-      "kind": "classifier",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/test-region-classify.py",
-      "invocation": "tools/device/test-region-classify.py",
-      "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/watch-vent-cue.sh",
-      "invocation": "tools/device/watch-vent-cue.sh [seconds] [label]",
-      "kind": "**device action**",
       "lifecycle": "supported"
     },
     {
@@ -1979,12 +1835,6 @@
       "id": "tools/device/trial/12-night-loop.sh",
       "invocation": "tools/device/trial/12-night-loop.sh",
       "kind": "driver part",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/seed-clock.mjs",
-      "invocation": "tools/device/seed-clock.mjs",
-      "kind": "device report",
       "lifecycle": "supported"
     },
     {
@@ -2153,12 +2003,6 @@
       "id": "tools/device/death-census.py",
       "invocation": "tools/device/death-census.py OUT_DIR",
       "kind": "report",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/grid-signature.py",
-      "invocation": "tools/device/grid-signature.py",
-      "kind": "build",
       "lifecycle": "supported"
     },
     {
@@ -2567,12 +2411,6 @@
       "id": "tools/dump/test-aimap.py",
       "invocation": "tools/dump/test-aimap.py",
       "kind": "check",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "tools/device/night5-modal-observer.mjs",
-      "invocation": "tools/device/night5-modal-observer.mjs",
-      "kind": "report",
       "lifecycle": "supported"
     },
     {

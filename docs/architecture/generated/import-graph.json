@@ -1588,39 +1588,8 @@
       ]
     },
     {
-      "file": "tools/device/hid-maskraise-probe.mjs",
-      "imports": [
-        "./hid-sweep-probe.mjs",
-        "node:fs",
-        "node:url"
-      ]
-    },
-    {
-      "file": "tools/device/hid-monitorraise-probe.mjs",
-      "imports": [
-        "./hid-sweep-probe.mjs",
-        "node:fs",
-        "node:url"
-      ]
-    },
-    {
-      "file": "tools/device/hid-raise-probe.mjs",
-      "imports": [
-        "./hid-sweep-probe.mjs",
-        "node:url"
-      ]
-    },
-    {
       "file": "tools/device/hid-sweep-probe.mjs",
       "imports": [
-        "node:url"
-      ]
-    },
-    {
-      "file": "tools/device/hid-transition-probe.mjs",
-      "imports": [
-        "./hid-sweep-probe.mjs",
-        "node:fs",
         "node:url"
       ]
     },
@@ -1702,15 +1671,6 @@
         "node:fs",
         "node:path",
         "node:zlib"
-      ]
-    },
-    {
-      "file": "tools/device/night5-modal-observer.mjs",
-      "imports": [
-        "../../apps/device/src/physical-ports.js",
-        "../../packages/adapters/src/transports/cue-helper.js",
-        "node:fs/promises",
-        "node:timers/promises"
       ]
     },
     {
@@ -1802,12 +1762,6 @@
         "node:fs",
         "node:path",
         "node:url"
-      ]
-    },
-    {
-      "file": "tools/device/seed-clock.mjs",
-      "imports": [
-        "../../apps/device/src/adb-bridge.js"
       ]
     },
     {
@@ -1976,18 +1930,6 @@
       ]
     },
     {
-      "file": "tools/device/test-hid-maskraise-probe.mjs",
-      "imports": [
-        "./hid-maskraise-probe.mjs"
-      ]
-    },
-    {
-      "file": "tools/device/test-hid-monitorraise-probe.mjs",
-      "imports": [
-        "./hid-monitorraise-probe.mjs"
-      ]
-    },
-    {
       "file": "tools/device/test-hid-sweep-probe.mjs",
       "imports": [
         "./hid-sweep-probe.mjs"
@@ -1998,12 +1940,6 @@
       "imports": [
         "node:fs",
         "node:url"
-      ]
-    },
-    {
-      "file": "tools/device/test-hid-transition-probe.mjs",
-      "imports": [
-        "./hid-transition-probe.mjs"
       ]
     },
     {

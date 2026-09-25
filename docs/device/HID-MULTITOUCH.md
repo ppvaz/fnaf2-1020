@@ -304,7 +304,8 @@ both rejections (`hidpilot n6 device reject`, `hidpilot n6 pulse reject`) and
 both 160 ms survivals so neither half can drift.
 
 The open device gate is narrow enough to test directly, and
-[`tools/device/hid-sweep-probe.sh`](../../tools/device/hid-sweep-probe.sh) is
+`tools/device/hid-sweep-probe.sh` (archived 2026-09-24, see
+[`ARCHIVED-ROUTES.md`](../ARCHIVED-ROUTES.md)) was
 that test: it drives CAM 10, CAM 04 and CAM 07 at each requested spacing with
 the light pulsed *after* each selection, and grades the recording with
 `camtrace.py`. The existing evidence does not answer the question — the

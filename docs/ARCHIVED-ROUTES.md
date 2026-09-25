@@ -38,6 +38,29 @@ searches were already closed.
 | `tools/strategysearch.mjs` | Fixed camera-cover strategy enumeration | [`strategy/CAM-6-7-STRATEGY.md`](strategy/CAM-6-7-STRATEGY.md) |
 | `tools/knobsweep.mjs` | `NightPolicy` knob factorial over a held-out cohort | Plan 20; `tools/nightloop.mjs` remains |
 
+## Closed device probes (2026-09-24, second pass)
+
+Nineteen tools and their eight no-device tests, chosen by a reference graph
+over every tracked file plus three weeks of agent command history: nothing
+that runs calls them, none ran after 2026-09-15, and each one's question is
+closed, with the answer already held by a constant, a gate or a page. The same
+tag carries them unchanged (`git checkout archive/2026-09-24 -- <path>`).
+
+| Tools | What they measured | Where the answer lives now |
+|---|---|---|
+| `hid-maskraise-probe.mjs`, `hid-monitorraise-probe.mjs`, `hid-raise-probe.mjs`, `hid-transition-probe.mjs`, `hid-sweep-probe.sh`, `maskraise-grade.py`, `monitorraise-watch.py`, `calibration-stability.py`, `frame-clock.py` | Mask/monitor seam windows, camera sweep spacing, animation transitions | [`device/HID-MULTITOUCH.md`](device/HID-MULTITOUCH.md) ("the phone accepts 120 ms spacing"); the floors in `tools/device/artifact-commands.mjs` and `actuator.mjs`'s `SEAM_BANDS`, held by `test-seam-slack.mjs` |
+| `pan-probe.sh`, `pan-path-capture.py`, `pan-path-capture.sh`, `region-probe.sh`, `region-classify.py` | Office pan and what a touch does per screen region | `pan-shift.py` stays as the measuring stick; the scroll is read from the dump |
+| `grid-signature.py` | Frame signatures for a live check | Superseded by the fitted `*-calibrate.py` rules (`monitor-rule-v1`, `camera-rule-v1`) the executor reads |
+| `night5-modal-observer.mjs` | Dual-modality sampling on Night 5 | [`evidence/night5-monitor-raise-loss-20260909.json`](evidence/night5-monitor-raise-loss-20260909.json); Night 5 is won |
+| `watch-vent-cue.sh` | Balloon Boy at the vent, by the helper's audio | The A2DP capture and `tickphase.py` ([`device/AUDIO-WITNESS-MAP.md`](device/AUDIO-WITNESS-MAP.md)) |
+| `touch-contamination-guard.sh` | Physical touches during a run | Never wired into `night-run.sh`; a guard nothing calls guards nothing |
+| `seed-clock.mjs` | Host/phone wall-clock samples for seed recovery | Superseded by `seedpin/` and `office-seed-bracket.py`; [`device/RNG-SEED-RECOVERY.md`](device/RNG-SEED-RECOVERY.md) |
+
+`hid-sweep-probe.mjs` stays: despite its name it is the `COORDS`/`toRaw`
+library the live intersection gate and `test-screen-map.mjs` import.
+`gate-worker.mjs` and `minus-toys-jitter.mjs` stay too — the `night matrix`
+and `vent reactive` checks load them.
+
 ## Kept on purpose
 
 Minus 7 is **not** archived: Pedro means to bring it back as a second

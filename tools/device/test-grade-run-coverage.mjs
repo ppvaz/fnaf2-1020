@@ -38,11 +38,9 @@ const EXCLUDED = new Map([
   ['fnaf1-menu-probe.sh', 'thin exclusive-lease wrapper around fnaf1-menu-probe.mjs; it sends no input of its own'],
   ['fnaf1-custom-night-read.py', 'reads the four FNaF 1 Custom Night dials off one native frame for the menu probe; a menu reader, not a run grader, gated by test-fnaf1-menus.py'],
   ['fnaf1-door-light.py', 'per-run native FNaF 1 door-light calibration and occupancy reader; it derives the current run\'s ROI/bands rather than grading a completed run, and test-fnaf1-door-light.py gates its native-only and UNKNOWN behavior'],
-  ['night5-modal-observer.mjs', 'passive on-device collector -- it records FRAME/READ rows during a run and sends no input; the artifacts it writes are graded by the steps above rather than by itself'],
   ['hid-intersection-probe.mjs', 'device probe generator -- emits an intersection stream to a phone rather than grading a night run'],
   ['hid-intersection-probe.sh', 'device probe runner for hid-intersection-probe.mjs; it acts on a phone rather than grading a run'],
   ['intersection-state-gate.mjs', 'pure control-intersection state gate consumed by the executor, gated by test-intersection-state-gate.mjs; it decides a press rather than grading a run'],
-  ['touch-contamination-guard.sh', 'pre-run guard that refuses a session whose touch state is already contaminated; it runs BEFORE a run exists to grade'],
   ['screenstate.py', 'the live alive/dead authority; grade-night.py and desync-scan.py apply its predicate to recordings'],
   ['death-prediction.mjs', 'runs BEFORE a run, not after it: writes the model\'s death prediction (killer shares, time quantiles over phases) that night-run.sh retains as prediction.json; grading reads that file, it does not regenerate it -- gated by test-bundle.mjs through the DEATH_TARGETED gate it produces'],
   ['tickphase.py', 'reads the retained Bluetooth audio (night-run.sh --bt-audio) after a run: roll-witness onsets and WinD folds. Run by hand while its thresholds and the clock-rate correction are being calibrated (2026-09-13); it joins grade-run.sh once a fold-based phase read survives a second run'],
@@ -53,7 +51,6 @@ const EXCLUDED = new Map([
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
   ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],
-  ['grid-signature.py', 'builds live-check signatures from labelled frames; a builder, not a grader'],
   ['index-observations.py', 'read-only corpus inventory; indexes artifacts rather than grading one run'],
   ['build-screen-model.py', 'model builder'],
   ['build-screencheck.sh', 'native classifier builder'],
@@ -86,16 +83,7 @@ const EXCLUDED = new Map([
   ['minus-toys-margin.mjs', 'per-instruction timing margin map for the Minus Toys plan -- a model analysis, no run artifact to read; gated by test-minus-toys-margin.mjs'],
   ['minus-toys-jitter.mjs', 'robustness evaluator for the Minus Toys plan -- replays the model under a calibrated clock-error ensemble, no run artifact to read; gated by test-minus-toys-jitter.mjs'],
   ['human-gate.mjs', 'pre-flight gate on plan files, gated by test-human-gate.mjs'],
-  ['hid-raise-probe.mjs', 'device probe -- acts on a phone rather than grading a run'],
-  ['hid-maskraise-probe.mjs', 'device probe generator -- emits a mask seam stream rather than grading a night run'],
-  ['hid-transition-probe.mjs', 'device probe generator -- records independent toggle transitions rather than grading a night run'],
-  ['hid-monitorraise-probe.mjs', 'device probe generator -- emits a monitor seam stream rather than grading a night run'],
-  ['maskraise-grade.py', 'calibration recording grader -- consumes a seam probe capture rather than a normal night-run bundle'],
-  ['monitorraise-watch.py', 'device watcher used only by the monitor seam probe; it does not grade a normal night run'],
-  ['pan-probe.sh', 'device probe -- measures the office pan on a phone, does not grade a run'],
   ['pan-shift.py', 'measuring stick for pan-probe.sh; the scroll is better read from the dump'],
-  ['region-probe.sh', 'device probe -- maps what a touch does by screen region'],
-  ['region-classify.py', 'the interaction classifier region-probe.sh decides with, gated by test-region-classify.py'],
   ['nightpredicate.py', 'the one definition of the alive/dead rule that screenstate.py and grade-night.py both evaluate; a library, gated by test-screenstate.py'],
   ['cam11lit.py', 'live runner-side arm verifier for the Minus Toys --minimal opening (trial.sh reads its verdict mid-run to re-arm or abort); not a run grader, gated by test-cam11lit.sh'],
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
@@ -103,11 +91,8 @@ const EXCLUDED = new Map([
   ['intro_card.py', 'fractional generic intro-card predicate used by lifecycle-observe.py/run-timeline.py; gated by test-intro-card.py'],
   ['death-cause.py', 'shadow-only labelled visual-cause model builder used by run-timeline.py when explicitly supplied; it builds a model rather than grading a run, gated by test-death-cause.py'],
   ['atrace-input.sh', 'trace capture wrapper that brackets a command and writes device evidence; inputtrace.py grades the resulting trace when present'],
-  ['frame-clock.py', 'presentation-time and cadence library for capture measurement; gated by test-frame-clock.py and not a normal night-run grader'],
   ['framesource.py', 'the one frame source every video instrument decodes through (ffmpeg privately, or the shared single decode when the pipeline offers a pipe); a library, gated by test-framesource.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
-  ['hid-sweep-probe.sh', 'device probe'],
-  ['calibration-stability.py', 'multi-run calibration report; it aggregates retained mask/monitor grades rather than grading a night run, gated by test-calibration-stability.py'],
   ['session-manifest.py', 'the manifest producer -- grade-run.sh consumes its output through validate-session.py; gated by test-session-manifest.sh'],
   ['session.sh', 'sourced helper that threads one session id through the producers, gated by test-session-manifest.sh'],
   ['validate-overlay-qualification.py', 'validates retained Plan 23 overlay evidence; it gates a qualification record rather than grading a night, gated by test-overlay-qualification.py'],
@@ -123,7 +108,6 @@ const EXCLUDED = new Map([
   ['provision-cue-model.sh', 'installs a generated model into the helper\'s private storage on a phone; a provisioner, not a grader -- it has no run to read'],
   ['soak-cue-helper.sh', 'live helper, mock-gated by test-soak-cue-helper.sh'],
   ['select-adb.sh', 'transport helper, gated by test-select-adb.sh'],
-  ['watch-vent-cue.sh', 'live watcher'],
   ['preflight.sh', 'pre-run refusal check -- says whether a night CAN be run and prints the invocation; it launches nothing and has no run to grade, mock-gated by test-preflight.sh'],
   ['run-batch.sh', 'run launcher'],
   ['trial.sh', 'run launcher'],
@@ -151,8 +135,6 @@ const EXCLUDED = new Map([
   ['cue-helper-setup.sh', 'thin one-serial wrapper; all UI work and every gate belong to cue-helper-setup.py'],
   ['cue-helper-queue.sh', 'thin wrapper that deliberately does NOT select a device, so enqueue/list work while the phone is absent; the queue gate is test-cue-helper-queue.py'],
   ['cue-helper-mcp.mjs', 'bounded MCP entry point over the queue, gated by test-cue-helper-mcp.mjs'],
-  ['pan-path-capture.py', 'office-pan observer: it sends no game input and produces a calibration corpus, not a night run'],
-  ['pan-path-capture.sh', 'thin one-serial wrapper over pan-path-capture.py'],
 
   // The three below have NO gate. They are excused here so the check can be
   // green about the other 216 scripts, and they are recorded as open gaps in
@@ -160,7 +142,6 @@ const EXCLUDED = new Map([
   // read as covered. Do not extend this block without a reason this specific.
   ['screen-calibrate.py', 'GAP: screen-class anchor fitter with no gate of its own -- the only one of the five calibrate fitters without one. test-screencheck.py drives build-screen-model.py and replay-screen-model.py, not this. Fits a rule adapters consume on device, so it wants a synthetic-frame gate of its own, modelled on the maskOn fitter\'s'],
   ['artifact-runner.mjs', 'GAP: host-side artifact consumer with no gate. Its only invoker is trial.sh:56, which is a compatibility-lifecycle launcher in legacy-paths.json -- a legacy caller is not coverage, so this is unexercised by the modern path'],
-  ['seed-clock.mjs', 'GAP: bounded host/device wall-clock sampler for stock-APK seed recovery, with no gate and no caller in the repository; it emits clock samples, not a run verdict'],
 ]);
 
 // tools/cue and tools/dump, under the same rule. The audit that widened this

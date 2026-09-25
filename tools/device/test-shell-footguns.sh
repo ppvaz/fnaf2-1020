@@ -27,14 +27,11 @@ grep -Fq com.scottgames.fnaf2 <<<"$focus" ||
 # Keep the production focus guards from regressing to a streaming grep -q
 # pipeline. The shellcheck gate catches new error-tier issues; this assertion
 # names the particular lost-night pattern in the files that launch probes.
-for script in "$HERE/hid-sweep-probe.sh" \
-              "$HERE/collect-cue-audio.sh" \
-              "$HERE/watch-vent-cue.sh"; do
-  if grep -Eq 'grep mCurrentFocus[[:space:]]+[|][^|]' "$script" ||
-      grep -Fq 'dumpsys window | grep -q' "$script"; then
-    fail "$script still has a streaming dumpsys/grep -q guard"
-  fi
-done
+script="$HERE/collect-cue-audio.sh"
+if grep -Eq 'grep mCurrentFocus[[:space:]]+[|][^|]' "$script" ||
+    grep -Fq 'dumpsys window | grep -q' "$script"; then
+  fail "$script still has a streaming dumpsys/grep -q guard"
+fi
 
 # A missing aborted-run filename must stop grading loudly. This is the fixed
 # contract behind the old GRADE_RUN=1 -> "$OUT.mp4" no-op.
